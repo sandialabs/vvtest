@@ -10,6 +10,7 @@ from os.path import join as pjoin, normpath, abspath, basename
 import platform
 
 from .vvplatform import Platform
+from .importutil import import_file_from_sys_path
 
 
 platform_attrs = [
@@ -229,7 +230,7 @@ class PlatformConfig:
 
 def determine_platform_and_compiler( platname, onopts, offopts ):
     ""
-    idplatform = import_plugin_file( 'idplatform.py' )
+    idplatform = import_file_from_sys_path( 'idplatform.py' )
 
     optdict = { '-o':onopts, '-O':offopts }
     if platname: optdict['--plat'] = platname
@@ -249,64 +250,7 @@ def determine_platform_and_compiler( platname, onopts, offopts ):
 
 def initialize_platform( platcfg ):
     ""
-    plug = import_plugin_file( 'platform_plugin.py' )
+    plug = import_file_from_sys_path( 'platform_plugin.py' )
 
     if plug is not None and hasattr( plug, 'initialize' ):
         plug.initialize( platcfg )
-
-
-def import_plugin_file( filename ):
-    """
-    look for the plugin file name in sys.path
-    """
-    mod = None
-
-    pn = find_module_file( filename )
-    if pn:
-        try:
-            mod = create_module_from_filename( pn )
-        except ImportError:
-            mod = None
-
-    return mod
-
-
-def find_module_file( filename ):
-    ""
-    for dn in sys.path:
-        pn = pjoin( dn, filename )
-        if os.path.exists(pn) and os.access( pn, os.R_OK ):
-            return pn
-
-    return None
-
-
-module_uniq_id = 0
-
-def create_module_from_filename( fname ):
-    ""
-    global module_uniq_id
-
-    fname = normpath( abspath( fname ) )
-
-    modname = os.path.splitext( basename(fname) )[0]+'_'+str(module_uniq_id)
-    module_uniq_id += 1
-
-    if sys.version_info[0] < 3 or sys.version_info[1] < 5:
-        import imp
-        fp = open( fname, 'r' )
-        try:
-            spec = ('.py','r',imp.PY_SOURCE)
-            mod = imp.load_module( modname, fp, fname, spec )
-        finally:
-            fp.close()
-    else:
-        import importlib
-        import importlib.machinery as impmach
-        import importlib.util as imputil
-        loader = impmach.SourceFileLoader( modname, fname )
-        spec = imputil.spec_from_file_location( modname, fname, loader=loader )
-        mod = imputil.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-
-    return mod

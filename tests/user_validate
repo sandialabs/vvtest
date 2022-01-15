@@ -18,7 +18,7 @@ import testutils as util
 
 from libvvtest.RuntimeConfig import RuntimeConfig
 from libvvtest.filtering import TestFilter
-from libvvtest.userplugin import UserPluginBridge, import_module_by_name
+from libvvtest.userplugin import UserPluginBridge, import_user_plugin
 
 
 class validate_plugin_unit_tests( vtu.vvtestTestCase ):
@@ -27,12 +27,11 @@ class validate_plugin_unit_tests( vtu.vvtestTestCase ):
         ""
         sys.path.insert( 0, os.getcwd() )
         try:
-            mod, out, err = util.call_capture_output(
-                import_module_by_name, vtu.make_plugin_filename() )
+            mod,err = import_user_plugin( 'plugin.py' )
         finally:
             sys.path.pop( 0 )
 
-        assert 'Traceback' not in out and 'Traceback' not in err
+        assert not err and mod is None
 
         plug = UserPluginBridge( RuntimeConfig(), mod )
 
@@ -50,7 +49,7 @@ class validate_plugin_unit_tests( vtu.vvtestTestCase ):
 
     def test_a_plugin_with_an_error_during_import(self):
         ""
-        plugname = vtu.make_plugin_filename()
+        plugname = 'plugin.py'
 
         util.writefile( 'adir/'+plugname+'.py', """
             function_that_does_not_exist()
@@ -59,17 +58,13 @@ class validate_plugin_unit_tests( vtu.vvtestTestCase ):
 
         sys.path.insert( 0, os.path.abspath('adir') )
         try:
-            mod, out, err = util.call_capture_output(
-                import_module_by_name, plugname )
-        except UserPluginError:
+            mod,err = import_user_plugin( plugname )
+        finally:
             sys.path.pop( 0 )
-        except Exception:
-            sys.path.pop( 0 )
-            raise  # expected a UserPluginError
 
-        assert 'Traceback' in out
-        assert 'function_that_does_not_exist' in out
-        assert 'UserPluginError' in err
+        assert mod is None
+        assert 'Traceback' in err
+        assert 'function_that_does_not_exist' in err
 
     def test_user_validate_plugin_function(self):
         ""
@@ -255,7 +250,7 @@ class validate_plugin_integration_tests( vtu.vvtestTestCase ):
             vrun.assertCounts( total=1, npass=1 )
             assert vrun.countLines( 'Traceback' ) > 0
             assert vrun.countLines( 'function_that_does_not_exist' ) > 0
-            assert vrun.countLines( 'failed to import vvtest_user_plugin' ) == 1
+            assert vrun.countLines( 'user plugin disabled' ) == 1
 
     def test_integration_with_error_in_the_test_validate_function(self):
         ""

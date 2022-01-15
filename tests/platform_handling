@@ -17,10 +17,11 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from vvtestutils import clean_sys_path_and_plugin_modules
+from vvtestutils import clean_sys_path_for_testing
 
 import libvvtest.makeplatform as makeplatform
 from libvvtest.makeplatform import determine_platform_and_compiler
+import libvvtest.importutil as importutil
 
 
 class idplatform( vtu.vvtestTestCase ):
@@ -35,7 +36,7 @@ class idplatform( vtu.vvtestTestCase ):
             sys.path.insert( 0, adir )
             sys.path.append( adir )
             assert adir in sys.path
-            clean_sys_path_and_plugin_modules()
+            clean_sys_path_for_testing()
             assert adir not in sys.path
         finally:
             sys.path[:] = savepath
@@ -51,12 +52,12 @@ class idplatform( vtu.vvtestTestCase ):
 
         # None is returned if idplatform.py not in sys.path
         with vtu.clean_sys_path():
-            assert makeplatform.import_plugin_file( 'idplatform.py' ) is None
+            assert importutil.import_file_from_sys_path( 'idplatform.py' ) is None
 
         # module returned if idplatform.py is in sys.path
         with vtu.clean_sys_path():
             sys.path.insert( 0, adir )
-            idp = makeplatform.import_plugin_file( 'idplatform.py' )
+            idp = importutil.import_file_from_sys_path( 'idplatform.py' )
             assert idp.hello() == 'world'
 
     def test_using_idplatform_to_define_platform_and_compiler(self):

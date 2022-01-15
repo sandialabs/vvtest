@@ -9,10 +9,8 @@ import subprocess
 import signal
 import time
 import traceback
-import platform
 from contextlib import contextmanager
 
-not_windows = not platform.uname()[0].lower().startswith('win')
 
 # if a test times out, it receives a SIGINT.  if it doesn't finish up
 # after that in this number of seconds, it gets sent a SIGKILL

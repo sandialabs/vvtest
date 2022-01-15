@@ -9,10 +9,7 @@ from os.path import join as pjoin
 
 from . import outpututils
 from .pathutil import change_directory
-
-
-class UserPluginError( Exception ):
-    pass
+from . import importutil
 
 
 class UserPluginBridge:
@@ -178,22 +175,15 @@ def make_test_to_user_interface_dict( rtconfig, tcase ):
     return specs
 
 
-def import_module_by_name( modulename ):
+def import_user_plugin( modulename ):
     ""
     mod = None
+    err = ''
 
     try:
-        code = compile( 'import '+modulename+' as newmodule',
-                        '<string>', 'exec' )
-        eval( code, globals() )
-        mod = newmodule
-
-    except ImportError:
-        pass
-
+        mod = importutil.import_file_from_sys_path( modulename+'.py' )
     except Exception:
         xs,tb = outpututils.capture_traceback( sys.exc_info() )
-        sys.stdout.write( '\n' + tb + '\n' )
-        raise UserPluginError( 'failed to import '+modulename+': '+xs )
+        err = tb
 
-    return mod
+    return mod, err

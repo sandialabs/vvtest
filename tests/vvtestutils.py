@@ -45,7 +45,7 @@ import libvvtest.testspec as testspec
 import libvvtest.testcase as testcase
 import libvvtest.teststatus as teststatus
 from libvvtest.RuntimeConfig import RuntimeConfig
-from libvvtest.userplugin import UserPluginBridge, import_module_by_name
+from libvvtest.userplugin import UserPluginBridge, import_user_plugin
 import libvvtest.paramset as paramset
 from libvvtest.TestList import TestList
 from libvvtest.execlist import TestExecList
@@ -186,11 +186,11 @@ def run_vvtest_with_hook( vvtest_args, envspec, batch=False ):
     return x, out
 
 
-def clean_sys_path_and_plugin_modules():
+def clean_sys_path_for_testing():
     """
     Use like this:
 
-        savepath = clean_sys_path_and_plugin_modules()
+        savepath = clean_sys_path_for_testing()
         try:
             # do stuff with sys.path
         finally:
@@ -209,14 +209,6 @@ def clean_sys_path_and_plugin_modules():
         len0 = len1
         len1 = len( sys.path )
 
-    # this https://justus.science/blog/2015/04/19/sys.modules-is-dangerous.html
-    # says don't reload or remove modules from sys.modules, but we should be
-    # safe in the confines of the unit test scripts
-    if 'idplatform' in sys.modules:
-        del sys.modules['idplatform']
-    if 'platform_plugin' in sys.modules:
-        del sys.modules['platform_plugin']
-
     return save
 
 
@@ -228,7 +220,7 @@ class clean_sys_path:
 
     def __init__(self):
         ""
-        self.savepath = clean_sys_path_and_plugin_modules()
+        self.savepath = clean_sys_path_for_testing()
 
     def __enter__(self):
         ""
@@ -929,21 +921,9 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
     return tlist, xlist
 
 
-# python imports can get confused when importing the same module name more
-# than once, so use a counter to make a new name for each plugin
-plugin_count = 0
-
-def make_plugin_filename():
-    ""
-    global plugin_count
-    plugin_count += 1
-
-    return 'plugin'+str(plugin_count)
-
-
 def make_user_plugin( content=None, platname=None, options=None ):
     ""
-    plugname = make_plugin_filename()
+    plugname = 'plugin'
 
     subdir = 'adir'
     if content != None:
@@ -954,7 +934,9 @@ def make_user_plugin( content=None, platname=None, options=None ):
 
     sys.path.insert( 0, os.path.abspath(subdir) )
     try:
-        plug = UserPluginBridge( rtconfig, import_module_by_name( plugname ) )
+        mod,err = import_user_plugin( plugname )
+        assert not err
+        plug = UserPluginBridge( rtconfig, mod )
     finally:
         sys.path.pop( 0 )
 

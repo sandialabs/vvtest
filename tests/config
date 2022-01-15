@@ -14,6 +14,8 @@ import os
 import vvtestutils as vtu
 import testutils as util
 
+import libvvtest.importutil as importutil
+
 
 class config_tests( vtu.vvtestTestCase ):
 
@@ -174,7 +176,7 @@ class config_tests( vtu.vvtestTestCase ):
         sys.path.insert( 0, vtu.cfgdir )
 
         try:
-            import platform_plugin as plug
+            plug = importutil.import_file_from_sys_path( 'platform_plugin.py' )
 
             plat = MockPlatform()
             plug.initialize( plat )

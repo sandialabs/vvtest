@@ -362,14 +362,11 @@ def import_plugin_module( rtdata ):
     ""
     import libvvtest.userplugin as userplugin
 
-    try:
-        plugmod = userplugin.import_module_by_name( USER_PLUGIN_MODULE_NAME )
+    plugmod,err = userplugin.import_user_plugin( USER_PLUGIN_MODULE_NAME )
 
-    except userplugin.UserPluginError:
-        print3( '*** error in user plugin script:',
-                str( sys.exc_info()[1] ).strip() )
-        print3( '*** user plugin disabled\n' )
-        plugmod = None
+    if err:
+        print ( '\n'+err.strip() )
+        print ( '\n*** user plugin disabled due to error in user plugin module\n' )
 
     plug = userplugin.UserPluginBridge( rtdata.rtconfig, plugmod )
 

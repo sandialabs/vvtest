@@ -69,3 +69,19 @@ def find_module_file( filename ):
             return pn
 
     return None
+
+
+def gather_modules_from_filename( filename ):
+    ""
+    modlist = []
+
+    for dn in sys.path:
+        pn = pjoin( dn, filename )
+        if os.path.exists(pn) and os.access( pn, os.R_OK ):
+            try:
+                mod = create_module_from_filename( pn )
+                modlist.append( mod )
+            except ImportError:
+                pass
+
+    return modlist

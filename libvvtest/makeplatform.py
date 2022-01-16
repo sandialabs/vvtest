@@ -10,7 +10,7 @@ from os.path import join as pjoin, normpath, abspath, basename
 import platform
 
 from .vvplatform import Platform
-from .importutil import import_file_from_sys_path
+from .importutil import import_file_from_sys_path, gather_modules_from_filename
 
 
 platform_attrs = [
@@ -230,20 +230,40 @@ class PlatformConfig:
 
 def determine_platform_and_compiler( platname, onopts, offopts ):
     ""
-    idplatform = import_file_from_sys_path( 'idplatform.py' )
-
     optdict = { '-o':onopts, '-O':offopts }
     if platname: optdict['--plat'] = platname
 
+    modlist = gather_modules_from_filename( 'idplatform.py' )
+
     if not platname:
-        if idplatform is not None and hasattr( idplatform, "platform" ):
-            platname = idplatform.platform( optdict )
-        if not platname:
-            platname = platform.uname()[0]
+        for idmod in modlist:
+            if hasattr( idmod, 'platform' ):
+                # TODO: use of platform() was deprecated Jan 2022
+                platname = idmod.platform( optdict )
+                break
+            elif hasattr( idmod, 'get_platform' ):
+                pname = idmod.get_platform()
+                if pname:
+                    platname = pname
+                    break
+
+    if not platname:
+        platname = platform.uname()[0]
 
     cplrname = None
-    if idplatform is not None and hasattr( idplatform, "compiler" ):
-        cplrname = idplatform.compiler( platname, optdict )
+
+    for idmod in modlist:
+        if hasattr( idmod, 'compiler' ):
+            # TODO: use of compiler() was deprecated Jan 2022
+            cname = idmod.compiler( platname, optdict )
+            if cname:
+                cplrname = cname
+            break
+        elif hasattr( idmod, 'get_compiler' ):
+            cname = idmod.get_compiler( platname, onopts )
+            if cname:
+                cplrname = cname
+                break
 
     return platname, cplrname
 

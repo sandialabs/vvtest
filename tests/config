@@ -10,6 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+import platform
 
 import vvtestutils as vtu
 import testutils as util
@@ -343,21 +344,8 @@ class config_tests( vtu.vvtestTestCase ):
         # first grab the default compiler and platform name
         vrun = vtu.runvvtest( '--config config', addplatform=False )
         default_platname, default_cplr = check_get_compiler_and_platform( vrun )
-
-        # override idplatform.py but misspell the function names, which will
-        # force vvtest to fall back to some other default
-        util.writefile( "config/idplatform.py", """
-            def platforms( opts ):
-                return "XBox"
-            def compilers( platname, opts ):
-                return "BASIC"
-            """ )
-        vtu.remove_results()
-
-        vrun = vtu.runvvtest( '--config config', addplatform=False )
-        core_platname, core_cplr = check_get_compiler_and_platform( vrun )
-        # no guarantees about the value here; just make sure it is non-empty
-        assert core_cplr and core_platname
+        assert default_platname and default_platname.strip()
+        self.assertEqual( default_cplr, None )
 
         # if the functions return an empty string, the core defaults should be used
         util.writefile( "config/idplatform.py", """
@@ -370,8 +358,8 @@ class config_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '--config config', addplatform=False )
         platname, cplr = check_get_compiler_and_platform( vrun )
-        assert cplr == core_cplr
-        assert platname == core_platname
+        self.assertEqual( platname, platform.uname()[0] )
+        self.assertEqual( cplr, None )
 
         # if the functions do not return a value, the core defaults should be used
         util.writefile( "config/idplatform.py", """
@@ -384,8 +372,8 @@ class config_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '--config config', addplatform=False )
         platname, cplr = check_get_compiler_and_platform( vrun )
-        assert cplr == core_cplr
-        assert platname == core_platname
+        self.assertEqual( platname, platform.uname()[0] )
+        self.assertEqual( cplr, None )
 
         # the command line option --plat should take precedence
         util.writefile( "config/idplatform.py", """
@@ -398,8 +386,8 @@ class config_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '--config config --plat PlayStation' )
         platname, cplr = check_get_compiler_and_platform( vrun )
-        assert cplr == "BASIC"
-        assert platname == "PlayStation"
+        self.assertEqual( cplr, "BASIC" )
+        self.assertEqual( platname, "PlayStation" )
 
     def test_using_multiple_config_directories(self):
         ""
@@ -543,8 +531,10 @@ def check_get_compiler_and_platform( vrun ):
 
     lines = vrun.greplogs( 'the COMPILER is', 'tst' )
     assert len( lines ) == 1
-
-    cplr = lines[0].split()[-1]
+    if lines[0].strip() == 'the COMPILER is':
+        cplr = None
+    else:
+        cplr = lines[0].split()[-1]
 
     return platname, cplr
 

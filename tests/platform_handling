@@ -48,7 +48,6 @@ class idplatform( vtu.vvtestTestCase ):
                 return 'world'
             """ )
         adir = abspath( 'adir' )
-        time.sleep(1)
 
         # None is returned if idplatform.py not in sys.path
         with vtu.clean_sys_path():
@@ -61,7 +60,10 @@ class idplatform( vtu.vvtestTestCase ):
             assert idp.hello() == 'world'
 
     def test_using_idplatform_to_define_platform_and_compiler(self):
-        ""
+        """
+        TODO: The platform() and compiler() functions are deprecated around
+              Jan 2022; when removed, this test should be deleted
+        """
         util.writefile( 'adir/idplatform.py', """
             def platform( opts ):
                 return 'XBox'
@@ -69,7 +71,6 @@ class idplatform( vtu.vvtestTestCase ):
                 return 'llvm'
             """ )
         adir = abspath( 'adir' )
-        time.sleep(1)
 
         with vtu.clean_sys_path():
             plat1,cplr1 = determine_platform_and_compiler( None, [], [] )
@@ -83,6 +84,210 @@ class idplatform( vtu.vvtestTestCase ):
             plat2,cplr2 = determine_platform_and_compiler( 'foo', [], [] )
             assert plat1 == 'XBox' and cplr1 == 'llvm'
             assert plat2 == 'foo' and cplr2 == 'llvm'
+
+    def test_v2_using_idplatform_to_define_platform_and_compiler(self):
+        ""
+        util.writefile( 'adir/idplatform.py', """
+            def get_platform():
+                return 'XBox'
+            def get_compiler( platname, opts ):
+                return 'llvm'
+            """ )
+
+        with vtu.clean_sys_path():
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == platform.uname()[0] and cplr is None
+
+            plat,cplr = determine_platform_and_compiler( 'foo', [], [] )
+            assert plat == 'foo' and cplr is None
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'adir' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == 'XBox' and cplr == 'llvm'
+
+            plat,cplr = determine_platform_and_compiler( 'foo', [], [] )
+            assert plat == 'foo' and cplr == 'llvm'
+
+    def test_get_platform_searches_sys_path_for_a_name(self):
+        ""
+        util.writefile( 'dir1/idplatform.py', """
+            def get_platform():
+                pass
+            """ )
+
+        util.writefile( 'dir2/idplatform.py', """
+            def get_platform():
+                return 'DOS'
+            """ )
+
+        util.writefile( 'dir3/idplatform.py', """
+            def get_platform():
+                return 'VMS'
+            """ )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == 'DOS'
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir2' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == 'DOS'
+
+    def test_mixing_v1_and_v2_methods_for_getting_the_platform(self):
+        ""
+        util.writefile( 'dir1/idplatform.py', """
+            def platform( opts ):
+                return 'Atari'
+            """ )
+
+        util.writefile( 'dir2/idplatform.py', """
+            def platform( opts ):
+                pass
+            """ )
+
+        util.writefile( 'dir3/idplatform.py', """
+            def get_platform():
+                return 'PS1'
+            """ )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == 'Atari'
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir2' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+
+            # the old behavior was to stop at the first idplatform found
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == platform.uname()[0]
+
+    def test_the_compiler_name_can_depend_on_the_platform_and_options(self):
+        ""
+        util.writefile( 'dir1/idplatform.py', """
+            def get_compiler( platname, opts ):
+                if platname == 'XBox':
+                    return 'PGI'
+                elif platname == 'PS2':
+                    return 'Compaq'
+            """ )
+
+        util.writefile( 'dir2/idplatform.py', """
+            def get_platform():
+                return 'XBox'
+            """ )
+
+        util.writefile( 'dir3/idplatform.py', """
+            def get_compiler( platname, opts ):
+                if 'intel' in opts:
+                    return 'OneAPI'
+            """ )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert plat == 'XBox' and cplr == 'PGI'
+
+            plat,cplr = determine_platform_and_compiler( 'PS2', [], [] )
+            assert plat == 'PS2' and cplr == 'Compaq'
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir3' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert cplr is None
+
+            plat,cplr = determine_platform_and_compiler( None, ['foo'], [] )
+            assert cplr is None
+
+            plat,cplr = determine_platform_and_compiler( None, ['intel'], [] )
+            assert cplr == 'OneAPI'
+
+    def test_stop_at_the_first_compiler_name(self):
+        ""
+        util.writefile( 'dir1/idplatform.py', """
+            def get_compiler( platname, opts ):
+                pass
+            """ )
+
+        util.writefile( 'dir2/idplatform.py', """
+            def get_compiler( platname, opts ):
+                if platname != 'foobar':
+                    return 'assembly'
+            """ )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert cplr == 'assembly'
+
+            plat,cplr = determine_platform_and_compiler( 'foobar', [], [] )
+            assert cplr is None
+
+    def test_mixing_v1_and_v2_compiler_name(self):
+        ""
+        util.writefile( 'dir1/idplatform.py', """
+            def compiler( platname, optdict ):
+                pass
+            """ )
+
+        util.writefile( 'dir2/idplatform.py', """
+            def compiler( platname, optdict ):
+                return 'hope'
+            """ )
+
+        util.writefile( 'dir3/idplatform.py', """
+            def get_platform():
+                return 'Atari'
+            """ )
+
+        util.writefile( 'dir4/idplatform.py', """
+            def get_compiler( platname, opts ):
+                return 'hopeless'
+            """ )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert cplr is None
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir4' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert cplr is None
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir2' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert cplr == 'hope'
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir2' ) )
+            sys.path.insert( 1, abspath( 'dir4' ) )
+
+            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            assert cplr == 'hope'
 
 
 class construction( vtu.vvtestTestCase ):

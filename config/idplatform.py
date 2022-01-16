@@ -7,14 +7,13 @@
 import os, sys
 import fnmatch
 import glob
-import platform
+from platform import uname as uname_func
 
-uname = platform.uname()
+uname = uname_func()
 osname,nodename,osrelease,machine = uname[0], uname[1], uname[2], uname[4]
 
-def platform( opts ):
-    """
-    """
+def get_platform():
+    ""
     if 'VVTEST_PLATFORM' in os.environ:
         return os.environ['VVTEST_PLATFORM']
 

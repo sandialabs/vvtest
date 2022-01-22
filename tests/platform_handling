@@ -360,7 +360,7 @@ class config_specs( vtu.vvtestTestCase ):
         specs.overwrite( 'foo', 'baz' )
         self.assertEqual( specs['foo'], 'baz' )
 
-    def test_the_platform_specs_tracks_if_modified(self):
+    def test_the_platform_specs_remembers_if_it_is_modified(self):
         ""
         specs = makeplatform.PlatformSpecs()
 
@@ -382,6 +382,45 @@ class config_specs( vtu.vvtestTestCase ):
         specs.overwrite( 'foo', 'abc' )
         self.assertTrue( specs.is_modified() )
         self.assertEqual( list( specs.items() ), [ ('foo','abc') ] )
+
+    def test_constraining_the_platform_specs_to_known_attributes(self):
+        ""
+        tab = makeplatform.AttrTable( [ ['foo',str,'bar','foo desc'],
+                                        ['num',int,'number','num desc'] ] )
+        specs = makeplatform.PlatformSpecs( tab )
+
+        specs['foo'] = 'val'
+        self.assertEqual( specs['foo'], 'val' )
+        self.assertEqual( specs.get('foo'), 'val' )
+
+        try:
+            specs['baz'] = 'val'
+        except Exception: pass
+        else: raise Exception( 'expected an exception' )
+        self.assertRaises( Exception, specs.get, 'baz' )
+        self.assertRaises( Exception, specs.get, 'baz', 'avalue' )
+
+        specs.overwrite( 'foo', 'new' )
+        self.assertEqual( specs['foo'], 'new' )
+
+        self.assertRaises( Exception, specs.overwrite, 'shucks', 'val' )
+
+        specs['num'] = '3'
+        self.assertEqual( specs['num'], 3 )
+
+        specs = makeplatform.PlatformSpecs( tab )
+        specs['num'] = 5
+        self.assertEqual( specs['num'], 5 )
+
+        specs = makeplatform.PlatformSpecs( tab )
+        try:
+            specs['num'] = 'five'
+        except Exception: pass
+        else: raise Exception( 'expected an exception' )
+
+        specs.overwrite( 'num', '7' )
+        self.assertEqual( specs['num'], 7 )
+        self.assertRaises( Exception, specs.overwrite, 'num', 'seven' )
 
 
 class construction( vtu.vvtestTestCase ):

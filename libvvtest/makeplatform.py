@@ -239,8 +239,10 @@ class PlatformConfig:
 
 class PlatformSpecs:
 
-    def __init__(self):
+    def __init__(self, attrtab=None):
         ""
+        self.attrtab = attrtab
+
         self.specs = {}
         self.modified = False
 
@@ -256,7 +258,7 @@ class PlatformSpecs:
         """
         the assignment operator will not overwrite a key that already exists
         """
-        assert type(key) == type('')
+        key, value = self._normalize_item( key, value )
         self.modified = True
         if key not in self.specs:
             self.specs[key] = value
@@ -265,7 +267,7 @@ class PlatformSpecs:
         """
         unlike the assignment operator, this function will overwrite a key
         """
-        assert type(key) == type('')
+        key, value = self._normalize_item( key, value )
         self.modified = True
         self.specs[key] = value
 
@@ -275,11 +277,12 @@ class PlatformSpecs:
 
     def __getitem__(self, key):
         ""
-        assert type(key) == type('')
+        key = self._normalize_key( key )
         return self.specs[key]
 
     def get(self, key, *default):
         ""
+        key = self._normalize_key( key )
         if len(default) > 0:
             return self.specs.get( key, default[0] )
         else:
@@ -288,6 +291,20 @@ class PlatformSpecs:
     def items(self): return self.specs.items()
     def keys(self): return self.specs.keys()
     def values(self): return self.specs.values()
+
+    def _normalize_item(self, key, value):
+        ""
+        assert type(key) == type('')
+        if self.attrtab is not None:
+            return self.attrtab.normalize( key, value )
+        return key,value
+
+    def _normalize_key(self, key):
+        ""
+        assert type(key) == type('')
+        if self.attrtab is not None:
+            return self.attrtab.normalize_name( key )
+        return key
 
 
 def determine_platform_and_compiler( platname, onopts, offopts ):

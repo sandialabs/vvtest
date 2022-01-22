@@ -290,50 +290,105 @@ class idplatform( vtu.vvtestTestCase ):
             assert cplr == 'hope'
 
 
-class construction( vtu.vvtestTestCase ):
+class config_specs( vtu.vvtestTestCase ):
 
-    def test_parsing_attributes(self):
+    def test_attribute_normalization(self):
         ""
-        psr = makeplatform.AttrParser( [['foo',str,'desc']] )
-        attrs = psr.parse_in_place( {} )
-        self.assertEqual( attrs, {} )
-        attrs = psr.parse_in_place( {'foo':'fooval'} )
-        self.assertEqual( attrs, {'foo':'fooval'} )
+        defs = [ [ 'foo', str, 'fake description' ] ]
+        tab = makeplatform.AttrTable( defs )
+        self.assertEqual( tab.normalize( 'foo', 'fooval' ), ('foo','fooval') )
+        self.assertRaises( Exception, tab.normalize, 'bar', 'fooval' )
 
-        psr = makeplatform.AttrParser( [['foo',int,'desc']] )
-        attrs = psr.parse_in_place( {'foo':'3'} )
-        self.assertEqual( attrs, {'foo':3} )
-        attrs = psr.parse_in_place( {'foo':3} )
-        self.assertEqual( attrs, {'foo':3} )
-        self.assertRaises( Exception, psr.parse_in_place, {'foo':'bar'} )
+        defs = [ [ 'foo', str, 'bar', 'fake description' ] ]
+        tab = makeplatform.AttrTable( defs )
+        self.assertEqual( tab.normalize( 'foo', 'fooval' ), ('foo','fooval') )
+        self.assertEqual( tab.normalize( 'bar', 'fooval' ), ('foo','fooval') )
+        self.assertRaises( Exception, tab.normalize, 'baz', 'val' )
 
-        psr = makeplatform.AttrParser( [['foo',int,'bar','desc']] )
-        attrs = psr.parse_in_place( {'foo':3} )
-        self.assertEqual( attrs, {'foo':3} )
-        attrs = psr.parse_in_place( {'bar':3} )
-        self.assertEqual( attrs, {'foo':3} )
-        attrs = psr.parse_in_place( {'bar':3, 'foo':'3'} )
-        self.assertEqual( attrs, {'foo':3} )
-        self.assertRaises( Exception, psr.parse_in_place, {'bar':'3', 'foo':'4'} )
+        defs = [ [ 'foo', int, 'bar', 'fake description' ] ]
+        tab = makeplatform.AttrTable( defs )
+        self.assertEqual( tab.normalize( 'foo', '23' ), ('foo',23) )
+        self.assertEqual( tab.normalize( 'bar', '23' ), ('foo',23) )
+        self.assertRaises( Exception, tab.normalize, 'foo', '2.3' )
+        self.assertRaises( Exception, tab.normalize, 'bar', '2.3' )
 
-        psr = makeplatform.AttrParser( [['foo',int,'bar','baz','desc']] )
-        self.assertEqual( psr.parse_in_place( {'foo':3} ), {'foo':3} )
-        self.assertEqual( psr.parse_in_place( {'bar':3} ), {'foo':3} )
-        self.assertEqual( psr.parse_in_place( {'baz':3} ), {'foo':3} )
+    def test_attribute_group_normalization(self):
+        ""
+        defs = [ [ 'foo', str, 'bar', 'fake description' ],
+                 [ 'a', int, 'A', 'another desc' ] ]
+        tab = makeplatform.AttrTable( defs )
 
-        psr = makeplatform.AttrParser( [['foo',str,'desc1'],
-                                        ['bar',int,'baz','desc2']] )
-        self.assertEqual( psr.parse_in_place( {'foo':'a'} ), {'foo':'a'} )
-        self.assertEqual( psr.parse_in_place( {'baz':2} ), {'bar':2} )
-        attrs = psr.parse_in_place( {'baz':2,'foo':'b'} )
-        self.assertEqual( attrs, {'foo':'b', 'bar':2} )
+        self.assertEqual( tab.normalize_group( {'foo':'val'} ), {'foo':'val'} )
+        self.assertEqual( tab.normalize_group( {'bar':'val'} ), {'foo':'val'} )
+        self.assertEqual( tab.normalize_group( {'a':'1'} ), {'a':1} )
+        self.assertEqual( tab.normalize_group( {'A':'1'} ), {'a':1} )
 
-        psr = makeplatform.AttrParser( [['foo',int,'desc']] )
-        self.assertRaises( Exception, psr.parse_in_place, {'bar':5} )
+        self.assertEqual( tab.normalize_group( {'foo':'val','a':'1'} ),
+                          {'foo':'val','a':1} )
+        self.assertEqual( tab.normalize_group( {'bar':'val','A':'1'} ),
+                          {'foo':'val','a':1} )
+
+        self.assertEqual( tab.normalize_group( {'foo':'val1','bar':'val1'} ),
+                          {'foo':'val1'} )
+        self.assertRaises( Exception,
+                           tab.normalize_group, {'foo':'val1','bar':'val2'} )
+
+    def test_set_get_platform_specs(self):
+        ""
+        specs = makeplatform.PlatformSpecs()
+
+        self.assertEqual( len(specs), 0 )
+
+        specs['foo'] = 'bar'
+        self.assertEqual( specs['foo'], 'bar' )
+        self.assertEqual( len(specs), 1 )
+
+        self.assertEqual( specs.get('foo'), 'bar' )
+        self.assertEqual( specs.get( 'foo', 'dog' ), 'bar' )
+        self.assertEqual( specs.get( 'bad', 'dog' ), 'dog' )
+        self.assertRaises( Exception, specs.get, 'wrong' )
+
+        specs['earth'] = 'moon'
+        self.assertEqual( sorted( specs.items() ), [ ('earth','moon'), ('foo','bar') ] )
+        self.assertEqual( sorted( specs.keys() ), ['earth','foo'] )
+        self.assertEqual( sorted( specs.values() ), ['bar','moon'] )
+
+        # no overwrite
+        specs['foo'] = 'baz'
+        self.assertEqual( specs['foo'], 'bar' )
+
+        specs.overwrite( 'foo', 'baz' )
+        self.assertEqual( specs['foo'], 'baz' )
+
+    def test_the_platform_specs_tracks_if_modified(self):
+        ""
+        specs = makeplatform.PlatformSpecs()
+
+        self.assertFalse( specs.is_modified() )
+
+        specs['foo'] = 'bar'
+        self.assertTrue( specs.is_modified() )
+
+        specs.set_unmodified()
+        self.assertFalse( specs.is_modified() )
+        self.assertEqual( list( specs.items() ), [ ('foo','bar') ] )
+
+        specs['foo'] = 'baz'
+        self.assertTrue( specs.is_modified() )
+        self.assertEqual( list( specs.items() ), [ ('foo','bar') ] )
+
+        specs.set_unmodified()
+        self.assertFalse( specs.is_modified() )
+        specs.overwrite( 'foo', 'abc' )
+        self.assertTrue( specs.is_modified() )
+        self.assertEqual( list( specs.items() ), [ ('foo','abc') ] )
+
+
+class construction( vtu.vvtestTestCase ):
 
     def test_the_preset_platform_options(self):
         ""
-        apsr = makeplatform.AttrParser()
+        attrtab = makeplatform.AttrTable()
 
         popts = { 'batchsys':'slurm',          'ppn':'5',
                   'dpn':'7',                   'queue':'admin',
@@ -343,7 +398,7 @@ class construction( vtu.vvtestTestCase ):
                   'maxsubs':'11',              'QoS':'long',
                   'testingdir':'/path',        'extra_flags':'--foo=bar',
                 }
-        apsr.parse_in_place( popts )
+        popts = attrtab.normalize_group( popts )
         self.assertEqual( popts,
                 { 'batchsys':'slurm',          'ppn':5,
                   'dpn':7,                     'queue':'admin',
@@ -351,22 +406,22 @@ class construction( vtu.vvtestTestCase ):
                   'walltime':'2:34',           'maxprocs':23,
                   'maxdevices':33,             'maxqtime':3600,
                   'maxsubs':11,                'QoS':'long',
-                  'testingdir':'/path',        'extra_flags':'--foo=bar',
+                  'testingdir':'/path',        'submit_flags':'--foo=bar',
                 } )
 
         popts = { 'processors_per_node':'5',   'devices_per_node':'7',
                   'q':'admin',                 'PT':'fy666',
                   'submit_flags':'--foo=bar',
                 }
-        apsr.parse_in_place( popts )
+        popts = attrtab.normalize_group( popts )
         self.assertEqual( popts,
                 { 'ppn':5,                     'dpn':7,
                   'queue':'admin',             'account':'fy666',
-                  'extra_flags':'--foo=bar',
+                  'submit_flags':'--foo=bar',
                 } )
 
         popts = { 'cores_per_node':'5', 'partition':'admin', }
-        apsr.parse_in_place( popts )
+        popts = attrtab.normalize_group( popts )
         self.assertEqual( popts, { 'ppn':5, 'queue':'admin', } )
 
     def test_initialize_platform_config_from_platform_plugin(self):
@@ -377,15 +432,13 @@ class construction( vtu.vvtestTestCase ):
             """ )
         adir = abspath( 'adir' )
 
-        apsr = makeplatform.AttrParser()
-
         with vtu.clean_sys_path():
-            platcfg = makeplatform.PlatformConfig( apsr, {}, None, None )
+            platcfg = makeplatform.PlatformConfig( {}, None, None )
             makeplatform.initialize_platform( platcfg )
             assert platcfg.getattr( 'ppn', None ) is None
 
         with vtu.clean_sys_path():
-            platcfg = makeplatform.PlatformConfig( apsr, {}, None, None )
+            platcfg = makeplatform.PlatformConfig( {}, None, None )
             sys.path.insert( 0, adir )
             makeplatform.initialize_platform( platcfg )
             self.assertEqual( platcfg.getattr( 'ppn', None ), 3 )

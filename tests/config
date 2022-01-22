@@ -16,6 +16,7 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.importutil as importutil
+from libvvtest.makeplatform import PlatformConfig
 
 
 class config_tests( vtu.vvtestTestCase ):
@@ -179,42 +180,42 @@ class config_tests( vtu.vvtestTestCase ):
         try:
             plug = importutil.import_file_from_sys_path( 'platform_plugin.py' )
 
-            plat = MockPlatform()
+            plat = PlatformConfig( {}, 'foobarbaz', None )
             plug.initialize( plat )
 
-            plat = MockPlatform( 'Cray' )
+            plat = PlatformConfig( {}, 'Cray', None )
             plug.initialize( plat )
-            assert plat.save[0] == 'pbs'
-            assert plat.save[1] == 32
-            assert plat.save[2]['variation'] == 'select'
+            self.assertEqual( plat.getattr('batchsys'), 'pbs' )
+            self.assertEqual( plat.getattr('ppn'), 32 )
+            self.assertEqual( plat.getattr('variation'), 'select' )
 
-            plat = MockPlatform( 'CrayXC' )
+            plat = PlatformConfig( {}, 'CrayXC', None )
             plug.initialize( plat )
-            assert plat.save[0] == 'slurm'
-            assert plat.save[1] == 32
-            assert 'variation' not in plat.save[2]
+            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
+            self.assertEqual( plat.getattr('ppn'), 32 )
+            self.assertEqual( plat.getattr('variation',None), None )
 
             platopt = { '--platopt': { 'variation':'knl' } }
-            plat = MockPlatform( 'CrayXC', platopt=platopt )
+            plat = PlatformConfig( platopt, 'CrayXC', None )
             plug.initialize( plat )
-            assert plat.save[0] == 'slurm'
-            assert plat.save[1] == 64
-            assert plat.save[2]['variation'] == 'knl'
+            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
+            self.assertEqual( plat.getattr('ppn'), 64 )
+            self.assertEqual( plat.getattr('variation'), 'knl' )
 
-            plat = MockPlatform( 'TLCC2' )
+            plat = PlatformConfig( {}, 'TLCC2', None )
             plug.initialize( plat )
-            assert plat.save[0] == 'slurm'
-            assert plat.save[1] == 16
+            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
+            self.assertEqual( plat.getattr('ppn'), 16 )
 
-            plat = MockPlatform( 'CTS1' )
+            plat = PlatformConfig( {}, 'CTS1', None )
             plug.initialize( plat )
-            assert plat.save[0] == 'slurm'
-            assert plat.save[1] == 36
+            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
+            self.assertEqual( plat.getattr('ppn'), 36 )
 
-            plat = MockPlatform( 'Godzilla' )
+            plat = PlatformConfig( {}, 'Godzilla', None )
             plug.initialize( plat )
-            assert plat.save[0] == 'slurm'
-            assert plat.save[1] == 20
+            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
+            self.assertEqual( plat.getattr('ppn'), 20 )
 
         finally:
             sys.path.pop(0)
@@ -549,26 +550,6 @@ def extract_maxprocs( vvtest_output ):
         maxprocs = int( L2[0].strip() )
 
     return maxprocs
-
-
-class MockPlatform:
-
-    def __init__(self, name='XBox', compiler='gcc', platopt={}):
-        ""
-        self.platname = name
-        self.cplr = compiler
-        self.opts = platopt
-
-        self.save = None
-
-    def getName(self): return self.platname
-    def getCompiler(self): return self.cplr
-    def getOptions(self): return self.opts
-
-    def setBatchSystem(self, batch, ppn, **kwargs):
-        ""
-        assert self.save == None
-        self.save = ( batch, ppn, kwargs )
 
 
 ########################################################################

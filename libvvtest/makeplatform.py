@@ -29,9 +29,9 @@ platform_attrs = [
     [ 'walltime', str,
             "number of seconds to request for each batch job" ],
     [ 'maxprocs', int,
-            "max processors per batch job, or num cores on the workstation" ],
+            "max processors per batch job, or num cores on a workstation" ],
     [ 'maxdevices', int,
-            "max devices per batch job, or num devices on the workstation" ],
+            "max devices per batch job, or num devices on a workstation" ],
     [ 'maxqtime', int,
             "max time allowed for each batch job submission" ],
     [ 'maxsubs', int,
@@ -40,76 +40,86 @@ platform_attrs = [
             '"Quality of Service" e.g. "normal", "long", etc.' ],
     [ 'testingdir', str,
             "(under development)" ],
-    [ 'extra_flags', str, 'submit_flags',
+    [ 'submit_flags', str, 'extra_flags',
             "arbitrary command line options passed to the batch submit command" ],
 ]
 
 
-class AttrParser:
+class AttrTable:
 
-    def __init__(self, attr_table=platform_attrs):
+    def __init__(self, definitions=platform_attrs):
         ""
-        self.tab = attr_table
-        self.known = set( [ L[0] for L in attr_table ] )
+        self.names = {}  # maps aliases to primary name
+        self.valtypes = {}  # maps primary name to value type
 
-    def parse_in_place(self, attrs):
-        """
-        Modifies the given attributes dictionary:
-            1. replaces aliases with their primary names
-            2. removes aliases from the dictionary
-            3. if more than one name is given, checks for consistency
-            4. raises exception for unknown attribute names
-        """
-        for spec in self.tab:
-
+        for spec in definitions:
             name = spec[0]
             valtype = spec[1]
             aliases = spec[2:-1]
 
-            vals = self._collect_values( attrs, valtype, name, *aliases )
+            self.valtypes[ name ] = valtype
 
-            if len( vals ) > 0:
-                if not self._consistent_values( vals ):
-                    raise Exception( 'values for attribute '+repr(name) + \
-                        ' are not consistent: '+str(vals) )
+            self.names[ name ] = name
+            for alias in aliases:
+                self.names[ alias ] = name
 
-                attrs[name] = vals[0]
-                for alias in aliases:
-                    attrs.pop( alias, None )
-
-        for name,val in attrs.items():
-            if name not in self.known:
-                raise Exception( 'unknown attribute name: '+repr(name) )
-
-        return attrs
-
-    def _collect_values(self, attrs, valtype, *names):
+    def normalize(self, attrname, attrvalue):
         ""
-        vals = []
-        for key in names:
-            val = self._get_value( attrs, key, valtype )
-            if val is not None:
-                vals.append( val )
-        return vals
+        primary = self.normalize_name( attrname )
+        value = self.normalize_value( attrvalue, primary, attrname )
+        return primary,value
 
-    def _get_value(self, attrs, name, valtype):
-        ""
-        if name in attrs:
-            try:
-                val = valtype( attrs[name] )
-            except Exception as e:
-                raise Exception( 'could not cast attribute name '+repr(name) + \
-                    ' to '+str(valtype)+': '+str(e) )
-            return val
-        else:
-            return None
+    def normalize_group(self, attrs):
+        """
+        Returns a new dictionary such that:
+            1. Unknown attributes raise an exception
+            2. Replaces aliases with their primary names
+            3. Aliases are not included in the dictionary
+            4. If more than one name/alias is given, the values must be equal
+        """
+        normed = {}
 
-    def _consistent_values(self, values):
+        for key,val in attrs.items():
+            primary_name, attrvalue = self.normalize( key, val )
+            self.check_consistency( primary_name, attrs )
+            normed[primary_name] = attrvalue
+
+        return normed
+
+    def normalize_name(self, name):
         ""
-        if len( set( values ) ) > 1:
-            return False
-        else:
-            return True
+        if name in self.names:
+            return self.names[name]
+
+        raise Exception( 'unknown attribute name: '+repr(name) )
+
+    def normalize_value(self, value, primary_name, attrname):
+        ""
+        valtype = self.valtypes[ primary_name ]
+        try:
+            val = valtype( value )
+        except Exception as e:
+            raise Exception( 'could not convert attribute name ' + \
+                repr(attrname) + ' to '+str(valtype)+': '+str(e) )
+        return val
+
+    def check_consistency(self, primary_name, attrgroup):
+        ""
+        nameset = set()
+        valset = set()
+
+        for alias,primary in self.names.items():
+            if primary == primary_name:
+                if alias in attrgroup:
+                    nameset.add( alias )
+                    val = self.normalize_value( attrgroup[alias], primary, alias )
+                    valset.add( val )
+
+        if len( set(valset) ) > 1:
+            raise Exception( 'multiple values encountered for an attribute '
+                'name plus aliases ('+', '.join([n for n in nameset])+') but '
+                'those values are not the same: '+', '.join([v for v in valset]) )
+
 
 
 def create_Platform_instance( platname, mode, platopts,
@@ -126,9 +136,10 @@ def create_Platform_instance( platname, mode, platopts,
     """
     assert mode in ['direct','batch','batchjob']
 
-    apsr = AttrParser()
+    platname,cplrname = determine_platform_and_compiler( platname, onopts, offopts )
 
-    apsr.parse_in_place( platopts )
+    attrtab = AttrTable()
+    platopts = attrtab.normalize_group( platopts )
 
     optdict = {}
     if platname: optdict['--plat']    = platname
@@ -136,10 +147,8 @@ def create_Platform_instance( platname, mode, platopts,
     if onopts:   optdict['-o']        = onopts
     if offopts:  optdict['-O']        = offopts
 
-    platname,cplrname = determine_platform_and_compiler( platname, onopts, offopts )
-
     # options (2) are available to platform plugin through the 'optdict' (yuck!)
-    platcfg = PlatformConfig( apsr, optdict, platname, cplrname )
+    platcfg = PlatformConfig( optdict, platname, cplrname )
 
     # platform plugin can set attrs via:
     #   - options (3) by calling setBatchSystem()
@@ -172,13 +181,13 @@ class PlatformConfig:
     from the implementation (the Platform class).
     """
 
-    def __init__(self, attrpsr, optdict, platname, cplrname):
+    def __init__(self, optdict, platname, cplrname):
         ""
-        self.attrpsr = attrpsr
         self.optdict = optdict
         self.platname = platname
         self.cplrname = cplrname
 
+        self.attrtable = AttrTable()
         self.envD = {}
         self.attrs = {}
 
@@ -200,8 +209,8 @@ class PlatformConfig:
             if name in self.attrs:
                 del self.attrs[name]
         else:
-            self.attrs[name] = value
-            self.attrpsr.parse_in_place( self.attrs )
+            n,v = self.attrtable.normalize( name, value )
+            self.attrs[n] = v
 
     def getattr(self, name, *default):
         ""
@@ -212,20 +221,73 @@ class PlatformConfig:
 
     def setBatchSystem(self, batchsys, ppnarg, **kwargs ):
         ""
-        self.attrpsr.parse_in_place( kwargs )
+        batchattrs = self.attrtable.normalize_group( kwargs )
 
-        ppn = kwargs.get( 'ppn', ppnarg )
+        ppn = batchattrs.get( 'ppn', ppnarg )
         assert ppn and ppn > 0
 
         self.setattr( 'batchsys', batchsys )
 
-        for n,v in kwargs.items():
+        for n,v in batchattrs.items():
             self.setattr( n, v )
 
         if 'ppn' not in self.attrs:
             self.setattr( 'ppn', ppn )
 
-        self.attrpsr.parse_in_place( self.attrs )
+        self.attrs = self.attrtable.normalize_group( self.attrs )
+
+
+class PlatformSpecs:
+
+    def __init__(self):
+        ""
+        self.specs = {}
+        self.modified = False
+
+    def is_modified(self):
+        ""
+        return self.modified
+
+    def set_unmodified(self):
+        ""
+        self.modified = False
+
+    def __setitem__(self, key, value):
+        """
+        the assignment operator will not overwrite a key that already exists
+        """
+        assert type(key) == type('')
+        self.modified = True
+        if key not in self.specs:
+            self.specs[key] = value
+
+    def overwrite(self, key, value):
+        """
+        unlike the assignment operator, this function will overwrite a key
+        """
+        assert type(key) == type('')
+        self.modified = True
+        self.specs[key] = value
+
+    def __len__(self):
+        ""
+        return len( self.specs )
+
+    def __getitem__(self, key):
+        ""
+        assert type(key) == type('')
+        return self.specs[key]
+
+    def get(self, key, *default):
+        ""
+        if len(default) > 0:
+            return self.specs.get( key, default[0] )
+        else:
+            return self.specs[key]
+
+    def items(self): return self.specs.items()
+    def keys(self): return self.specs.keys()
+    def values(self): return self.specs.values()
 
 
 def determine_platform_and_compiler( platname, onopts, offopts ):

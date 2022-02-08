@@ -121,19 +121,20 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
         w.add( '', 'DEPDIRMAP = '+repr(D) )
 
         w.add( '',
+               'RESOURCE_np = '+repr( len(resourceobj.procs) ),
                'RESOURCE_IDS_np = '+repr(resourceobj.procs),
                'RESOURCE_TOTAL_np = '+repr(resourceobj.maxprocs) )
 
-        if 'np' not in paramD:
-            w.add( 'np = '+repr(len(resourceobj.procs)) )
-
-        if resourceobj.devices is not None:
+        if resourceobj.devices is None:
             w.add( '',
+               'RESOURCE_ndevice = 0',
+               'RESOURCE_IDS_ndevice = []',
+               'RESOURCE_TOTAL_ndevice = 0' )
+        else:
+            w.add( '',
+               'RESOURCE_ndevice = '+repr( len(resourceobj.devices) ),
                'RESOURCE_IDS_ndevice = '+repr(resourceobj.devices),
                'RESOURCE_TOTAL_ndevice = '+repr(resourceobj.maxdevices) )
-
-            if 'ndevice' not in paramD:
-                w.add( 'ndevice = '+repr(len(resourceobj.devices)) )
 
         ###################################################################
     
@@ -225,20 +226,21 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
 
         sprocs = [ str(procid) for procid in resourceobj.procs ]
         w.add( '',
+               'RESOURCE_np="'+str( len(resourceobj.procs) )+'"',
                'RESOURCE_IDS_np="'+' '.join(sprocs)+'"',
                'RESOURCE_TOTAL_np="'+str(resourceobj.maxprocs)+'"' )
 
-        if 'np' not in paramD:
-            w.add( 'np="'+repr(len(resourceobj.procs))+'"' )
-
-        if resourceobj.devices != None:
+        if resourceobj.devices is None:
+            w.add( '',
+               'RESOURCE_ndevice="0"',
+               'RESOURCE_IDS_ndevice=""',
+               'RESOURCE_TOTAL_ndevice="0"' )
+        else:
             sdevs = [ str(devid) for devid in resourceobj.devices ]
             w.add( '',
-               'RESOURCE_IDS_ndevice = '+' '.join(sdevs),
-               'RESOURCE_TOTAL_ndevice = "'+str(resourceobj.maxdevices)+'"' )
-
-            if 'ndevice' not in paramD:
-                w.add( 'ndevice="'+repr(len(resourceobj.devices))+'"' )
+               'RESOURCE_ndevice="'+str( len(resourceobj.devices) )+'"',
+               'RESOURCE_IDS_ndevice="'+' '.join(sdevs)+'"',
+               'RESOURCE_TOTAL_ndevice="'+str(resourceobj.maxdevices)+'"' )
 
         # the name script_util_plugin.sh is now deprecated, Dec 2021
         for d in configdirs[::-1]:

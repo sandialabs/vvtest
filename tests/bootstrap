@@ -62,7 +62,7 @@ class Testing_boostrap_file( vtu.vvtestTestCase ):
         os.symlink( vtu.vvtest_file, 'vvtest' )
 
         util.writefile( 'config/idplatform.py', """
-            def platform( opts ):
+            def get_platform():
                 return 'SkyNet'
             """ )
         util.writefile( 'config/solarsystem.py', """

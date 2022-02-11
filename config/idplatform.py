@@ -13,7 +13,17 @@ uname = uname_func()
 osname,nodename,osrelease,machine = uname[0], uname[1], uname[2], uname[4]
 
 def get_platform():
-    ""
+    """
+    Use any means necessary to determine the current platform name. The
+    platforms identified here are just ones at Sandia Labs and a few others.
+
+    A project can supply their own get_platform(). Each get_platform() is
+    called until one returns a non-empty string. If none do, then Python
+    platform.uname()[0] is used (same as UNIX the "uname" command).
+
+    The command line --plat option takes precedence, then the VVTEST_PLATFORM
+    environment variable, then the idplatform.get_platform() function.
+    """
     if 'VVTEST_PLATFORM' in os.environ:
         return os.environ['VVTEST_PLATFORM']
 
@@ -70,6 +80,59 @@ def get_platform():
     if osname == 'Linux' and snlsystem == 'cee':
         # Sandia CEE LAN
         return 'ceelan'
+
+
+def load_specifications( specs, platname, cplrname, options ):
+    """
+    Known platforms are given specifications, most commonly the batch system
+    type on cluster machines and their cores-per-node.
+
+    A project can supply their own load_specifications(). If a specification is
+    made, then no further load_specifications() will be called. If no
+    specifications are made, then the builtin one will be called (the one you
+    are reading right now). This mechanism allows the project to add to the
+    known platforms without duplicating the builtin platforms.
+
+    The command line --platopt option values take precedence, then the
+    VVTEST_PLATFORM_SPECS environment variable, then the load_specifications()
+    function.
+    """
+    if platname == "Cray":
+        # XT had 16 cores per node, DoD Excalibur has 32
+        specs['batchsys'] = 'pbs'
+        specs['ppn'] = 32
+        specs['variation'] = 'select'
+
+    elif platname == "CrayXC":
+        specs['batchsys'] = 'slurm'
+        if specs.get( 'variation', '' ) == 'knl':
+            specs['ppn'] = 64
+        else:
+            specs['ppn'] = 32
+
+    elif platname == "TLCC2":
+        specs['batchsys'] = 'slurm'
+        specs['ppn'] = 16
+
+    elif platname == "CTS1":
+        specs['batchsys'] = 'slurm'
+        if os.environ.get("SNLCLUSTER", "").lower() == "manzano":
+            specs['ppn'] = 48
+        else:
+            specs['ppn'] = 36
+
+    elif platname == "ASTRA":
+        specs['batchsys'] = 'slurm'
+        specs['ppn'] = 2*28
+
+    elif platname == "Godzilla":
+        specs['batchsys'] = 'slurm'
+        specs['ppn'] = 20
+
+    elif platname == 'ATS2':
+        specs['batchsys'] = 'lsf'
+        specs['ppn'] = 44
+        specs['dpn'] = 4
 
 
 #######################################################################

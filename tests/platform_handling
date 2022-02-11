@@ -20,8 +20,9 @@ import testutils as util
 from vvtestutils import clean_sys_path_for_testing
 
 import libvvtest.makeplatform as makeplatform
-from libvvtest.makeplatform import determine_platform_and_compiler
-import libvvtest.importutil as importutil
+from libvvtest.makeplatform import PlatformCreator
+from libvvtest.importutil import import_file_from_sys_path
+from libvvtest.importutil import gather_modules_by_filename
 
 
 class idplatform( vtu.vvtestTestCase ):
@@ -51,18 +52,18 @@ class idplatform( vtu.vvtestTestCase ):
 
         # None is returned if idplatform.py not in sys.path
         with vtu.clean_sys_path():
-            assert importutil.import_file_from_sys_path( 'idplatform.py' ) is None
+            assert import_file_from_sys_path( 'idplatform.py' ) is None
 
         # module returned if idplatform.py is in sys.path
         with vtu.clean_sys_path():
             sys.path.insert( 0, adir )
-            idp = importutil.import_file_from_sys_path( 'idplatform.py' )
+            idp = import_file_from_sys_path( 'idplatform.py' )
             assert idp.hello() == 'world'
 
     def test_using_idplatform_to_define_platform_and_compiler(self):
         """
         TODO: The platform() and compiler() functions are deprecated around
-              Jan 2022; when removed, this test should be deleted
+              Feb 2022; when removed, this test should be deleted
         """
         util.writefile( 'adir/idplatform.py', """
             def platform( opts ):
@@ -73,17 +74,23 @@ class idplatform( vtu.vvtestTestCase ):
         adir = abspath( 'adir' )
 
         with vtu.clean_sys_path():
-            plat1,cplr1 = determine_platform_and_compiler( None, [], [] )
-            plat2,cplr2 = determine_platform_and_compiler( 'foo', [], [] )
-            assert plat1 == platform.uname()[0] and cplr1 is None
-            assert plat2 == 'foo' and cplr2 is None
+            creator = PlatformCreator()
+
+            plat,cplr = creator.determine_platform_and_compiler( None )
+            assert plat == platform.uname()[0] and cplr is None
+
+            plat,cplr = creator.determine_platform_and_compiler( 'foo' )
+            assert plat == 'foo' and cplr is None
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, adir )
-            plat1,cplr1 = determine_platform_and_compiler( None, [], [] )
-            plat2,cplr2 = determine_platform_and_compiler( 'foo', [], [] )
-            assert plat1 == 'XBox' and cplr1 == 'llvm'
-            assert plat2 == 'foo' and cplr2 == 'llvm'
+            creator = PlatformCreator()
+
+            plat,cplr = creator.determine_platform_and_compiler( None )
+            assert plat == 'XBox' and cplr == 'llvm'
+
+            plat,cplr = creator.determine_platform_and_compiler( 'foo' )
+            assert plat == 'foo' and cplr == 'llvm'
 
     def test_v2_using_idplatform_to_define_platform_and_compiler(self):
         ""
@@ -95,19 +102,22 @@ class idplatform( vtu.vvtestTestCase ):
             """ )
 
         with vtu.clean_sys_path():
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == platform.uname()[0] and cplr is None
 
-            plat,cplr = determine_platform_and_compiler( 'foo', [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( 'foo' )
             assert plat == 'foo' and cplr is None
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'adir' ) )
+            creator = PlatformCreator()
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == 'XBox' and cplr == 'llvm'
 
-            plat,cplr = determine_platform_and_compiler( 'foo', [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( 'foo' )
             assert plat == 'foo' and cplr == 'llvm'
 
     def test_get_platform_searches_sys_path_for_a_name(self):
@@ -131,18 +141,22 @@ class idplatform( vtu.vvtestTestCase ):
             sys.path.insert( 0, abspath( 'dir1' ) )
             sys.path.insert( 1, abspath( 'dir2' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == 'DOS'
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir2' ) )
             sys.path.insert( 1, abspath( 'dir3' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == 'DOS'
 
     def test_mixing_v1_and_v2_methods_for_getting_the_platform(self):
         ""
+        # TODO: this is a backward compatibility check for the platform()
+        #       function, to be removed sometime after Jan 2023
         util.writefile( 'dir1/idplatform.py', """
             def platform( opts ):
                 return 'Atari'
@@ -162,7 +176,8 @@ class idplatform( vtu.vvtestTestCase ):
             sys.path.insert( 0, abspath( 'dir1' ) )
             sys.path.insert( 1, abspath( 'dir3' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == 'Atari'
 
         with vtu.clean_sys_path():
@@ -170,7 +185,8 @@ class idplatform( vtu.vvtestTestCase ):
             sys.path.insert( 1, abspath( 'dir3' ) )
 
             # the old behavior was to stop at the first idplatform found
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == platform.uname()[0]
 
     def test_the_compiler_name_can_depend_on_the_platform_and_options(self):
@@ -197,23 +213,29 @@ class idplatform( vtu.vvtestTestCase ):
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir1' ) )
             sys.path.insert( 1, abspath( 'dir2' ) )
+            creator = PlatformCreator()
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == 'XBox' and cplr == 'PGI'
 
-            plat,cplr = determine_platform_and_compiler( 'PS2', [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( 'PS2' )
             assert plat == 'PS2' and cplr == 'Compaq'
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir3' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr is None
 
-            plat,cplr = determine_platform_and_compiler( None, ['foo'], [] )
+            creator = PlatformCreator()
+            creator.set_command_line_options( ['foo'], [] )
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr is None
 
-            plat,cplr = determine_platform_and_compiler( None, ['intel'], [] )
+            creator = PlatformCreator()
+            creator.set_command_line_options( ['intel'], [] )
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr == 'OneAPI'
 
     def test_stop_at_the_first_compiler_name(self):
@@ -232,15 +254,18 @@ class idplatform( vtu.vvtestTestCase ):
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir1' ) )
             sys.path.insert( 1, abspath( 'dir2' ) )
+            creator = PlatformCreator()
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr == 'assembly'
 
-            plat,cplr = determine_platform_and_compiler( 'foobar', [], [] )
+            plat,cplr = creator.determine_platform_and_compiler( 'foobar' )
             assert cplr is None
 
     def test_mixing_v1_and_v2_compiler_name(self):
         ""
+        # TODO: this is a backward compatibility check for the compiler()
+        #       function, to be removed sometime after Jan 2023
         util.writefile( 'dir1/idplatform.py', """
             def compiler( platname, optdict ):
                 pass
@@ -265,28 +290,32 @@ class idplatform( vtu.vvtestTestCase ):
             sys.path.insert( 0, abspath( 'dir1' ) )
             sys.path.insert( 1, abspath( 'dir3' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr is None
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir1' ) )
             sys.path.insert( 1, abspath( 'dir4' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr is None
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir2' ) )
             sys.path.insert( 1, abspath( 'dir3' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr == 'hope'
 
         with vtu.clean_sys_path():
             sys.path.insert( 0, abspath( 'dir2' ) )
             sys.path.insert( 1, abspath( 'dir4' ) )
 
-            plat,cplr = determine_platform_and_compiler( None, [], [] )
+            creator = PlatformCreator()
+            plat,cplr = creator.determine_platform_and_compiler( None )
             assert cplr == 'hope'
 
 
@@ -360,6 +389,9 @@ class config_specs( vtu.vvtestTestCase ):
         specs.overwrite( 'foo', 'baz' )
         self.assertEqual( specs['foo'], 'baz' )
 
+        self.assertTrue( 'foo' in specs )
+        self.assertTrue( 'flubber' not in specs )
+
     def test_the_platform_specs_remembers_if_it_is_modified(self):
         ""
         specs = makeplatform.PlatformSpecs()
@@ -425,6 +457,98 @@ class config_specs( vtu.vvtestTestCase ):
 
 class construction( vtu.vvtestTestCase ):
 
+    def test_loading_platform_specs_from_plugin(self):
+        ""
+        util.writefile( 'dir1/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, opts ):
+                pass
+            """ )
+
+        util.writefile( 'dir2/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, opts ):
+                specs['maxprocs'] = 128
+                specs['maxdevices'] = 16
+            """ )
+
+        util.writefile( 'dir3/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, opts ):
+                specs['maxprocs'] = 256
+            """ )
+
+        util.writefile( 'dir4/idplatform.py', """
+            def typo( specs, platname, cplrname, opts ):
+                specs['maxprocs'] = 256
+            """ )
+
+        util.writefile( 'dir5/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, opts ):
+                specs['maxprocs'] = 256
+                specs.set_unmodified()
+            """ )
+
+        util.writefile( 'dir6/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, opts ):
+                specs['maxprocs'] = 256
+                return 'continue'
+            """ )
+
+        util.writefile( 'dir7/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, opts ):
+                return 'break'
+            """ )
+
+        def loadspecs():
+            attrtab = makeplatform.AttrTable()
+            creator = makeplatform.PlatformCreator()
+            specs = makeplatform.PlatformSpecs( attrtab )
+            creator.load( specs )
+            return specs
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir1' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+            specs = loadspecs()
+            self.assertEqual( specs['maxprocs'], 128 )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir2' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+            specs = loadspecs()
+            self.assertEqual( specs['maxprocs'], 128 )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir4' ) )
+            sys.path.insert( 1, abspath( 'dir3' ) )
+            specs = loadspecs()
+            self.assertEqual( specs['maxprocs'], 256 )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir3' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+            specs = loadspecs()
+            self.assertEqual( specs['maxprocs'], 256 )
+            self.assertFalse( 'maxdevices' in specs )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir5' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+            specs = loadspecs()
+            self.assertEqual( specs['maxprocs'], 256 )
+            self.assertEqual( specs['maxdevices'], 16 )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir6' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+            specs = loadspecs()
+            self.assertEqual( specs['maxprocs'], 256 )
+            self.assertEqual( specs['maxdevices'], 16 )
+
+        with vtu.clean_sys_path():
+            sys.path.insert( 0, abspath( 'dir7' ) )
+            sys.path.insert( 1, abspath( 'dir2' ) )
+            specs = loadspecs()
+            self.assertEqual( len( list( specs.items() ) ), 0 )
+
     def test_the_preset_platform_options(self):
         ""
         attrtab = makeplatform.AttrTable()
@@ -463,25 +587,6 @@ class construction( vtu.vvtestTestCase ):
         popts = attrtab.normalize_group( popts )
         self.assertEqual( popts, { 'ppn':5, 'queue':'admin', } )
 
-    def test_initialize_platform_config_from_platform_plugin(self):
-        ""
-        util.writefile( 'adir/platform_plugin.py', """
-            def initialize( platobj ):
-                platobj.setattr( 'ppn', 3 )
-            """ )
-        adir = abspath( 'adir' )
-
-        with vtu.clean_sys_path():
-            platcfg = makeplatform.PlatformConfig( {}, None, None )
-            makeplatform.initialize_platform( platcfg )
-            assert platcfg.getattr( 'ppn', None ) is None
-
-        with vtu.clean_sys_path():
-            platcfg = makeplatform.PlatformConfig( {}, None, None )
-            sys.path.insert( 0, adir )
-            makeplatform.initialize_platform( platcfg )
-            self.assertEqual( platcfg.getattr( 'ppn', None ), 3 )
-
     def test_Platform_object_construction(self):
         ""
         plat = makeplatform.create_Platform_instance(
@@ -508,67 +613,82 @@ class construction( vtu.vvtestTestCase ):
             3) platform plugin
             4) probing
         """
-        util.writefile( 'adir/platform_plugin.py', """
+        # TODO: use of platform_plugin.py is deprecated as of Feb 2022
+        util.writefile( 'cfg1/platform_plugin.py', """
             def initialize( platobj ):
                 platobj.setattr( 'maxprocs', 3 )
                 platobj.setattr( 'maxdevices', 9 )
             """ )
-        adir = abspath( 'adir' )
+        util.writefile( 'cfg2/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, options ):
+                specs['maxprocs'] = 3
+                specs['maxdevices'] = 9
+            """ )
 
-        with vtu.clean_sys_path():
+        for cfg in ['cfg1','cfg2']:
 
-            # no plugin or command line
-            plat = makeplatform.create_Platform_instance(
-                        'XBox', 'direct', {},
-                        None, None, None, None,
-                        [], [] )
-            mxnp,mxnd = plat.getMaxSize()
-            assert mxnp and mxnp > 0 and mxnd == 0
+            cfg = abspath( cfg )
 
-            sys.path.insert( 0, adir )
+            with vtu.clean_sys_path():
 
-            # just plugin
-            plat = makeplatform.create_Platform_instance(
-                        'XBox', 'direct', {},
-                        None, None, None, None,
-                        [], [] )
-            self.assertEqual( list( plat.getMaxSize() ), [3,9] )
+                # no plugin or command line
+                plat = makeplatform.create_Platform_instance(
+                            'XBox', 'direct', {},
+                            None, None, None, None,
+                            [], [] )
+                mxnp,mxnd = plat.getMaxSize()
+                assert mxnp and mxnp > 0 and mxnd == 0
 
-            # plugin plus --platopts
-            platopts = { 'maxprocs':'5', 'maxdevices':'7' }
-            plat = makeplatform.create_Platform_instance(
-                        'XBox', 'direct', platopts,
-                        None, None, None, None,
-                        [], [] )
-            self.assertEqual( list( plat.getMaxSize() ), [5,7] )
+                sys.path.insert( 0, cfg )
 
-            # plugin plus --platopts plus dedicated command line
-            platopts = { 'maxprocs':'5', 'maxdevices':'7' }
-            plat = makeplatform.create_Platform_instance(
-                        'XBox', 'direct', platopts,
-                        None, 20, None, 4,
-                        [], [] )
-            self.assertEqual( list( plat.getMaxSize() ), [20,4] )
+                # just plugin
+                plat = makeplatform.create_Platform_instance(
+                            'XBox', 'direct', {},
+                            None, None, None, None,
+                            [], [] )
+                self.assertEqual( list( plat.getMaxSize() ), [3,9] )
+
+                # plugin plus --platopts
+                platopts = { 'maxprocs':'5', 'maxdevices':'7' }
+                plat = makeplatform.create_Platform_instance(
+                            'XBox', 'direct', platopts,
+                            None, None, None, None,
+                            [], [] )
+                self.assertEqual( list( plat.getMaxSize() ), [5,7] )
+
+                # plugin plus --platopts plus dedicated command line
+                platopts = { 'maxprocs':'5', 'maxdevices':'7' }
+                plat = makeplatform.create_Platform_instance(
+                            'XBox', 'direct', platopts,
+                            None, 20, None, 4,
+                            [], [] )
+                self.assertEqual( list( plat.getMaxSize() ), [20,4] )
 
 
-class modes( vtu.vvtestTestCase ):
+class platform_modes( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
         vtu.vvtestTestCase.setUp( self )
+        self.write_config_files()
 
-        util.writefile( 'cfg/platform_plugin.py', """
-            def initialize( platobj ):
-                platobj.setattr( 'maxprocs', 27 )
-                platobj.setattr( 'maxdevices', 11 )
-                platobj.setattr( 'cores_per_node', 17 )
-                platobj.setattr( 'devices_per_node', 19 )
+    def write_config_files(self):
+        """
+        this function is overridden in a TestCase class below to exercise
+        the deprecated platform_plugin.py mechanism
+        """
+        util.writefile( 'cfg/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, options ):
+                specs['maxprocs'] = 27
+                specs['maxdevices'] = 11
+                specs['cores_per_node'] = 17
+                specs['devices_per_node'] = 19
             """ )
         self.cfgdir = abspath( 'cfg' )
 
-        util.writefile( 'nocfg/platform_plugin.py', """
-            def initialize( platobj ):
-                pass
+        util.writefile( 'nocfgmagic/platform_plugin.py', """
+            def load_specifications( specs, platname, cplrname, options ):
+                return 'break'
             """ )
         self.nocfg = abspath( 'nocfg' )
 
@@ -827,6 +947,30 @@ class modes( vtu.vvtestTestCase ):
         attrs = {'ppn':'5'}
         plat = newplatform( self.nocfg, 'batchjob', cmdmax=(5,None), attrs=attrs )
         self.assertEqual( plat.getNodeSize(), (5,None) )
+
+
+class modes( platform_modes ):
+
+    def write_config_files(self):
+        """
+        this function overrides the base class version; it exercises the
+        deprecated platform_config.py mechanism, and can be removed
+        sometime after Feb 2023
+        """
+        util.writefile( 'cfg/platform_plugin.py', """
+            def initialize( platobj ):
+                platobj.setattr( 'maxprocs', 27 )
+                platobj.setattr( 'maxdevices', 11 )
+                platobj.setattr( 'cores_per_node', 17 )
+                platobj.setattr( 'devices_per_node', 19 )
+            """ )
+        self.cfgdir = abspath( 'cfg' )
+
+        util.writefile( 'nocfg/platform_plugin.py', """
+            def initialize( platobj ):
+                pass
+            """ )
+        self.nocfg = abspath( 'nocfg' )
 
 
 def newplatform( cfgdir, mode, cmdsize=(None,None),

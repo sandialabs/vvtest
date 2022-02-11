@@ -71,7 +71,7 @@ def find_module_file( filename ):
     return None
 
 
-def gather_modules_from_filename( filename ):
+def gather_modules_by_filename( filename ):
     ""
     modlist = []
 

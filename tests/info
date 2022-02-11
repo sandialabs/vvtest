@@ -233,36 +233,45 @@ class info_tests( vtu.vvtestTestCase ):
 
     def test_info_mode_should_not_apply_default_max_procs_filter(self):
         ""
-        util.writefile( 'config/platform_plugin.py', """
+        # TODO: this platform_plugin.py mechanism is deprecated as of Feb 2023
+        util.writefile( 'cfg1/platform_plugin.py', """
             def initialize( plat ):
                 plat.setattr( 'maxprocs', 4 )
+            """ )
+        util.writefile( 'cfg2/idplatform.py', """
+            def load_specifications( specs, platname, cplrname, options ):
+                specs['maxprocs'] = 4
             """ )
         util.writefile( 'procs.vvt', """
             #VVT: parameterize : np = 1 8
             """ )
         time.sleep(1)
 
-        vrun = vtu.runvvtest( "-N 8 --config config" )
-        vrun.assertCounts( total=2, npass=2 )
-        tdir = vrun.resultsDir()
+        for cfg in ['cfg1','cfg2']:
 
-        vrun = vtu.runvvtest( "-i -v -N 4 --config config" )
-        vrun.assertCounts( total=1, npass=1 )
+            vtu.remove_results()
 
-        vrun = vtu.runvvtest( "-i -v --config config" )
-        vrun.assertCounts( total=2, npass=2 )
+            vrun = vtu.runvvtest( "-N 8 --config "+cfg )
+            vrun.assertCounts( total=2, npass=2 )
+            tdir = vrun.resultsDir()
 
-        vrun = vtu.runvvtest( "-i -v --config", abspath('config'), chdir=tdir )
-        vrun.assertCounts( total=2, npass=2 )
+            vrun = vtu.runvvtest( "-i -v -N 4 --config "+cfg )
+            vrun.assertCounts( total=1, npass=1 )
+
+            vrun = vtu.runvvtest( "-i -v --config "+cfg )
+            vrun.assertCounts( total=2, npass=2 )
+
+            vrun = vtu.runvvtest( "-i -v --config", abspath(cfg), chdir=tdir )
+            vrun.assertCounts( total=2, npass=2 )
 
     def test_info_mode_should_not_apply_default_platform_filter(self):
         ""
         util.writefile( 'config1/idplatform.py', """
-            def platform( opts ):
+            def get_platform():
                 return 'XBox'
             """ )
         util.writefile( 'config2/idplatform.py', """
-            def platform( opts ):
+            def get_platform():
                 return 'PlayStation'
             """ )
         util.writefile( 'xbox.vvt', """

@@ -152,10 +152,9 @@ class save_results_output( vtu.vvtestTestCase ):
             pass
             """ )
 
-        util.writefile( "adir/platform_plugin.py", """
-            import os, sys
-            def initialize( platobj ):
-                platobj.setattr( 'testingdir', '"""+abspath('plugout')+"""' )
+        util.writefile( "adir/idplatform.py", """
+            def load_specifications( specs, platname, cplrname, options ):
+                specs['testingdir'] = '"""+abspath('plugout')+"""'
             """ )
         time.sleep(1)
 

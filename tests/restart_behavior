@@ -185,11 +185,11 @@ class restart_tests( vtu.vvtestTestCase ):
     def test_using_plat_option_in_restart_mode(self):
         ""
         util.writefile( 'config1/idplatform.py', """
-            def platform( opts ):
+            def get_platform():
                 return 'XBox'
             """ )
         util.writefile( 'config2/idplatform.py', """
-            def platform( opts ):
+            def get_platform():
                 return 'PlayStation'
             """ )
         util.writefile( 'xbox.vvt', """

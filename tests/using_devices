@@ -79,16 +79,12 @@ class device_tests( vtu.vvtestTestCase ):
     def test_run_a_test_using_two_devices(self):
         ""
         util.writefile( 'config/idplatform.py', """
-            def platform( opts ):
-                if '--plat' in opts:
-                    return opts['--plat']
-                else:
-                    return 'GPUstacks'
-            """ )
-        util.writefile( 'config/platform_plugin.py', """
-            def initialize( plat ):
-                if plat.getName() == 'GPUstacks':
-                    plat.setattr( 'maxdevices', 4 )
+            def get_platform():
+                return 'GPUstacks'
+
+            def load_specifications( specs, platname, cplrname, options ):
+                if platname == 'GPUstacks':
+                    specs['maxdevices'] = 4
             """ )
 
         util.writefile( 'atest.vvt', """

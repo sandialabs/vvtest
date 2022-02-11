@@ -10,7 +10,7 @@ from os.path import join as pjoin, normpath, abspath, basename
 import platform
 
 from .vvplatform import Platform
-from .importutil import import_file_from_sys_path, gather_modules_from_filename
+from .importutil import import_file_from_sys_path, gather_modules_by_filename
 
 
 platform_attrs = [
@@ -125,51 +125,159 @@ class AttrTable:
 def create_Platform_instance( platname, mode, platopts,
                               numprocs, maxprocs, devices, max_devices,
                               onopts, offopts ):
-    """
-    The name=value options given to the Platform object originate from these
-    places:
-
-        (1) direct from command line, such as -N and --max-devices
-        (2) indirect from command line, --platopts name=value
-        (3) options given to setBatchSystem() in platform_plugin.py
-        (4) set via platcfg.setattr() in platform_plugin.py
-    """
+    ""
     assert mode in ['direct','batch','batchjob']
 
-    platname,cplrname = determine_platform_and_compiler( platname, onopts, offopts )
-
     attrtab = AttrTable()
-    platopts = attrtab.normalize_group( platopts )
+    creator = PlatformCreator()
 
-    optdict = {}
-    if platname: optdict['--plat']    = platname
-    if platopts: optdict['--platopt'] = platopts
-    if onopts:   optdict['-o']        = onopts
-    if offopts:  optdict['-O']        = offopts
+    platname,cplrname = creator.determine_platform_and_compiler( platname )
 
-    # options (2) are available to platform plugin through the 'optdict' (yuck!)
-    platcfg = PlatformConfig( optdict, platname, cplrname )
+    if not creator.found_deprecated_plugin():
 
-    # platform plugin can set attrs via:
-    #   - options (3) by calling setBatchSystem()
-    #   - options (4) by calling setattr() directly
-    initialize_platform( platcfg )
+        specs = PlatformSpecs( attrtab )
 
-    # options (2) are transferred/overwritten to the platconfig object attrs
-    for n,v in platopts.items():
-        platcfg.setattr( n, v )
+        specs.add_group( platopts )
 
-    # the union of all options are given to Platform object
-    plat = Platform( mode=mode,
-                     platname=platname,
-                     cplrname=cplrname,
-                     environ=platcfg.envD,
-                     attrs=platcfg.attrs )
+        creator.load( specs )
+
+        plat = Platform( mode=mode,
+                         platname=platname,
+                         cplrname=cplrname,
+                         environ={},
+                         attrs=dict(specs) )
+
+    else:
+        # The name=value options given to the Platform object originate from these
+        # places:
+        #     (1) direct from command line, such as -N and --max-devices
+        #     (2) indirect from command line, --platopts name=value
+        #     (3) options given to setBatchSystem() in platform_plugin.py
+        #     (4) set via platcfg.setattr() in platform_plugin.py
+
+        platopts = attrtab.normalize_group( platopts )
+
+        optdict = {}
+        if platname: optdict['--plat']    = platname
+        if platopts: optdict['--platopt'] = platopts
+        if onopts:   optdict['-o']        = onopts
+        if offopts:  optdict['-O']        = offopts
+
+        # options (2) are available to platform plugin through the 'optdict' (yuck!)
+        platcfg = PlatformConfig( optdict, platname, cplrname )
+
+        # platform plugin can set attrs via:
+        #   - options (3) by calling setBatchSystem()
+        #   - options (4) by calling setattr() directly
+        if creator.platplugin is not None and \
+           hasattr( creator.platplugin, 'initialize' ):
+            creator.platplugin.initialize( platcfg )
+
+        # options (2) are transferred/overwritten to the platconfig object attrs
+        for n,v in platopts.items():
+            platcfg.setattr( n, v )
+
+        # the union of all options are given to Platform object
+        plat = Platform( mode=mode,
+                         platname=platname,
+                         cplrname=cplrname,
+                         environ=platcfg.envD,
+                         attrs=platcfg.attrs )
 
     # options (1) are selected first in here if non-None
     plat.initialize( numprocs, maxprocs, devices, max_devices )
 
     return plat
+
+
+class PlatformCreator:
+
+    def __init__(self):
+        ""
+        self.sizes = ( None, None, None, None )  # num procs, max procs, num gpus, max gpus
+        self.platopts = {}
+        self.options = ( [], [] )  # onopts, offopts
+
+        self.idmods = gather_modules_by_filename( 'idplatform.py' )
+
+        # TODO: this plugin is deprecated as of Feb 2022
+        self.platplugin = import_file_from_sys_path( 'platform_plugin.py' )
+
+        self.platname = None
+        self.cplrname = None
+
+    def set_command_line_sizes(self, num_procs, max_procs, num_devices, max_devices):
+        ""
+        self.sizes = ( num_procs, max_procs, num_devices, max_devices )
+
+    def set_command_line_options(self, onopts, offopts):
+        ""
+        self.options = ( onopts, offopts )
+
+    def set_command_line_platform_options(self, platopts):
+        ""
+        self.platopts = dict( platopts )
+
+    def determine_platform_and_compiler(self, cmdline_platname):
+        ""
+        optdict = { '-o':self.options[0], '-O':self.options[1] }
+        if cmdline_platname: optdict['--plat'] = cmdline_platname
+
+        pname = None
+
+        if cmdline_platname:
+            pname = cmdline_platname
+        else:
+            for idmod in self.idmods:
+                if hasattr( idmod, 'platform' ):
+                    # TODO: use of platform() was deprecated Feb 2022
+                    pname = idmod.platform( optdict )
+                    break
+                elif hasattr( idmod, 'get_platform' ):
+                    plat = idmod.get_platform()
+                    if plat:
+                        pname = plat
+                        break
+
+            if not pname:
+                pname = platform.uname()[0]
+
+        cname = None
+
+        for idmod in self.idmods:
+            if hasattr( idmod, 'compiler' ):
+                # TODO: use of compiler() was deprecated Feb 2022
+                cplr = idmod.compiler( pname, optdict )
+                if cplr:
+                    cname = cplr
+                break
+            elif hasattr( idmod, 'get_compiler' ):
+                cplr = idmod.get_compiler( pname, self.options[0] )
+                if cplr:
+                    cname = cplr
+                    break
+
+        self.platname = pname
+        self.cplrname = cname
+
+        return pname,cname
+
+    def found_deprecated_plugin(self):
+        ""
+        return self.platplugin is not None
+
+    def load(self, specs):
+        ""
+        for idmod in self.idmods:
+            if hasattr( idmod, 'load_specifications' ):
+                specs.set_unmodified()
+                rtn = idmod.load_specifications( specs,
+                                                 self.platname,
+                                                 self.cplrname,
+                                                 self.options[0] )
+                if rtn != 'continue':
+                    if rtn == 'break' or specs.is_modified():
+                        break
 
 
 class PlatformConfig:
@@ -271,6 +379,15 @@ class PlatformSpecs:
         self.modified = True
         self.specs[key] = value
 
+    def add_group(self, attrs):
+        ""
+        self.modified = True
+        if self.attrtab is not None:
+            attrs = self.attrtab.normalize_group( attrs )
+        for k,v in attrs.items():
+            if k not in self.specs:
+                self.specs[k] = v
+
     def __len__(self):
         ""
         return len( self.specs )
@@ -279,6 +396,11 @@ class PlatformSpecs:
         ""
         key = self._normalize_key( key )
         return self.specs[key]
+
+    def __contains__(self, key):
+        ""
+        key = self._normalize_key( key )
+        return key in self.specs
 
     def get(self, key, *default):
         ""
@@ -305,51 +427,3 @@ class PlatformSpecs:
         if self.attrtab is not None:
             return self.attrtab.normalize_name( key )
         return key
-
-
-def determine_platform_and_compiler( platname, onopts, offopts ):
-    ""
-    optdict = { '-o':onopts, '-O':offopts }
-    if platname: optdict['--plat'] = platname
-
-    modlist = gather_modules_from_filename( 'idplatform.py' )
-
-    if not platname:
-        for idmod in modlist:
-            if hasattr( idmod, 'platform' ):
-                # TODO: use of platform() was deprecated Jan 2022
-                platname = idmod.platform( optdict )
-                break
-            elif hasattr( idmod, 'get_platform' ):
-                pname = idmod.get_platform()
-                if pname:
-                    platname = pname
-                    break
-
-    if not platname:
-        platname = platform.uname()[0]
-
-    cplrname = None
-
-    for idmod in modlist:
-        if hasattr( idmod, 'compiler' ):
-            # TODO: use of compiler() was deprecated Jan 2022
-            cname = idmod.compiler( platname, optdict )
-            if cname:
-                cplrname = cname
-            break
-        elif hasattr( idmod, 'get_compiler' ):
-            cname = idmod.get_compiler( platname, onopts )
-            if cname:
-                cplrname = cname
-                break
-
-    return platname, cplrname
-
-
-def initialize_platform( platcfg ):
-    ""
-    plug = import_file_from_sys_path( 'platform_plugin.py' )
-
-    if plug is not None and hasattr( plug, 'initialize' ):
-        plug.initialize( platcfg )

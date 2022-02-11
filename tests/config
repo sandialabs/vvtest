@@ -16,7 +16,7 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.importutil as importutil
-from libvvtest.makeplatform import PlatformConfig
+from libvvtest.makeplatform import PlatformConfig, AttrTable, PlatformSpecs
 
 
 class config_tests( vtu.vvtestTestCase ):
@@ -28,39 +28,58 @@ class config_tests( vtu.vvtestTestCase ):
             print ( "the COMPILER is "+vvt.COMPILER )
             """ )
 
-        for batch in [False,True]:
+        util.writefile( "cfg1/idplatform.py", """
+            def get_platform():
+                return "XBox"
+            def get_compiler( platname, opts ):
+                return "BASIC"
+            """ )
+        util.writefile( "cfg2/idplatform.py", """
+            def get_platform():
+                return "PlayStation"
+            def get_compiler( platname, opts ):
+                return "Fortran"
+            """ )
 
-            util.writefile( "config/idplatform.py", """
-                def platform( opts ):
-                    return "XBox"
-                def compiler( platname, opts ):
-                    return "BASIC"
-                """ )
-            vtu.remove_results()
+        # TODO: the platform() and compiler() functions are deprecated, Feb 2022
+        util.writefile( "cfg3/idplatform.py", """
+            def platform( opts ):
+                return "XBox"
+            def compiler( platname, opts ):
+                return "BASIC"
+            """ )
+        util.writefile( "cfg4/idplatform.py", """
+            def platform( opts ):
+                return "PlayStation"
+            def compiler( platname, opts ):
+                return "Fortran"
+            """ )
 
-            vrun = vtu.runvvtest( '--config config', batch=batch,
-                                                     addplatform=False )
+        for cfg1,cfg2 in [('cfg1','cfg2'),('cfg3','cfg4')]:
+            for batch in [False,True]:
 
-            platname, cplr = check_get_compiler_and_platform( vrun )
-            assert platname == "XBox"
-            assert cplr == "BASIC"
+                vtu.remove_results()
+                vrun = vtu.runvvtest( '--config '+cfg1,
+                                      batch=batch, addplatform=False )
 
-            util.writefile( "nonsense/idplatform.py", """
-                def platform( opts ):
-                    return "PlayStation"
-                def compiler( platname, opts ):
-                    return "Fortran"
-                """ )
-            vtu.remove_results()
+                platname, cplr = check_get_compiler_and_platform( vrun )
+                assert platname == "XBox" and cplr == "BASIC"
 
-            os.environ['VVTEST_CONFIGDIR'] = 'nonsense'
-            try:
-                vrun = vtu.runvvtest( batch=batch, addplatform=False )
-            finally:
-                del os.environ['VVTEST_CONFIGDIR']
-            platname, cplr = check_get_compiler_and_platform( vrun )
-            assert platname == 'PlayStation'
-            assert cplr == 'Fortran'
+                vtu.remove_results()
+                with util.set_environ( VVTEST_CONFIGDIR=cfg2 ):
+                    vrun = vtu.runvvtest( batch=batch, addplatform=False )
+
+                platname, cplr = check_get_compiler_and_platform( vrun )
+                assert platname == 'PlayStation' and cplr == 'Fortran'
+
+                # command line takes precedence
+                vtu.remove_results()
+                with util.set_environ( VVTEST_CONFIGDIR=cfg2 ):
+                    vrun = vtu.runvvtest( '--config '+cfg1,
+                                          batch=batch, addplatform=False )
+
+                platname, cplr = check_get_compiler_and_platform( vrun )
+                assert platname == "XBox" and cplr == "BASIC"
 
     def test_get_max_num_processors_from_config(self):
         ""
@@ -89,6 +108,17 @@ class config_tests( vtu.vvtestTestCase ):
             print ( 'executing test, np='+str(vvt.np) )
             """ )
 
+        # TODO: the platform_plugin.py method was deprecated in Feb 2022
+        util.writefile( "config1/platform_plugin.py", """
+            def initialize( plat ):
+                plat.setattr( 'maxprocs', 2 )
+            """ )
+
+        util.writefile( "config2/idplatform.py", """
+            def load_specifications( specs, platname, cplrname, opts ):
+                specs['maxprocs'] = 2
+            """ )
+
         vrun = vtu.runvvtest()
 
         # only run this test if the number of processors is at least 4
@@ -98,32 +128,27 @@ class config_tests( vtu.vvtestTestCase ):
 
             vrun.assertCounts( total=4, npass=4 )
 
-            vtu.remove_results()
+            for cfg in ['config1','config2']:
 
-            util.writefile( "config/platform_plugin.py", """
-                import os, sys
-                def initialize( plat ):
-                    plat.setattr( 'maxprocs', 2 )
-                """ )
+                vtu.remove_results()
 
-            vrun = vtu.runvvtest( '--config config' )
-            vrun.assertCounts( total=2, npass=2 )
+                vrun = vtu.runvvtest( '--config '+cfg )
+                vrun.assertCounts( total=2, npass=2 )
 
-            assert extract_maxprocs( vrun.out ) == 2
+                assert extract_maxprocs( vrun.out ) == 2
+                assert vrun.getTestIds() == [ 'atest.np=1', 'btest.np=2' ]
 
-            assert vrun.getTestIds() == [ 'atest.np=1', 'btest.np=2' ]
+                vtu.remove_results()
 
-            vtu.remove_results()
+                vrun = vtu.runvvtest( '--config '+cfg, batch=True )
+                vrun.assertCounts( total=2, npass=2 )
 
-            vrun = vtu.runvvtest( '--config config', batch=True )
-            vrun.assertCounts( total=2, npass=2 )
-
-            assert extract_maxprocs( vrun.out ) == None
-
-            assert vrun.getTestIds() == [ 'atest.np=1', 'btest.np=2' ]
+                assert extract_maxprocs( vrun.out ) == None
+                assert vrun.getTestIds() == [ 'atest.np=1', 'btest.np=2' ]
 
     def test_setting_platform_environ_vars(self):
         ""
+        # TODO: platform_plugin.py was deprecated on Feb 2022
         util.writefile( "config/platform_plugin.py", """
             import os, sys
             def initialize( plat ):
@@ -159,63 +184,90 @@ class config_tests( vtu.vvtestTestCase ):
 
     def test_passing_platopt_into_platform_plugin(self):
         ""
-        util.writefile( "config/platform_plugin.py", """
-            import os, sys
+        # TODO: platform_plugin.py was deprecated on Feb 2022
+        util.writefile( "config1/platform_plugin.py", """
             def initialize( plat ):
                 opts = plat.getOptions()
                 assert '--platopt' in opts
                 assert opts['--platopt']['account'] == 'foo'
                 print ( 'initialize successFUL' )
             """ )
+        util.writefile( "config2/idplatform.py", """
+            def load_specifications( specs, platname, cplrname, opts ):
+                assert specs['account'] == 'foo'
+                print ( 'initialize successFUL' )
+            """ )
+
         util.writefile( 'atest.vvt', 'pass' )
 
-        vrun = vtu.runvvtest( '--config config --platopt account=foo' )
+        vrun = vtu.runvvtest( '-w --config config1 --platopt account=foo' )
         vrun.assertCounts( total=1, npass=1 )
         assert 'initialize successFUL' in vrun.out
 
-    def test_default_platform_initialize_plugin(self):
+        vrun = vtu.runvvtest( '-w --config config2 --platopt account=foo' )
+        vrun.assertCounts( total=1, npass=1 )
+        assert 'initialize successFUL' in vrun.out
+
+    def test_default_platform_configuration(self):
         ""
         sys.path.insert( 0, vtu.cfgdir )
 
         try:
-            plug = importutil.import_file_from_sys_path( 'platform_plugin.py' )
+            idmod = importutil.import_file_from_sys_path( 'idplatform.py' )
 
-            plat = PlatformConfig( {}, 'foobarbaz', None )
-            plug.initialize( plat )
+            attrtab = AttrTable()
 
-            plat = PlatformConfig( {}, 'Cray', None )
-            plug.initialize( plat )
-            self.assertEqual( plat.getattr('batchsys'), 'pbs' )
-            self.assertEqual( plat.getattr('ppn'), 32 )
-            self.assertEqual( plat.getattr('variation'), 'select' )
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'foobarbaz', None, {} )
+            self.assertFalse( specs.is_modified() )
 
-            plat = PlatformConfig( {}, 'CrayXC', None )
-            plug.initialize( plat )
-            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
-            self.assertEqual( plat.getattr('ppn'), 32 )
-            self.assertEqual( plat.getattr('variation',None), None )
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'Cray', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'pbs' )
+            self.assertEqual( specs['ppn'], 32 )
+            self.assertEqual( specs['variation'], 'select' )
 
-            platopt = { '--platopt': { 'variation':'knl' } }
-            plat = PlatformConfig( platopt, 'CrayXC', None )
-            plug.initialize( plat )
-            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
-            self.assertEqual( plat.getattr('ppn'), 64 )
-            self.assertEqual( plat.getattr('variation'), 'knl' )
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'CrayXC', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'slurm' )
+            self.assertEqual( specs['ppn'], 32 )
+            self.assertEqual( specs.get('variation',None), None )
 
-            plat = PlatformConfig( {}, 'TLCC2', None )
-            plug.initialize( plat )
-            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
-            self.assertEqual( plat.getattr('ppn'), 16 )
+            specs = PlatformSpecs( attrtab )
+            specs['variation'] = 'knl'
+            specs.set_unmodified()
+            idmod.load_specifications( specs, 'CrayXC', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'slurm' )
+            self.assertEqual( specs['ppn'], 64 )
+            self.assertEqual( specs['variation'], 'knl' )
 
-            plat = PlatformConfig( {}, 'CTS1', None )
-            plug.initialize( plat )
-            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
-            self.assertEqual( plat.getattr('ppn'), 36 )
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'TLCC2', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'slurm' )
+            self.assertEqual( specs['ppn'], 16 )
 
-            plat = PlatformConfig( {}, 'Godzilla', None )
-            plug.initialize( plat )
-            self.assertEqual( plat.getattr('batchsys'), 'slurm' )
-            self.assertEqual( plat.getattr('ppn'), 20 )
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'CTS1', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'slurm' )
+            self.assertEqual( specs['ppn'], 36 )
+
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'Godzilla', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'slurm' )
+            self.assertEqual( specs['ppn'], 20 )
+
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'ATS2', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'lsf' )
+            self.assertEqual( specs['ppn'], 44 )
+            self.assertEqual( specs['dpn'], 4 )
 
         finally:
             sys.path.pop(0)
@@ -336,6 +388,8 @@ class config_tests( vtu.vvtestTestCase ):
 
     def test_exercising_defaults_and_checking_in_the_idplatform_plugin(self):
         ""
+        # TODO: using platform() and compiler() is deprecated Feb 2022, and
+        #       when removed, this test can be deleted
         os.mkdir( 'config' )
         util.writefile( "tst.xml", """
             <rtest name="tst">
@@ -389,6 +443,65 @@ class config_tests( vtu.vvtestTestCase ):
         platname, cplr = check_get_compiler_and_platform( vrun )
         self.assertEqual( cplr, "BASIC" )
         self.assertEqual( platname, "PlayStation" )
+
+    def test_idplatform_get_platform_and_compiler_behavior(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            print ( 'the PLATFORM := '+repr(vvt.PLATFORM) )
+            print ( 'the COMPILER := '+repr(vvt.COMPILER) )
+            """ )
+
+        os.mkdir( 'empty' )
+
+        util.writefile( 'false1/idplatform.py', """
+            def get_platform():
+                pass
+            def get_compiler( platname, opts ):
+                pass
+            """ )
+
+        util.writefile( 'false2/idplatform.py', """
+            def get_platform():
+                return ''
+            def get_compiler( platname, opts ):
+                return ''
+            """ )
+
+        util.writefile( 'cfg/idplatform.py', """
+            def get_platform():
+                return "XBox"
+            def get_compiler( platname, opts ):
+                if platname == "PlayStation":
+                    return "BASIC"
+            """ )
+
+        # an empty config dir is ignored and uses builtin defaults
+        vrun = vtu.runvvtest( '--config empty', addplatform=False )
+        default_platname, default_cplr = check_get_compiler_and_platform( vrun )
+        assert default_platname and default_platname.strip()
+        self.assertTrue( not default_cplr )
+
+        # no returns cause the defaults to be used
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '--config false1', addplatform=False )
+        platname, cplr = check_get_compiler_and_platform( vrun )
+        self.assertEqual( platname, default_platname )
+        self.assertEqual( cplr, default_cplr )
+
+        # returning an empty string also causes the defaults to be used
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '--config false2', addplatform=False )
+        platname, cplr = check_get_compiler_and_platform( vrun )
+        self.assertEqual( platname, default_platname )
+        self.assertEqual( cplr, default_cplr )
+
+        # the command line option --plat should take precedence
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '--config cfg --plat PlayStation' )
+        platname, cplr = check_get_compiler_and_platform( vrun )
+        self.assertEqual( platname, "PlayStation" )
+        self.assertEqual( cplr, "BASIC" )
 
     def test_using_multiple_config_directories(self):
         ""
@@ -531,11 +644,20 @@ def check_get_compiler_and_platform( vrun ):
     platname = vrun.platformName()
 
     lines = vrun.greplogs( 'the COMPILER is', 'tst' )
-    assert len( lines ) == 1
-    if lines[0].strip() == 'the COMPILER is':
-        cplr = None
+    if len( lines ) > 0:
+        assert len(lines) == 1
+        if lines[0].strip() == 'the COMPILER is':
+            cplr = None
+        else:
+            cplr = lines[0].split()[-1]
     else:
-        cplr = lines[0].split()[-1]
+        lines = vrun.greplogs( 'the COMPILER :=', 'atest' )
+        assert len(lines) == 1
+        cplr = eval( lines[0].split( 'the COMPILER :=', 1 )[1].strip() )
+
+        lines = vrun.greplogs( 'the PLATFORM :=', 'atest' )
+        assert len(lines) == 1
+        platname = eval( lines[0].split( 'the PLATFORM :=', 1 )[1].strip() )
 
     return platname, cplr
 

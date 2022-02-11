@@ -202,6 +202,7 @@ def clean_sys_path_for_testing():
     len0 = len1+1
     while len0 != len1:
         for i,path in enumerate(sys.path):
+            # TODO: the platform_plugin.py mechanism was deprecated in Jan 2022
             if os.path.exists( pjoin( path, 'idplatform.py' ) ) or \
                os.path.exists( pjoin( path, 'platform_plugin.py' ) ):
                 sys.path.pop(i)

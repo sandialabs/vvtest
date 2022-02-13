@@ -60,7 +60,7 @@ class idplatform( vtu.vvtestTestCase ):
             idp = import_file_from_sys_path( 'idplatform.py' )
             assert idp.hello() == 'world'
 
-    def test_using_idplatform_to_define_platform_and_compiler(self):
+    def test_deprecated_idplatform_to_define_platform_and_compiler(self):
         """
         TODO: The platform() and compiler() functions are deprecated around
               Feb 2022; when removed, this test should be deleted
@@ -92,7 +92,7 @@ class idplatform( vtu.vvtestTestCase ):
             plat,cplr = creator.determine_platform_and_compiler( 'foo' )
             assert plat == 'foo' and cplr == 'llvm'
 
-    def test_v2_using_idplatform_to_define_platform_and_compiler(self):
+    def test_using_idplatform_to_define_platform_and_compiler(self):
         ""
         util.writefile( 'adir/idplatform.py', """
             def get_platform():
@@ -153,7 +153,7 @@ class idplatform( vtu.vvtestTestCase ):
             plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == 'DOS'
 
-    def test_mixing_v1_and_v2_methods_for_getting_the_platform(self):
+    def test_mixing_old_and_new_methods_for_getting_the_platform(self):
         ""
         # TODO: this is a backward compatibility check for the platform()
         #       function, to be removed sometime after Jan 2023
@@ -188,6 +188,67 @@ class idplatform( vtu.vvtestTestCase ):
             creator = PlatformCreator()
             plat,cplr = creator.determine_platform_and_compiler( None )
             assert plat == platform.uname()[0]
+
+    def test_platform_name_precedence(self):
+        """
+        1. command line --plat option
+        2. VVTEST_PLATFORM environ variable
+        3. user idplatform.py get_platform() function
+        4. builtin idplatform.py get_platform() function
+        """
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            print ( 'PLATFORM='+repr(vvt.PLATFORM) )
+            """ )
+
+        util.writefile( 'cfg/idplatform.py', """
+            def get_platform():
+                return 'UsrConfig'
+            """ )
+
+        def scrape_platname( vr ):
+            lines = vr.greplogs( 'PLATFORM=', 'atest' )
+            assert len(lines) == 1
+            pname = eval( lines[0].split('PLATFORM=',1)[1].strip() )
+            assert vr.platformName() == pname
+            return pname
+
+        vrun = vtu.runvvtest( addplatform=False )
+        vrun.assertCounts( total=1, npass=1 )
+        self.assertTrue( scrape_platname(vrun) )
+
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '--config cfg', addplatform=False )
+        vrun.assertCounts( total=1, npass=1 )
+        self.assertEqual( scrape_platname(vrun), 'UsrConfig' )
+
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '--plat NuttinHoney --config cfg', addplatform=False )
+        vrun.assertCounts( total=1, npass=1 )
+        self.assertEqual( scrape_platname(vrun), 'NuttinHoney' )
+
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '--plat NuttinHoney', addplatform=False )
+        vrun.assertCounts( total=1, npass=1 )
+        self.assertEqual( scrape_platname(vrun), 'NuttinHoney' )
+
+        vtu.remove_results()
+        with util.set_environ( VVTEST_PLATFORM='dotcom' ):
+            vrun = vtu.runvvtest( addplatform=False )
+            vrun.assertCounts( total=1, npass=1 )
+            self.assertEqual( scrape_platname(vrun), 'dotcom' )
+
+        vtu.remove_results()
+        with util.set_environ( VVTEST_PLATFORM='dotcom' ):
+            vrun = vtu.runvvtest( '--config cfg', addplatform=False )
+            vrun.assertCounts( total=1, npass=1 )
+            self.assertEqual( scrape_platname(vrun), 'dotcom' )
+
+        vtu.remove_results()
+        with util.set_environ( VVTEST_PLATFORM='dotcom' ):
+            vrun = vtu.runvvtest( '--plat NuttinHoney', addplatform=False )
+            vrun.assertCounts( total=1, npass=1 )
+            self.assertEqual( scrape_platname(vrun), 'NuttinHoney' )
 
     def test_the_compiler_name_can_depend_on_the_platform_and_options(self):
         ""
@@ -600,18 +661,71 @@ class construction( vtu.vvtestTestCase ):
                     10, 20, 2, 4,
                     ['dbg'], ['symbols'] )
 
-        assert plat.getName() == 'XBox'
-        assert plat.getMaxSize() == (20,4)
-        assert plat.getattr( 'queue' ) == 'justdoit'
-        assert plat.getattr( 'account' ) == 'fy666'
-        assert plat.getattr( 'walltime' ) == '2:34'
+        self.assertEqual( plat.getName(), 'XBox' )
+        self.assertEqual( plat.getMaxSize(), (20,4) )
+        self.assertEqual( plat.getattr( 'queue' ), 'justdoit' )
+        self.assertEqual( plat.getattr( 'account' ), 'fy666' )
+        self.assertEqual( plat.getattr( 'walltime' ), '2:34' )
+
+        specstr = "q=justdoit,PT=fy666,walltime=2:34"
+        with util.set_environ( VVTEST_PLATFORM_SPECS=specstr ):
+            plat = makeplatform.create_Platform_instance(
+                        None, 'direct', {},
+                        None, None, None, None,
+                        None, None )
+            self.assertEqual( plat.getattr( 'queue' ), 'justdoit' )
+            self.assertEqual( plat.getattr( 'account' ), 'fy666' )
+            self.assertEqual( plat.getattr( 'walltime' ), '2:34' )
+
+    def test_platform_specs_parser_from_environ(self):
+        ""
+        with util.set_environ( VVTEST_PLATFORM_SPECS='foo=bar' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'foo':'bar'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='foo=bar,a=val' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'foo':'bar','a':'val'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='foo=bar,foo=val' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'foo':'val'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='a= b , c =d ' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'a':'b', 'c':'d'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='a= b ,' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'a':'b'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS=',a=b' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'a':'b'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS=', a=b' ):
+            self.assertEqual( makeplatform.environ_platform_specs(),
+                              {'a':'b'} )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='=val' ):
+            self.assertRaises( Exception, makeplatform.environ_platform_specs )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='ab=cd,=val' ):
+            self.assertRaises( Exception, makeplatform.environ_platform_specs )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='noequals' ):
+            self.assertRaises( Exception, makeplatform.environ_platform_specs )
+
+        with util.set_environ( VVTEST_PLATFORM_SPECS='a=b,noequals,c=d' ):
+            self.assertRaises( Exception, makeplatform.environ_platform_specs )
 
     def test_platform_option_precedence(self):
         """
             1) command line dedicated, such as -N
             2) --platopts on command line
-            3) platform plugin
-            4) probing
+            3) the VVTEST_PLATFORM_SPECS environ variable
+            4) platform plugin
+            5) probing
         """
         # TODO: use of platform_plugin.py is deprecated as of Feb 2022
         util.writefile( 'cfg1/platform_plugin.py', """
@@ -656,6 +770,15 @@ class construction( vtu.vvtestTestCase ):
                             [], [] )
                 self.assertEqual( list( plat.getMaxSize() ), [5,7] )
 
+                # plugin plus environ
+                specstr = "maxdevices=11"
+                with util.set_environ( VVTEST_PLATFORM_SPECS=specstr ):
+                    plat = makeplatform.create_Platform_instance(
+                                'XBox', 'direct', {},
+                                None, None, None, None,
+                                [], [] )
+                    self.assertEqual( list( plat.getMaxSize() ), [3,11] )
+
                 # plugin plus --platopts plus dedicated command line
                 platopts = { 'maxprocs':'5', 'maxdevices':'7' }
                 plat = makeplatform.create_Platform_instance(
@@ -663,6 +786,16 @@ class construction( vtu.vvtestTestCase ):
                             None, 20, None, 4,
                             [], [] )
                 self.assertEqual( list( plat.getMaxSize() ), [20,4] )
+
+                # all mechanisms; direct command line takes precedence
+                platopts = { 'maxdevices':'543' }
+                specstr = "maxdevices=111"
+                with util.set_environ( VVTEST_PLATFORM_SPECS=specstr ):
+                    plat = makeplatform.create_Platform_instance(
+                                'XBox', 'direct', platopts,
+                                None, None, None, 73,
+                                [], [] )
+                self.assertEqual( list( plat.getMaxSize() ), [3,73] )
 
 
 class platform_modes( vtu.vvtestTestCase ):
@@ -686,7 +819,7 @@ class platform_modes( vtu.vvtestTestCase ):
             """ )
         self.cfgdir = abspath( 'cfg' )
 
-        util.writefile( 'nocfgmagic/platform_plugin.py', """
+        util.writefile( 'nocfg/platform_plugin.py', """
             def load_specifications( specs, platname, cplrname, options ):
                 return 'break'
             """ )

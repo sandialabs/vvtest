@@ -24,9 +24,6 @@ def get_platform():
     The command line --plat option takes precedence, then the VVTEST_PLATFORM
     environment variable, then the idplatform.get_platform() function.
     """
-    if 'VVTEST_PLATFORM' in os.environ:
-        return os.environ['VVTEST_PLATFORM']
-
     snlsystem  = os.environ.get( 'SNLSYSTEM', '' )
     snlcluster = os.environ.get( 'SNLCLUSTER', '' )
 

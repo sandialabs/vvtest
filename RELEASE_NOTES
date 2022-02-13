@@ -1,6 +1,16 @@
 
 Improvements:
 
+    - The environment variable VVTEST_PLATFORM_SPECS can be used to specify
+      platform settings, such as the batch system, the max number of cores
+      available, the cores per node, the devices per node, etc. The syntax
+      is comma separated name=value. For example,
+
+          VVTEST_PLATFORM_SPECS="batchsys=slurm,cores_per_node=44"
+
+      The platform settings precedence is command line first, then this
+      environment variable, then user plugin values, then builtin values.
+
     - A soft link to vvtest and a config directory can now be used (without
       using the vvtest_bootstrap.py mechanism).
 

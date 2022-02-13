@@ -138,6 +138,7 @@ def create_Platform_instance( platname, mode, platopts,
         specs = PlatformSpecs( attrtab )
 
         specs.add_group( platopts )
+        specs.add_group( environ_platform_specs() )
 
         creator.load( specs )
 
@@ -148,14 +149,21 @@ def create_Platform_instance( platname, mode, platopts,
                          attrs=dict(specs) )
 
     else:
+        # TODO: this branch is deprecated and should be removed after Feb 2023
+
         # The name=value options given to the Platform object originate from these
         # places:
         #     (1) direct from command line, such as -N and --max-devices
         #     (2) indirect from command line, --platopts name=value
+        #     (2.1) settings from VVTEST_PLATFORM_SPECS environ variable
         #     (3) options given to setBatchSystem() in platform_plugin.py
         #     (4) set via platcfg.setattr() in platform_plugin.py
 
         platopts = attrtab.normalize_group( platopts )
+
+        tmp = attrtab.normalize_group( environ_platform_specs() )
+        tmp.update( platopts )
+        platopts = tmp
 
         optdict = {}
         if platname: optdict['--plat']    = platname
@@ -227,6 +235,11 @@ class PlatformCreator:
 
         if cmdline_platname:
             pname = cmdline_platname
+        elif 'VVTEST_PLATFORM' in os.environ:
+            pname = os.environ['VVTEST_PLATFORM'].strip()
+            if not pname:
+                raise Exception( 'the VVTEST_PLATFORM environment '
+                                 'variable cannot be empty' )
         else:
             for idmod in self.idmods:
                 if hasattr( idmod, 'platform' ):
@@ -278,6 +291,28 @@ class PlatformCreator:
                 if rtn != 'continue':
                     if rtn == 'break' or specs.is_modified():
                         break
+
+
+def environ_platform_specs():
+    """
+    gets VVTEST_PLATFORM_SPECS from os.environ and parses the value into
+    a dict; the format is comma separated name=value, for example:
+
+        maxdevices=4,queue=long,batchsys=slurm
+    """
+    eD = {}
+    if 'VVTEST_PLATFORM_SPECS' in os.environ:
+        specstr = os.environ['VVTEST_PLATFORM_SPECS']
+        for kvstr in specstr.strip().split(','):
+            kvstr = kvstr.strip()
+            if kvstr:
+                kvL = [ item.strip() for item in kvstr.split('=',1) ]
+                if len(kvL) != 2 or not kvL[0]:
+                    raise Exception(
+                        'invalid VVTEST_PLATFORM_SPECS syntax: '+repr(specstr) )
+                eD[ kvL[0] ] = kvL[1]
+
+    return eD
 
 
 class PlatformConfig:

@@ -11,6 +11,19 @@ Improvements:
       The platform settings precedence is command line first, then this
       environment variable, then user plugin values, then builtin values.
 
+    - The following two groups of variables will now always be defined in the
+      vvtest_util.py and vvtest_util.sh files:
+
+          RESOURCE_np =
+          RESOURCE_IDS_np =
+          RESOURCE_TOTAL_np =
+
+          RESOURCE_ndevice =
+          RESOURCE_IDS_ndevice =
+          RESOURCE_TOTAL_ndevice =
+
+      If there are no devices (GPUs), then ndevice and total ndevice are zero.
+
     - A soft link to vvtest and a config directory can now be used (without
       using the vvtest_bootstrap.py mechanism).
 
@@ -42,10 +55,6 @@ Improvements:
       A test instance with nnode=1 will occupy a single compute node on a
       batched system or the whole workstation in direct mode. A test with
       nnode=2 will occupy two compute nodes.
-
-      Note that for tests that specify 'nnode' but not 'np', there will still
-      be an 'np' variable set in the vvtest_util.py file for each test.
-      Similarly for 'ndevice' if the machine has devices.
 
     - Add handling of a VVTEST_PLATFORM environment variable in the
       config/idplatform.py configuration script.  Now if that environment

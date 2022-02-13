@@ -66,29 +66,31 @@ class unit( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '-N 7' )
         vrun.assertCounts( total=1, npass=1 )
-        vals = extract_values( vrun, 'NP VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=1':7} )
-        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ), {} )
+        self.assertEqual( extract_values( vrun, 'NP VALUE=' ),
+                          {'atest.nnode=1':7} )
+        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ),
+                          {'atest.nnode=1':0} )
 
         vrun = vtu.runvvtest( '-w -N 7 --platopt ppn=3' )
         vrun.assertCounts( total=2, npass=2 )
-        vals = extract_values( vrun, 'NP VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=1':3, 'atest.nnode=2':6} )
-        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ), {} )
+        self.assertEqual( extract_values( vrun, 'NP VALUE=' ),
+                          {'atest.nnode=1':3, 'atest.nnode=2':6} )
+        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ),
+                          {'atest.nnode=1':0,'atest.nnode=2':0} )
 
         vrun = vtu.runvvtest( '-w -N 7 --max-devices 5' )
         vrun.assertCounts( total=1, npass=1 )
-        vals = extract_values( vrun, 'NP VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=1':7} )
-        vals = extract_values( vrun, 'NDEVICE VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=1':5} )
+        self.assertEqual( extract_values( vrun, 'NP VALUE=' ),
+                          {'atest.nnode=1':7} )
+        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ),
+                          {'atest.nnode=1':5} )
 
         vrun = vtu.runvvtest( '-w -N 7 --platopt dpn=2' )
         vrun.assertCounts( total=1, npass=1 )
-        vals = extract_values( vrun, 'NP VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=1':7} )
-        vals = extract_values( vrun, 'NDEVICE VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=1':2} )
+        self.assertEqual( extract_values( vrun, 'NP VALUE=' ),
+                          {'atest.nnode=1':7} )
+        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ),
+                          {'atest.nnode=1':2} )
 
     def test_using_nnode_parameter_in_batch_mode(self):
         ""
@@ -96,14 +98,15 @@ class unit( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '-w --plat Linux --batch --platopt ppn=3' )
         vrun.assertCounts( total=2, npass=2 )
-        vals = extract_values( vrun, 'NP VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=2': 6, 'atest.nnode=1': 3} )
-        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ), {} )
+        self.assertEqual( extract_values( vrun, 'NP VALUE=' ),
+                          {'atest.nnode=2': 6, 'atest.nnode=1': 3} )
+        self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ),
+                          {'atest.nnode=1':0, 'atest.nnode=2':0} )
 
         vrun = vtu.runvvtest( '-w --plat Linux --batch --platopt ppn=5 --platopt dpn=3' )
         vrun.assertCounts( total=2, npass=2 )
-        vals = extract_values( vrun, 'NP VALUE=' )
-        self.assertEqual( vals, {'atest.nnode=2': 10, 'atest.nnode=1': 5} )
+        self.assertEqual( extract_values( vrun, 'NP VALUE=' ),
+                          {'atest.nnode=2': 10, 'atest.nnode=1': 5} )
         self.assertEqual( extract_values( vrun, 'NDEVICE VALUE=' ),
                           {'atest.nnode=1': 3, 'atest.nnode=2': 6} )
 
@@ -126,9 +129,8 @@ def write_nnode_test_file( filename ):
     util.writefile( filename, """
         #VVT: parameterize : nnode = 1 2
         import vvtest_util as vvt
-        print ( 'NP VALUE='+repr(vvt.np) )
-        if hasattr( vvt, 'ndevice' ):
-            print ( 'NDEVICE VALUE='+repr(vvt.ndevice) )
+        print ( 'NP VALUE='+repr(vvt.RESOURCE_np) )
+        print ( 'NDEVICE VALUE='+repr(vvt.RESOURCE_ndevice) )
         """ )
 
 

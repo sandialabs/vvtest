@@ -97,6 +97,37 @@ Fixes:
 
 Changes:
 
+    - The platform configuration mechanism has been refactored, and the old
+      way is now considered deprecated (expected to be removed in Feb 2023).
+
+      The idplatform.py file in a config directory is used to specify the
+      platform name, the compiler name, and to specify platform parameters,
+      such as the batch system type, the max num cores on the machine, etc.
+
+      Here is an example idplatform.py file with the new functions:
+
+          def get_platform():
+              return "XBox"
+
+          def get_compiler( platname, options ):
+              return "Intel"
+
+          def load_specifications( specs, platname, cplrname, options ):
+              specs['batchsys'] = 'slurm'
+              specs['cores_per_node'] = 44
+
+      To transition from old to new, replace
+
+          idplatform.platform(optdict) with idplatform.get_platform()
+
+          idplatform.compiler(platname,optdict) with
+                idplatform.get_compiler(platname,options)
+
+          platform_plugin.initialize(plat) with
+                idplatform.load_specifications(specs,platname,cplrname,options)
+
+      To be clear, the platform_plugin.py file can be removed (is deprecated).
+
     - The topic-based inline documentation has been removed. The wiki pages
       cover mostly the same thing, but the inline documentation was placed
       in the wiki pages in case it is useful.

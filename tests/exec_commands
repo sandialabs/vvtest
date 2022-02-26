@@ -180,7 +180,8 @@ class function_make_test_script_command( vtu.vvtestTestCase ):
         cmdL = mkobj(tspec).make_test_script_command()
         assert len(cmdL) > 1
         cmdstr = ' '.join( cmdL )
-        assert 'python' in cmdstr and 'atest.vvt' in cmdstr
+        assert 'python' in cmdstr or 'Python' in cmdstr
+        assert 'atest.vvt' in cmdstr
 
     def test_an_executable_script_runs_under_python_if_shbang_not_supported(self):
         ""

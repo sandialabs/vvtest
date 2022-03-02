@@ -1,0 +1,475 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST: vvtest
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+
+import vvtestutils as vtu
+import testutils as util
+
+from libvvtest.testcreator import TestCreator
+from libvvtest.errors import TestSpecError
+
+from libvvtest.paramset import ParameterSet
+from libvvtest.testcase import TestCase
+import libvvtest.testlistio as tio
+import libvvtest.parsevvt as parsevvt
+from libvvtest.tcfactory import TestCaseFactory
+
+
+class script_tests( vtu.vvtestTestCase ):
+
+    def test_header_specification_comment_variations(self):
+        ""
+        util.writescript( 'tst1.vvt', """
+            #!"""+sys.executable+"""
+
+            #VVT: name=test1
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst2.vvt', """
+            #!"""+sys.executable+"""
+            # 
+            #VVT: name=test2
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst3.vvt', """
+            #!"""+sys.executable+"""
+            import vvtest_util as vvt
+            #VVT: name=test3
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst4.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: name=test4a
+
+            #VVT: name=test4b
+
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst5.vvt', """
+            #!"""+sys.executable+"""
+            # regular comments can be interleaved
+            #VVT: name=test5a
+
+            # this test should also be run
+            #VVT: name=test5b
+
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=7, npass=7 )
+
+        assert vrun.getTestIds() == [ 'test1',
+                                      'test2',
+                                      'test4a',
+                                      'test4b',
+                                      'test5a',
+                                      'test5b',
+                                      'tst3' ]
+
+        assert vrun.countGrepLogs( 'hello from the test1 test' ) == 1
+        assert vrun.countGrepLogs( 'hello from the test2 test' ) == 1
+        assert vrun.countGrepLogs( 'hello from the tst3 test' ) == 1
+        assert vrun.countGrepLogs( 'hello from the test4a test' ) == 1
+        assert vrun.countGrepLogs( 'hello from the test4b test' ) == 1
+        assert vrun.countGrepLogs( 'hello from the test5a test' ) == 1
+        assert vrun.countGrepLogs( 'hello from the test5b test' ) == 1
+
+    def test_incorrect_specification_syntax(self):
+        ""
+        util.writescript( 'tst1.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: =junk
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst2.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (testname=tst2) foo : bar
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst2b.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (testname=tst2b) foo
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst2c.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (testname=tst2c) (testname=tst2b)
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst3.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (testname=tst3) : junk
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst4.vvt', """
+            #!"""+sys.executable+"""
+            #VVT::
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst5.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (=tst5) : foo bar
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst6.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (foo=bar,=) : foo bar
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+        util.writescript( 'tst7.vvt', """
+            #!"""+sys.executable+"""
+            #VVT: keywords (foo=bar : foo bar
+            import vvtest_util as vvt
+            print ( "hello from the "+vvt.NAME+" test" )
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=1, npass=1 )
+
+        assert len( vrun.grepLines( 'skipping *tst1.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst2.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst2b.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst2c.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst4.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst5.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst6.vvt'  ) ) == 1
+        assert len( vrun.grepLines( 'skipping *tst7.vvt'  ) ) == 1
+
+        assert vrun.countGrepLogs( 'hello from the tst3 test' ) == 1
+
+    def test_parsing_test_name_specifications(self):
+        ""
+        nm,aD = parsevvt.parse_test_name_value( 'testA', 'info' )
+        assert nm == 'testA' and len(aD) == 0
+
+        self.assertRaises( TestSpecError,
+            parsevvt.parse_test_name_value, 'testA testB', 'info' )
+
+        nm,aD = parsevvt.parse_test_name_value( '', 'info' )
+        assert nm == '' and len(aD) == 0
+
+        nm,aD = parsevvt.parse_test_name_value( 'testA # comment', 'info' )
+        assert nm == 'testA' and len(aD) == 0
+
+        nm,aD = parsevvt.parse_test_name_value( 'testA ()', 'info' )
+        assert nm == 'testA' and len(aD) == 0
+
+        self.assertRaises( TestSpecError,
+            parsevvt.parse_test_name_value,
+                'testA (depends on=testB ', 'info' )
+
+        nm,aD = parsevvt.parse_test_name_value(
+                    'testA (depends on=testB)', 'info' )
+        assert nm == 'testA' and aD == { 'depends on':'testB' }
+
+        nm,aD = parsevvt.parse_test_name_value(
+                    'testA (depends on=testB, result="*")', 'info' )
+        assert nm == 'testA' and aD == { 'depends on':'testB', 'result':'*' }
+
+        nm,aD = parsevvt.parse_test_name_value(
+                    'testA (result="*", depends on=testB)', 'info' )
+        assert nm == 'testA' and aD == { 'depends on':'testB', 'result':'*' }
+
+        nm,aD = parsevvt.parse_test_name_value(
+                    'testA (depends on=testB testC, result=pass)', 'info' )
+        assert nm == 'testA' and aD == { 'depends on':'testB testC',
+                                         'result':'pass' }
+
+    def test_combining_test_name_spec_with_dependency_spec(self):
+        ""
+        util.writefile( 'hello.vvt', """
+            #VVT: testname = world (depends on=mars, result=diff)
+            import vvtest_util as vvt
+            print ( 'DEPS = '+' '.join( vvt.DEPDIRS ) )
+            """ )
+        util.writefile( 'mars.vvt', """
+            import sys
+            import vvtest_util as vvt
+            sys.exit( vvt.diff_exit_status )
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=2, npass=1, diff=1 )
+
+        assert vrun.getTestIds() == [ 'mars', 'world' ]
+
+        lineL = vrun.greplogs( 'DEPS =' )
+        assert len(lineL) == 1
+        depd = lineL[0].split( 'DEPS =', 1 )[1].strip()
+        assert os.path.samefile( depd, vrun.resultsDir()+'/mars' )
+
+    def test_specify_parameter_types(self):
+        ""
+        pset = ParameterSet()
+        pset.addParameter( 'A', ['1','2'] )
+        pset.addParameterGroup( ('B','C'), [ ('1.1','ab'), ('1.2','ac') ] )
+
+        assert pset.getParameterTypeMap() == {}
+
+        tmap = { 'A':int, 'B':float }
+        pset.setParameterTypeMap( tmap )
+        assert pset.getParameterTypeMap() == tmap
+        pDL = pset.getParameters( typed=True )
+        assert len( pDL ) == 2
+        for nameT,valL in pDL.items():
+            if nameT == ('A',):
+                assert valL == [ [1], [2] ]
+            else:
+                assert nameT == ('B','C')
+                assert valL == [ [1.1,'ab'], [1.2,'ac'] ]
+
+        tspec = vtu.make_fake_TestSpec()
+        assert type( tspec.getParameterValue( 'np' ) ) == type('')
+        pD = tspec.getParameters( typed=True )
+        assert len( pD ) == 1
+        assert pD.pop('np') == '4'
+
+        tspec.getParameterSet().setParameterTypeMap( { 'np': int } )
+        assert type( tspec.getParameterValue( 'np' ) ) == type('')
+        pD = tspec.getParameters()
+        assert len( pD ) == 1
+        assert pD['np'] == '4'
+        pD = tspec.getParameters( typed=True )
+        assert len( pD ) == 1
+        assert pD['np'] == 4
+
+    def test_parse_parameter_type_specifications(self):
+        ""
+        util.writefile( 'blue.vvt', """
+            #VVT: parameterize (autotype) : np = 1 8
+            #VVT: parameterize            : nt = 1 8
+            #VVT: parameterize (autotype) : dx,dy = 1,2 8.8,9.9
+            #VVT: parameterize (autotype) : foo = 1 bar
+            """ )
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt' )
+        pset = parser.parseParameterSet( 'blue' )
+
+        tmap = pset.getParameterTypeMap()
+        assert len( tmap ) == 3
+        assert tmap['np'] == int
+        assert tmap['dx'] == float
+        assert tmap['dy'] == float
+
+        tL = TestCreator().fromFile( 'blue.vvt' )
+        assert len( tL ) == 2*2*2*2
+
+        tspec = tL[3]
+        pD = tspec.getParameters( typed=True )
+        assert type( pD['foo'] ) == type('')
+        assert type( pD['np'] ) == type(2)
+        assert type( pD['dy'] ) == type(9.9)
+
+        sid = tio.test_to_string( TestCase( tspec ) )
+        tcase = reparse_test_string( sid )
+        pD = tcase.getSpec().getParameters( typed=True )
+        assert type( pD['foo'] ) == type('')
+        assert type( pD['np'] ) == type(2)
+        assert type( pD['dy'] ) == type(9.9)
+
+    def test_integration_with_typed_parameters(self):
+        ""
+        util.writefile( 'blue.vvt', """
+            #VVT: parameterize (autotype) : num = 3 7
+            #VVT: parameterize (autotype) : size = 1.1 2.2
+            #VVT: analyze : --analyze
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv:
+                for val in vvt.PARAM_num:
+                    assert type(val) == type(3)
+                for val in vvt.PARAM_size:
+                    assert type(val) == type(3.3)
+            else:
+                assert type( vvt.num ) == type(3)
+                assert type( vvt.size ) == type(3.3)
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( batch=batch )
+            vrun.assertCounts( total=5, npass=5 )
+            tdir = vrun.resultsDir()
+
+            vrun = vtu.runvvtest( '-R', batch=batch, chdir=tdir )
+            vrun.assertCounts( total=5, npass=5 )
+
+
+class bad_attrs( vtu.vvtestTestCase ):
+
+    def test_when_parameters_not_allowed(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : foo = a b
+            #VVT: parameterize (parameters="foo=b") : np = 1 8
+            """ )
+
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize : foo = a b
+            #VVT: analyze (parameters="foo=b") : --analyze
+            """ )
+
+        util.writefile( 'ctest.vvt', """
+            #VVT: parameterize : foo = a b
+            #VVT: enable (parameters="foo=b")
+            """ )
+
+        psr = parsevvt.ScriptTestParser( 'atest.vvt' )
+        self.assertRaises( TestSpecError, psr.parse_parameterize, 'atest' )
+
+        psr = parsevvt.ScriptTestParser( 'btest.vvt' )
+        self.assertRaises( TestSpecError, psr.parse_analyze, 'btest' )
+
+        psr = parsevvt.ScriptTestParser( 'ctest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='ctest' )
+        self.assertRaises( TestSpecError, psr.parse_enable, tspec )
+
+    def test_only_testname_and_parameters_are_allowed_for_keywords(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: keywords (parameters="foo=b") : akey bkey
+            """ )
+
+        util.writefile( 'btest.vvt', """
+            #VVT: keywords (platform=Linux) : akey bkey
+            """ )
+
+        util.writefile( 'ctest.vvt', """
+            #VVT: keywords (options=foo) : akey bkey
+            """ )
+
+        psr = parsevvt.ScriptTestParser( 'atest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='atest' )
+        psr.parse_keywords( tspec )
+        self.assertEqual( sorted(tspec.getKeywords()), ['atest', 'np'] )
+
+        psr = parsevvt.ScriptTestParser( 'btest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='btest' )
+        self.assertRaises( TestSpecError, psr.parse_keywords, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'ctest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='ctest' )
+        self.assertRaises( TestSpecError, psr.parse_keywords, tspec )
+
+    def test_for_unknown_attributes(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (tname=foo) : np = 1 2
+            """ )
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize : np = 1 2
+            #VVT: analyze (pumpkin=spice) : --analyze
+            """ )
+        util.writefile( 'ctest.vvt', """
+            #VVT: enable (software=quality)
+            """ )
+        util.writefile( 'dtest.vvt', """
+            #VVT: keywords (mixed=nuts) : akey bkey
+            """ )
+        util.writefile( 'etest.vvt', """
+            #VVT: copy (tap=out) : afile
+            """ )
+        util.writefile( 'ftest.vvt', """
+            #VVT: link (burn=out) : afile
+            """ )
+        util.writefile( 'gtest.vvt', """
+            #VVT: timeout (shot=put) : 42
+            """ )
+        util.writefile( 'htest.vvt', """
+            #VVT: baseline (pulp=fiction) : 42
+            """ )
+        util.writefile( 'itest.vvt', """
+            #VVT: depends on (love=hate) : atest*
+            """ )
+        util.writefile( 'jtest.vvt', """
+            #VVT: testname = jtest (depends on=parents, likes=money)
+            """ )
+        util.writefile( 'ktest.vvt', """
+            #VVT: preload (unit=testing) = python1.5
+            """ )
+        util.writefile( 'ltest.vvt', """
+            #VVT: testname (foo=bar) = superduper
+            """ )
+
+        psr = parsevvt.ScriptTestParser( 'atest.vvt' )
+        self.assertRaises( TestSpecError, psr.parse_parameterize, 'atest' )
+
+        psr = parsevvt.ScriptTestParser( 'btest.vvt' )
+        self.assertRaises( TestSpecError, psr.parse_analyze, 'btest' )
+
+        psr = parsevvt.ScriptTestParser( 'ctest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='ctest' )
+        self.assertRaises( TestSpecError, psr.parse_enable, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'dtest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='dtest' )
+        self.assertRaises( TestSpecError, psr.parse_keywords, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'etest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='etest' )
+        self.assertRaises( TestSpecError, psr.parse_working_files, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'ftest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='ftest' )
+        self.assertRaises( TestSpecError, psr.parse_working_files, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'gtest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='gtest' )
+        self.assertRaises( TestSpecError, psr.parse_timeouts, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'htest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='htest' )
+        self.assertRaises( TestSpecError, psr.parse_baseline, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'itest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='itest' )
+        self.assertRaises( TestSpecError, psr.parse_dependencies, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'jtest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='jtest' )
+        self.assertRaises( TestSpecError, psr.parse_dependencies, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'ktest.vvt' )
+        tspec = vtu.make_fake_TestSpec( name='ktest' )
+        self.assertRaises( TestSpecError, psr.parse_preload_label, tspec )
+
+        psr = parsevvt.ScriptTestParser( 'ltest.vvt' )
+        self.assertRaises( TestSpecError, psr.parseTestNames )
+
+
+def reparse_test_string( stringid ):
+    ""
+    tcase = tio.string_to_test( stringid, TestCaseFactory() )
+
+    TestCreator().reparse( tcase.getSpec() )
+
+    return tcase
+
+
+########################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

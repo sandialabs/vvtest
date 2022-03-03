@@ -65,7 +65,8 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                'OPTIONS = '+repr( onopts ),
                'OPTIONS_OFF = '+repr( offopts ),
                'SRCDIR = '+repr(srcdir),
-               'TIMEOUT = '+repr(timeout) )
+               'TIMEOUT = '+repr(timeout),
+               'KEYWORDS = '+repr(testobj.getKeywords(include_implicit=False)) )
 
         w.add( 'CONFIGDIR = '+repr(configdirs) )
 
@@ -178,6 +179,9 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                'SRCDIR="'+srcdir+'"',
                'TIMEOUT="'+str(timeout)+'"',
                'PYTHONEXE="'+sys.executable+'"' )
+
+        kwds = ' '.join( testobj.getKeywords(include_implicit=False) )
+        w.add( 'KEYWORDS="'+kwds+'"' )
 
         w.add( 'CONFIGDIR="'+':'.join( configdirs )+'"' )
 

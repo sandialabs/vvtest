@@ -10,6 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+from os.path import abspath
 
 import vvtestutils as vtu
 import testutils as util
@@ -67,9 +68,12 @@ class script_tests( vtu.vvtestTestCase ):
         assert vrun.getTestIds() == [ 'hello' ]
         assert vrun.countGrepLogs( 'hello from the hello test script' ) == 1
 
-    def test_importing_the_helper_fragment(self):
+    def test_variables_in_the_vvtest_util_file(self):
         ""
-        util.writefile( 'hello.py.vvt', """
+        os.mkdir( 'bin' )
+
+        util.writefile( 'atest.vvt', """
+            #VVT: keywords : something borrowed
             import os, sys
             print ( "hello from the python test script" )
             import vvtest_util as vvt
@@ -86,11 +90,11 @@ class script_tests( vtu.vvtestTestCase ):
             assert hasattr( vvt, 'OPTIONS_OFF' )
             assert hasattr( vvt, 'SRCDIR' )
 
-            assert vvt.NAME == 'hello.py'
-            print ( 'PROJECT = '+vvt.PROJECT )
+            assert vvt.NAME == 'atest'
+            assert os.path.samefile( vvt.PROJECT, '"""+abspath('bin')+"""' )
             assert vvt.OPTIONS == ['dbg']
+            assert set(vvt.KEYWORDS) == set(['something','borrowed'])
             """ )
-        os.mkdir( 'bin' )
 
         for batch in [False,True]:
 
@@ -98,13 +102,8 @@ class script_tests( vtu.vvtestTestCase ):
 
             vrun = vtu.runvvtest( '-j bin -o dbg', batch=batch )
             vrun.assertCounts( total=1, npass=1 )
-            assert vrun.getTestIds() == [ 'hello.py' ]
-
+            assert vrun.getTestIds() == [ 'atest' ]
             assert vrun.countGrepLogs( 'hello from the python test script' ) == 1
-
-            L = vrun.greplogs( 'PROJECT =' )
-            assert len(L) == 1
-            assert L[0].split('=',1)[1].strip() == os.path.abspath('bin')
 
     def test_a_python_test_that_exits_with_a_diff_a_pass_and_a_fail(self):
         ""

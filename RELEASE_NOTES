@@ -1,6 +1,11 @@
 
 Improvements:
 
+    - The list of test keywords is now available as a variable in the
+      vvtest_util.py and vvtest_util.sh script fragments, such as
+
+          KEYWORDS = ['foo','bar']
+
     - The environment variable VVTEST_PLATFORM_SPECS can be used to specify
       platform settings, such as the batch system, the max number of cores
       available, the cores per node, the devices per node, etc. The syntax

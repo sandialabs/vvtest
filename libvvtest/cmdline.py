@@ -25,9 +25,8 @@ def parse_command_line( argvlist, vvtest_version=None ):
     args = opts.directory
 
     check_deprecated_option_use( opts )
-
+    check_for_command_line_usage_warnings( opts )
     check_print_version( opts, vvtest_version )
-
     derived_opts = adjust_options_and_create_derived_options( opts )
 
     return opts, derived_opts, args
@@ -306,6 +305,13 @@ def check_deprecated_option_use( opts ):
     # if opts.qsub_limit:
     #     # --qsub-limit replaced with --batch-limit
     #     opts.batch_limit = opts.qsub_limit
+
+
+def check_for_command_line_usage_warnings( opts ):
+    ""
+    if opts.dash_n is not None and opts.batch:
+        print ( '*** Warning: the command line -n option has no effect '
+                'when the --batch option is also given' )
 
 
 def adjust_options_and_create_derived_options( opts ):

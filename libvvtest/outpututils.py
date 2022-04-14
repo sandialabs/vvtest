@@ -46,11 +46,10 @@ def location_display_string( tspec, test_dir, cwd ):
     loc = pathutil.relative_execute_directory( displ, test_dir, cwd )
 
     tid = tspec.getTestID()
-    if tid.computeExecuteDirectory( shorten=True ) != \
-       tid.computeExecuteDirectory( shorten=False ):
+    if tid.executeDirectoryIsShortened():
         xdir = tspec.getExecuteDirectory()
         xdir = pathutil.relative_execute_directory( xdir, test_dir, cwd )
-        loc = xdir + ' -> ' + loc
+        loc = xdir + ' -> ' + os.path.basename(loc)
 
     return loc
 

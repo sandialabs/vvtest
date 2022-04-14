@@ -136,7 +136,7 @@ def find_tests_by_pattern( srcdir, pattern, testcasemap ):
     for tid,tcase in testcasemap.items():
 
         tspec = tcase.getSpec()
-        displ = tspec.getDisplayString()
+        displ = tspec.getTestID().computeMatchString()
 
         if fnmatch.fnmatch( displ, pat1 ):
             L1.append( tid )
@@ -165,18 +165,22 @@ def collect_matching_test_ids( idlist, testcasemap ):
 
     for tid in idlist:
         tspec = testcasemap[tid].getSpec()
-        if not_staged_or_last_stage( stagemap, tspec ):
+        if not_duplicate_stage( tspec, stagemap ):
             idset.add( tid )
 
     return idset
 
 
-def not_staged_or_last_stage( stagemap, tspec ):
-    ""
+def not_duplicate_stage( tspec, stagemap ):
+    """
+    if the expression matched more than one stage of a staged test, we only
+    want to keep the last stage
+    """
     tid = tspec.getTestID().computeID( compress_stage=True )
     stagL = stagemap.get( tid, None )
 
-    if stagL == None or len(stagL) < 2:
+    if stagL == None or len(stagL) == 1:
+        # not part of a staged test or only a single stage matched
         return True
 
     return tspec.isLastStage() or no_last_stages( stagL )

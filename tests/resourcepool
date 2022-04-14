@@ -202,7 +202,7 @@ class integration_tests( vtu.vvtestTestCase ):
         util.writescript( "ctest.vvt", """
             #!/bin/sh
             #VVT: parameterize: np,ndevice = 2,0
-            source vvtest_util.sh
+            source ./vvtest_util.sh
             echo "procids=$RESOURCE_IDS_np"
             echo "proctotal=$RESOURCE_TOTAL_np"
             sleep 2

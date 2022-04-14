@@ -579,11 +579,14 @@ class parameter_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( "-w -n 8 -N 8" )
         vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == ['atest.fruit=apple.np=4', 'atest.fruit=banana.np=8']
+        self.assertEqual( vrun.getTestIds(),
+                          ['atest.fruit=apple.np=4', 'atest.fruit=banana.np=8'] )
 
         vrun = vtu.runvvtest( "-w -n 8  -N 8 --devices 1 --max-devices 1 -o gpu" )
         vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == ['atest.fruit=apple.ndevice=1.np=1', 'atest.fruit=banana.ndevice=1.np=1']
+        self.assertEqual( vrun.getTestIds(),
+                          [ 'atest.fruit=apple.ndevice=1.np=1',
+                            'atest.fruit=banana.ndevice=1.np=1' ] )
 
 
 #####################################################################

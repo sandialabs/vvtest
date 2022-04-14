@@ -228,9 +228,9 @@ class TestSpec( TestFile ):
         ""
         tid = self.getTestID()
 
-        self.xdir = tid.computeExecuteDirectory()
         self.testid = tid.computeID()
-        self.displ = tid.computeDisplayString()
+        self.xdir   = tid.computeExecuteDirectory()
+        self.displ  = tid.computeDisplayString()
 
 
 def apply_types_to_param_values( paramD, param_types ):

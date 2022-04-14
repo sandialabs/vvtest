@@ -94,6 +94,9 @@ Improvements:
 
 Fixes:
 
+    - A bug was fixed when using --minimal-xdirs and a test used a "depends on"
+      pattern with suppressed (or hidden) parameters.
+
     - For running on batched systems, filtering based on num cores (np) and
       num devices (ndevice) is now turned off by default (where default means
       no max given in the platform plugin or on the command line). However,

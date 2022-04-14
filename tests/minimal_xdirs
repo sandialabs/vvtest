@@ -167,8 +167,10 @@ class unit_tests( unittest.TestCase ):
 
         assert tid1.computeExecuteDirectory() == 'bar/foo.A=1.B=2'
         assert tid1.computeDisplayString()    == 'bar/foo.A=1.B=2'
+        assert tid1.computeMatchString()      == 'bar/foo.A=1.B=2'
         assert tid2.computeExecuteDirectory() == 'bar/foo.A=1'
         assert tid2.computeDisplayString()    == 'bar/foo.A=1'
+        assert tid2.computeMatchString()      == 'bar/foo.A=1.B=2'
         assert tid1.computeID() != tid2.computeID()
 
         min_off = {}
@@ -179,8 +181,10 @@ class unit_tests( unittest.TestCase ):
 
         assert tid1.computeExecuteDirectory() == 'bar/foo.A=1.B=2'
         assert tid1.computeDisplayString()    == 'bar/foo.A=1.B=2'
+        assert tid1.computeMatchString()      == 'bar/foo.A=1.B=2'
         assert tid2.computeExecuteDirectory() == 'bar/foo.B=2'
         assert tid2.computeDisplayString()    == 'bar/foo.B=2'
+        assert tid2.computeMatchString()      == 'bar/foo.A=1.B=2'
         assert tid1.computeID() != tid2.computeID()
 
         min_off = {}
@@ -191,8 +195,10 @@ class unit_tests( unittest.TestCase ):
 
         assert tid1.computeExecuteDirectory() == 'bar/foo.A=1'
         assert tid1.computeDisplayString()    == 'bar/foo.A=1'
+        assert tid1.computeMatchString()      == 'bar/foo.A=1'
         assert tid2.computeExecuteDirectory() == 'bar/foo.'
         assert tid2.computeDisplayString()    == 'bar/foo.'
+        assert tid2.computeMatchString()      == 'bar/foo.A=1'
         assert tid1.computeID() != tid2.computeID()
 
     def test_suppression_of_parameters_in_a_staging_test(self):
@@ -206,8 +212,10 @@ class unit_tests( unittest.TestCase ):
         tid2 = testid.TestID( 'foo', 'bar/foo.vvt', pD, ['stage','A'], min_on )
         assert tid1.computeExecuteDirectory() == 'bar/foo.A.B=2'
         assert tid1.computeDisplayString()    == 'bar/foo.A.B=2 stage=1(A=1)'
+        assert tid1.computeMatchString()      == 'bar/foo.A.B=2 stage=1(A=1)'
         assert tid2.computeExecuteDirectory() == 'bar/foo.A'
         assert tid2.computeDisplayString()    == 'bar/foo.A stage=1(A=1)'
+        assert tid2.computeMatchString()      == 'bar/foo.A.B=2 stage=1(A=1)'
 
 
 class integration_tests( vtu.vvtestTestCase ):
@@ -298,6 +306,28 @@ class command_line_tests( vtu.vvtestTestCase ):
             vrun = vtu.runvvtest( '-R --minimal-xdirs -k btest', batch=batch )
             vrun.assertCounts( total=2, npass=2 )
             assert len( glob.glob( tdir+'/*/execute.log' ) ) == 6
+
+    def test_depends_on_expressions_can_include_suppressed_parameters(self):
+        ""
+        util.writefile( 'steps.vvt', """
+            # VVT: parameterize : fruit = kiwi
+            # VVT: name : step1
+            # VVT: name : step2
+            # VVT: depends on (testname="step2",result="pass",expect=1): step1.*fruit=${fruit}*
+            import vvtest_util as vvt
+            print ( vvt.NAME+' DepDirs = '+repr( vvt.DEPDIRS ) )
+            """ )
+
+        vrun = vtu.runvvtest( '--minimal-xdirs' )  # this causes suppressed params
+        vrun.assertCounts( total=2, npass=2 )
+        tdir = vrun.resultsDir()
+
+        lines = util.grepfiles( 'step2 DepDirs = ', 'TestResults*/*/execute.log' )
+        assert len(lines) == 1
+        depdirs = eval( lines[0].strip().split( 'step2 DepDirs = ', 1 )[1].strip() )
+
+        assert len(depdirs) == 1
+        assert os.path.samefile( depdirs[0], tdir+'/step1.' )
 
 
 ############################################################################

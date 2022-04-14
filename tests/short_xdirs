@@ -99,13 +99,14 @@ class TestID_tests( unittest.TestCase ):
                'Third_Parameter_Name':'ABCDEFGHIJKLMNOPQRSTUVWXYZ' }
         tid = testid.TestID( 'foo', 'bar/foo.vvt', pD, [] )
         xdir = tid.computeExecuteDirectory()
-        print3( xdir, tid.computeDisplayString() )
+        # print3( xdir, tid.computeDisplayString() )
         assert len( basename( xdir ) ) <= 100
         assert xdir.startswith( 'bar/foo.' )
         assert tid.computeDisplayString() == \
             'bar/foo.First_Parameter_Name=123456789012345678901234567890.' + \
             'Second_Parameter_Name=abcdefghijklmnopqrstuvwxyz.' + \
             'Third_Parameter_Name=ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        assert tid.executeDirectoryIsShortened()
 
         # the ID will be different for different parameters/values
         pD2 = dict( pD )
@@ -118,10 +119,11 @@ class TestID_tests( unittest.TestCase ):
         tid3 = testid.TestID( 'foobarbaz_foobarbaz_foobarbaz', 'bar/foo.vvt', pD, [] )
         xdir = tid3.computeExecuteDirectory()
         displ = tid3.computeDisplayString()
-        print3( xdir, displ )
+        # print3( xdir, displ )
         assert len( basename( xdir ) ) <= 100
         assert xdir.startswith( 'bar/foobarbaz_foobarbaz_.' )
-        assert displ.startswith( tid3.computeExecuteDirectory(shorten=False) )
+        assert displ.startswith( 'bar/foobarbaz_foobarbaz_foobarbaz.' )
+        assert tid3.executeDirectoryIsShortened()
 
     def test_resetting_the_ID_traits(self):
         ""
@@ -158,7 +160,7 @@ class using_short_xdirs( vtu.vvtestTestCase ):
         lds = outpututils.location_display_string( tspec, trpath, cwd )
         print3( repr(xdir), repr(displ), repr(lds) )
         assert xdir != displ
-        assert re.match( 'sdir/atest[.][0-9a-f]+ -> sdir/atest[.]np=4', lds )
+        assert re.match( 'sdir/atest[.][0-9a-f]+ -> atest[.]np=4', lds )
 
     def test_console_output_with_shortening(self):
         ""

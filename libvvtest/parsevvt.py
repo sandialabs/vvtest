@@ -707,7 +707,7 @@ def check_special_parameters( param_name, value_list, lineno ):
 def parse_param_values( param_name, value_string, force_params ):
     ""
     if force_params != None and param_name in force_params:
-        vals = force_params[ param_name ]
+        vals = list( force_params[ param_name ] )
     else:
         vals = value_string.strip().split()
 

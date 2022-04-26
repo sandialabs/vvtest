@@ -152,10 +152,6 @@ class generate_tests( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '-g ../subdir', chdir='temp3' )
         self.assert_9_test_directories( 'temp3' )
 
-        # try out the -S option with -g
-        vrun = vtu.runvvtest( '-gS hello=jupiter subdir' )
-        assert vrun.countTestLines( 'boom.hello=jupiter' ) == 1
-
     def test_that_generate_applies_filtering(self):
         ""
         util.writefile( "one.vvt", """

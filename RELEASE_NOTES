@@ -94,6 +94,8 @@ Improvements:
 
 Fixes:
 
+    - A bug was fixed when using -S name=value with multiple staged tests.
+
     - A bug was fixed when using --minimal-xdirs and a test used a "depends on"
       pattern with suppressed (or hidden) parameters.
 

@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST: vvtest
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+import time
+
+import vvtestutils as vtu
+import testutils as util
+
+
+class force_params( vtu.vvtestTestCase ):
+
+    def test_forcing_parameterize_values_on_command_line(self):
+        ""
+        util.writefile( "param.xml", """
+            <rtest name="param">
+              <parameterize hello="world mars"/>
+              <execute>
+                echo "parm=$hello"
+              </execute>
+            </rtest>""" )
+        util.writefile( "blue.vvt", """
+            #VVT: parameterize : hello = foo bar
+            import vvtest_util as vvt
+            print ( 'parm='+vvt.hello )
+            """ )
+
+        vtu.runvvtest().assertCounts( total=4, npass=4 )
+
+        # force a parameter to take on a user defined value
+
+        vtu.runvvtest( '-S hello=jupiter' ).assertCounts( total=2, npass=2 )
+
+        # this also tests that -i shows previous test results (not just
+        # those of the last run)
+        vrun = vtu.runvvtest( '-i -v' )
+        vrun.assertCounts( total=6, npass=6 )
+
+        assert vrun.countTestLines( 'hello=jupiter' ) == 2
+        assert vrun.countTestLines( 'hello=mars' ) == 1
+        assert vrun.countTestLines( 'hello=world' ) == 1
+        assert vrun.countTestLines( 'hello=foo' ) == 1
+        assert vrun.countTestLines( 'hello=bar' ) == 1
+
+        assert vrun.countGrepLogs( 'parm=jupiter' ) == 2
+        assert vrun.countGrepLogs( 'parm=mars' ) == 1
+        assert vrun.countGrepLogs( 'parm=world' ) == 1
+        assert vrun.countGrepLogs( 'parm=foo' ) == 1
+        assert vrun.countGrepLogs( 'parm=bar' ) == 1
+
+    def test_cannot_force_a_parameter_in_a_group(self):
+        ""
+        util.writefile( "red.vvt", """
+            #VVT: parameterize : hello,bye = foo,bar blah,punk
+            import vvtest_util as vvt
+            print ( 'parm='+vvt.hello )
+            """ )
+
+        vtu.runvvtest().assertCounts( total=2, npass=2 )
+
+        vrun = vtu.runvvtest( '-S hello=jupiter' )
+        vrun.assertCounts( total=0, npass=0 )
+
+    def test_force_parameter_with_generate_option(self):
+        ""
+        util.writefile( "subdir/param.vvt", """
+            #VVT: parameterize : hello = world mars
+            import vvtest_util as vvt
+            print ( 'hello '+vvt.hello )
+            """ )
+        util.writefile( "subdir/foo.vvt", """
+            #VVT: parameterize : foo = bar baz
+            import vvtest_util as vvt
+            print ( 'foo '+vvt.foo )
+            """)
+
+        vrun = vtu.runvvtest( '-gS hello=jupiter subdir' )
+        assert vrun.countTestLines( 'param.hello=*' ) == 1
+        assert vrun.countTestLines( 'foo.foo=*' ) == 2
+
+    def test_force_parameter_with_staged_tests(self):
+        ""
+        util.writefile( "red.vvt", """
+            #VVT: parameterize (staged): hello = world mars
+            import vvtest_util as vvt
+            assert vvt.hello == 'jupiter'
+            """ )
+        util.writefile( "blue.vvt", """
+            #VVT: parameterize (staged): hello = bar baz
+            import vvtest_util as vvt
+            assert vvt.hello == 'jupiter'
+            """)
+
+        vrun = vtu.runvvtest( '-S hello=jupiter' )
+        vrun.assertCounts( total=2, npass=2 )
+        assert vrun.countTestLines( '*.hello stage*' ) == 2
+        assert vrun.countTestLines( 'red.hello stage*' ) == 1
+        assert vrun.countTestLines( 'blue.hello stage*' ) == 1
+
+
+############################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

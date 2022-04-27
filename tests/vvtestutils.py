@@ -351,7 +351,7 @@ class VvtestCommandRunner:
 
     def getTestIds(self):
         ""
-        return parse_test_ids( self.out, self.resultsDir() )
+        return parse_test_ids( self.out )
 
     def startedTestIds(self):
         ""
@@ -522,18 +522,21 @@ def check_notdone(L): return len(L) >= 2 and L[0] == 'notdone'
 def check_skip(L): return len(L) >= 3 and L[0] == 'skip'
 
 
-def parse_test_ids( vvtest_output, results_dir ):
+def parse_test_ids( vvtest_output ):
     ""
-    tdir = os.path.basename( results_dir )
-
     tlist = []
     for line in extract_testlines( vvtest_output ):
+
         s = line.strip().split()[-1]
-        d1 = util.first_path_segment( s )+os.sep
+        if s.startswith( 'stage=' ):
+            s = ' '.join( line.strip().split()[-2:] )
+
+        d1 = util.first_path_segment(s)+os.sep
         if d1.startswith( 'TestResults.' ):
             tid = s.split(d1)[1]
         else:
             tid = s
+
         tlist.append( tid )
 
     return tlist

@@ -125,6 +125,17 @@ def check_for_duplicate_parameter( paramlist, lineno ):
                                  '", line ' + str(lineno) )
 
 
+def remove_duplicate_parameter_values( paramlist ):
+    ""
+    newlist = []
+
+    for val in paramlist:
+        if newlist.count( val ) == 0:
+            newlist.append( val )
+
+    return newlist
+
+
 def is_list_or_tuple( obj ):
     ""
     if type(obj) in [ type(()), type([]) ]:

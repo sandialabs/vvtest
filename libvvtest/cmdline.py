@@ -421,7 +421,13 @@ def create_search_regex_list( pattern_list ):
 
 
 def create_parameter_settings( set_param ):
-    ""
+    """
+    most common is
+        -S name=value
+    but also allowed is
+        -S "name=value1 value2"
+    which means the parameter will be forced to take on two values
+    """
     pD = None
 
     if set_param:

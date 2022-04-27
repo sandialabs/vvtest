@@ -21,7 +21,7 @@ from .wordcheck import allowable_variable, allowable_word
 from .parseutil import (
         variable_expansion,
         evaluate_testname_expr,
-        check_for_duplicate_parameter,
+        remove_duplicate_parameter_values,
         create_dependency_result_expression,
         check_forced_group_parameter,
         parse_to_word_expression,
@@ -171,7 +171,7 @@ class ScriptTestParser:
 
             staged = check_for_staging( spec.attrs, pset, nameL, valL, lnum )
 
-            check_for_duplicate_parameter( valL, lnum )
+            valL = remove_duplicate_parameter_values( valL )
 
             if len(nameL) == 1:
                 pset.addParameter( nameL[0], valL )
@@ -705,11 +705,33 @@ def check_special_parameters( param_name, value_list, lineno ):
 
 
 def parse_param_values( param_name, value_string, force_params ):
-    ""
+    """
+    The 'force_params' argument is a dictionary mapping parameter names
+    to a list of values (multiple values can be forced onto a parameter).
+
+        - np=1 2    force=5      ->  np=5 5  (dups get removed if not staged)
+        - np=1 2    force=5 6    ->  np=5 6
+        - np=1 2 3  force=5 6    ->  np=5 6 5 (dups get removed if not staged)
+        - np=1 2    force=5 6 7  ->  np=5 6 7
+
+    Keep same number of values as 'value_string' if less than or equal to
+    the list in 'force_params'. May need to repeat the forced values.
+
+    Increase the number of values to equal the list in 'force_params' if the
+    'value_string' values has smaller length.
+    """
+    vals = value_string.strip().split()
+
     if force_params != None and param_name in force_params:
-        vals = list( force_params[ param_name ] )
-    else:
-        vals = value_string.strip().split()
+
+        force_vals = force_params[ param_name ]
+        new_len = max( len(vals), len(force_vals) )
+
+        vals = []
+        j = 0
+        for i in range(new_len):
+            vals.append( force_vals[j] )
+            j = (j+1)%len(force_vals)
 
     return vals
 

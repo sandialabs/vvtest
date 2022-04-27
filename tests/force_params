@@ -86,8 +86,41 @@ class force_params( vtu.vvtestTestCase ):
         assert vrun.countTestLines( 'param.hello=*' ) == 1
         assert vrun.countTestLines( 'foo.foo=*' ) == 2
 
-    def test_force_parameter_with_staged_tests(self):
+    def test_forcing_a_parameter_to_multiple_values(self):
         ""
+        util.writefile( "atest.vvt", """
+            #VVT: parameterize: A = 1
+            """ )
+        util.writefile( "btest.vvt", """
+            #VVT: parameterize: A = 1 2
+            """ )
+        util.writefile( "ctest.vvt", """
+            #VVT: parameterize: A = 1 2 3
+            """ )
+        util.writefile( "dtest.vvt", """
+            #VVT: parameterize (staged): A = 1
+            """ )
+        util.writefile( "etest.vvt", """
+            #VVT: parameterize (staged): A = 1 2
+            """ )
+        util.writefile( "ftest.vvt", """
+            #VVT: parameterize (staged): A = 1 2 3
+            """ )
+
+        vrun = vtu.runvvtest( '-S "A=8 9"' )
+        vrun.assertCounts( total=13, npass=13 )
+        self.assertEqual( vrun.getTestIds(),
+            [ 'atest.A=8', 'atest.A=9',
+              'btest.A=8', 'btest.A=9',
+              'ctest.A=8', 'ctest.A=9',
+              'dtest.A stage=1(A=8)', 'dtest.A stage=2(A=9)',
+              'etest.A stage=1(A=8)', 'etest.A stage=2(A=9)',
+              'ftest.A stage=1(A=8)', 'ftest.A stage=2(A=9)', 'ftest.A stage=3(A=8)' ] )
+
+    def test_force_parameter_with_multiple_staged_tests(self):
+        ""
+        # exactly two tests like this exposed a bug at one time
+
         util.writefile( "red.vvt", """
             #VVT: parameterize (staged): hello = world mars
             import vvtest_util as vvt
@@ -100,10 +133,12 @@ class force_params( vtu.vvtestTestCase ):
             """)
 
         vrun = vtu.runvvtest( '-S hello=jupiter' )
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.countTestLines( '*.hello stage*' ) == 2
-        assert vrun.countTestLines( 'red.hello stage*' ) == 1
-        assert vrun.countTestLines( 'blue.hello stage*' ) == 1
+        vrun.assertCounts( total=4, npass=4 )
+        self.assertEqual( vrun.getTestIds(),
+                          [ 'blue.hello stage=1(hello=jupiter)',
+                            'blue.hello stage=2(hello=jupiter)',
+                            'red.hello stage=1(hello=jupiter)',
+                            'red.hello stage=2(hello=jupiter)' ] )
 
 
 ############################################################################

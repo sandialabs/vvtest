@@ -107,6 +107,12 @@ Fixes:
 
 Changes:
 
+    - Using -S param=value on a test with a staged parameter will now retain
+      the number of stages as defined by the test's list of values.
+
+    - A test with duplicate parameter values will no longer create a parse
+      error. Instead, duplicate values are silently removed.
+
     - The platform configuration mechanism has been refactored, and the old
       way is now considered deprecated (expected to be removed in Feb 2023).
 

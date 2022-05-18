@@ -255,7 +255,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
                 print3( "with A="+vvt.A+" param expr true" )
             else:
                 print3( "with A="+vvt.A+" param expr false" )
-            if util.platform_expr( 'Junk or """+platname+"""' ):
+            if util.platform_expr( 'Junk or """+platname[:-2]+"""*' ):
                 print3( "plat expr true" )
             else:
                 print3( "plat expr false" )
@@ -263,7 +263,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
                 print3( "plat expr2 true" )
             else:
                 print3( "plat expr2 false" )
-            if util.option_expr( 'dbg and not intel' ):
+            if util.option_expr( 'db* and not intel' ):
                 print3( "option expr true" )
             else:
                 print3( "option expr false" )
@@ -278,7 +278,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             else
                 echo "with B=$B param expr false"
             fi
-            if platform_expr 'Junk or """+platname+"""'
+            if platform_expr 'Junk or """+platname[:-2]+"""*'
             then
                 echo "plat expr true"
             else
@@ -290,7 +290,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             else
                 echo "plat expr2 false"
             fi
-            if option_expr 'dbg and not intel'
+            if option_expr 'db* and not intel'
             then
                 echo "option expr true"
             else

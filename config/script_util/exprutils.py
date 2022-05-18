@@ -13,8 +13,8 @@ def platform_expr( expr ):
     name is "Linux" or if it is "Darwin".
     '''
     import vvtest_util as vvt
-    from libvvtest.wordexpr import WordExpression
-    wx = WordExpression( expr )
+    from libvvtest.wordexpr import WildcardWordExpression
+    wx = WildcardWordExpression( expr )
     return wx.evaluate( vvt.PLATFORM )
 
 def parameter_expr( expr ):
@@ -37,6 +37,6 @@ def option_expr( expr ):
     "-o dbg" or "-o intel" were given on the command line.
     '''
     import vvtest_util as vvt
-    from libvvtest.wordexpr import WordExpression
-    wx = WordExpression( expr )
+    from libvvtest.wordexpr import WildcardWordExpression
+    wx = WildcardWordExpression( expr )
     return wx.evaluate( vvt.OPTIONS )

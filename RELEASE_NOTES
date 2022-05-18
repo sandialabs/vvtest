@@ -1,6 +1,14 @@
 
 Improvements:
 
+    - The script_util.platform_expr() and script_util.option_expr() now take
+      shell-style wildcards in the expressions. For example,
+
+          import vvtest_util as vvt
+          from script_util import platform_expr
+          if platform_expr('Lin*'):
+              print ( "the platform name matches the expression" )
+
     - The list of test keywords is now available as a variable in the
       vvtest_util.py and vvtest_util.sh script fragments, such as
 

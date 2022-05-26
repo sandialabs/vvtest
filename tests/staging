@@ -111,14 +111,14 @@ class staged_parameters( vtu.vvtestTestCase ):
         self.assertRaises( TestSpecError,
                            parser.parseParameterSet, 'err1' )
 
-    def create_test_list(self, spec_file):
+    def create_test_list(self, spec_file, idflags={}):
         ""        
         tname = os.path.splitext( basename( spec_file ) )[0]
 
         parser = ScriptTestParser( spec_file )
         pset = parser.parseParameterSet( tname )
 
-        maker = TestMaker( parser )
+        maker = TestMaker( parser, idflags )
         testL = maker.generate_test_objects( tname, pset )
 
         return pset, testL
@@ -223,6 +223,10 @@ class staged_parameters( vtu.vvtestTestCase ):
             #VVT: parameterize (staged) : np = 1 8
             #VVT: parameterize          : sz = 1.1 2.2
             """ )
+        util.writefile( 'grey.vvt', """
+            #VVT: parameterize (staged) : np = 1 8
+            #VVT: parameterize          : sz = 1.1
+            """ )
         time.sleep(1)
 
         pset,testL = self.create_test_list( 'blue.vvt' )
@@ -231,11 +235,11 @@ class staged_parameters( vtu.vvtestTestCase ):
             prev = oracle.getPreviousStageDisplayID( ts )
             np = ts.getParameterValue( 'np' )
             if np == '2':
-                assert prev == None
+                self.assertEqual( prev, None )
             elif np == '8':
-                assert prev == 'blue.np stage=1(np=2)'
+                self.assertEqual( prev, 'blue.np stage=1(np=2)' )
             elif np == '1':
-                assert prev == 'blue.np stage=2(np=8)'
+                self.assertEqual( prev, 'blue.np stage=2(np=8)' )
             else:
                 raise Exception( 'unexpected np value: '+str(np) )
 
@@ -247,7 +251,7 @@ class staged_parameters( vtu.vvtestTestCase ):
             if np == '1':
                 assert prev == None
             elif np == '8':
-                assert prev == 'red.np.sz stage=1(np=1,sz=1.1)'
+                self.assertEqual( prev, 'red.np.sz stage=1(np=1,sz=1.1)' )
             else:
                 raise Exception( 'unexpected np value: '+str(np) )
 
@@ -257,12 +261,27 @@ class staged_parameters( vtu.vvtestTestCase ):
             prev = oracle.getPreviousStageDisplayID( ts )
             np = ts.getParameterValue( 'np' )
             if np == '1':
-                assert prev == None
+                self.assertEqual( prev, None )
             elif np == '8':
                 sz = ts.getParameterValue('sz')
-                assert prev == 'pink.np.sz='+str(sz)+' stage=1(np=1)'
+                self.assertEqual( prev, 'pink.np.sz='+str(sz)+' stage=1(np=1)' )
             else:
                 raise Exception( 'unexpected np value: '+str(np) )
+
+        for idflags in [{},{'minxdirs':True}]:
+            pset,testL = self.create_test_list( 'grey.vvt', idflags )
+            oracle = staging.StagingOracle( pset.getStagedGroup() )
+            for ts in testL:
+                prev = oracle.getPreviousStageDisplayID( ts )
+                np = ts.getParameterValue( 'np' )
+                if np == '1':
+                    self.assertEqual( prev, None )
+                elif np == '8':
+                    # should be the match string (no suppressions)
+                    sz = ts.getParameterValue('sz')
+                    self.assertEqual( prev, 'grey.np.sz='+str(sz)+' stage=1(np=1)' )
+                else:
+                    raise Exception( 'unexpected np value: '+str(np) )
 
     def test_specifications_with_staging(self):
         ""

@@ -310,7 +310,7 @@ def construct_testcase_creator( rtdata, opts, optD ):
     ""
     from libvvtest.testcreator import TestCreator
 
-    creator = TestCreator( make_idtraits( opts ),
+    creator = TestCreator( make_idflags( opts ),
                            rtdata.rtconfig.getPlatformName(),
                            rtdata.rtconfig.getOptionList(),
                            optD['param_dict'] )
@@ -318,9 +318,9 @@ def construct_testcase_creator( rtdata, opts, optD ):
     rtdata.creator = creator
 
 
-def make_idtraits( opts ):
+def make_idflags( opts ):
     ""
-    idtraits = {}
+    idflags = {}
 
     if opts.short_xdirs:
         try:
@@ -328,12 +328,12 @@ def make_idtraits( opts ):
         except Exception:
             raise FatalError( 'invalid --short-xdirs value: ' + \
                               repr(opts.short_xdirs) )
-        idtraits['numchars'] = nchars
+        idflags['numchars'] = nchars
 
     if opts.minimal_xdirs:
-        idtraits['minxdirs'] = True
+        idflags['minxdirs'] = True
 
-    return idtraits
+    return idflags
 
 
 def construct_testcase_factory( rtdata ):

@@ -737,10 +737,10 @@ def parse_single_test_file( filename, optionlist=[] ):
     return tL[0].getSpec()
 
 
-def make_fake_TestSpec( name='atest', keywords=['key1','key2'], idtraits=None ):
+def make_fake_TestSpec( name='atest', keywords=['key1','key2'], idflags=None ):
     ""
-    if idtraits is not None:
-        ts = testspec.TestSpec( name, os.getcwd(), 'sdir/'+name+'.vvt', idtraits )
+    if idflags is not None:
+        ts = testspec.TestSpec( name, os.getcwd(), 'sdir/'+name+'.vvt', idflags )
     else:
         ts = testspec.TestSpec( name, os.getcwd(), 'sdir/'+name+'.vvt' )
 

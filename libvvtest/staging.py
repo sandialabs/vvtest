@@ -80,7 +80,7 @@ class StagingOracle:
                           paramD,
                           self.param_nameL,
                           tspec.getIDTraits() )
-            return tid.computeDisplayString()
+            return tid.computeMatchString()
 
         return None
 

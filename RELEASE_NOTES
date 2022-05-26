@@ -102,6 +102,9 @@ Improvements:
 
 Fixes:
 
+    - Fix bug when using --minimal-xdirs. Staged tests would fail to run
+      correctly if there was also a single valued parameter.
+
     - A bug was fixed when using -S name=value with multiple staged tests.
 
     - A bug was fixed when using --minimal-xdirs and a test used a "depends on"

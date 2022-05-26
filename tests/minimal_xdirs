@@ -112,50 +112,50 @@ class unit_tests( unittest.TestCase ):
 
     def test_adjusting_idtraits_for_suppressions(self):
         ""
-        traits1 = {}
-        traits2 = testcreator.get_idtraits( traits1, None )
-        assert traits1 == {} and id(traits1) == id(traits2)
+        flags = {}
+        traits = testcreator.make_idtraits( flags, None )
+        assert flags == {} and id(flags) == id(traits)
 
-        traits1 = {}
-        traits2 = testcreator.get_idtraits( traits1, [] )
-        assert traits1 == {} and id(traits1) == id(traits2)
+        flags = {}
+        traits = testcreator.make_idtraits( flags, [] )
+        assert flags == {} and id(flags) == id(traits)
 
-        traits1 = { 'name':'value' }
-        traits2 = testcreator.get_idtraits( traits1, None )
-        assert traits1 == {'name':'value'} and id(traits1) == id(traits2)
+        flags = { 'name':'value' }
+        traits = testcreator.make_idtraits( flags, None )
+        assert flags == {'name':'value'} and id(flags) == id(traits)
 
-        traits1 = { 'name':'value' }
-        traits2 = testcreator.get_idtraits( traits1, [] )
-        assert traits1 == {'name':'value'} and id(traits1) == id(traits2)
+        flags = { 'name':'value' }
+        traits = testcreator.make_idtraits( flags, [] )
+        assert flags == {'name':'value'} and id(flags) == id(traits)
 
-        traits1 = { 'minxdirs':True }
-        traits2 = testcreator.get_idtraits( traits1, None )
-        assert traits1 == { 'minxdirs':True }
-        assert traits2 == {}
+        flags = { 'minxdirs':True }
+        traits = testcreator.make_idtraits( flags, None )
+        self.assertEqual( flags, { 'minxdirs':True } )
+        self.assertEqual( traits, {'minxdirs':[]} )
 
-        traits1 = { 'minxdirs':True }
-        traits2 = testcreator.get_idtraits( traits1, [] )
-        assert traits1 == { 'minxdirs':True }
-        assert traits2 == {}
+        flags = { 'minxdirs':True }
+        traits = testcreator.make_idtraits( flags, [] )
+        self.assertEqual( flags, { 'minxdirs':True } )
+        self.assertEqual( traits, {'minxdirs':[]} )
 
-        traits1 = { 'minxdirs':True }
+        flags = { 'minxdirs':True }
         sup = ['A']
-        traits2 = testcreator.get_idtraits( traits1, sup )
-        assert traits1 == { 'minxdirs':True }
-        assert traits2 == { 'minxdirs':['A'] }
-        assert id(traits2['minxdirs']) == id(sup)
+        traits = testcreator.make_idtraits( flags, sup )
+        self.assertEqual( flags, { 'minxdirs':True } )
+        self.assertEqual( traits, { 'minxdirs':['A'] } )
+        self.assertEqual( id(traits['minxdirs']), id(sup) )
 
-        traits1 = { 'minxdirs':True, 'name':'value' }
-        traits2 = testcreator.get_idtraits( traits1, [] )
-        assert traits1 == { 'minxdirs':True, 'name':'value' }
-        assert traits2 == { 'name':'value' }
+        flags = { 'minxdirs':True, 'name':'value' }
+        traits = testcreator.make_idtraits( flags, [] )
+        self.assertEqual( flags, { 'minxdirs':True, 'name':'value' } )
+        self.assertEqual( traits, {'minxdirs':[], 'name':'value'} )
 
-        traits1 = { 'minxdirs':True, 'name':'value' }
+        flags = { 'minxdirs':True, 'name':'value' }
         sup = ['A']
-        traits2 = testcreator.get_idtraits( traits1, sup )
-        assert traits1 == { 'minxdirs':True, 'name':'value' }
-        assert traits2 == { 'minxdirs':['A'], 'name':'value' }
-        assert id(traits2['minxdirs']) == id(sup)
+        traits = testcreator.make_idtraits( flags, sup )
+        self.assertEqual( flags, { 'minxdirs':True, 'name':'value' } )
+        self.assertEqual( traits, { 'minxdirs':['A'], 'name':'value' } )
+        self.assertEqual( id(traits['minxdirs']), id(sup) )
 
     def test_suppression_of_parameters_in_test_id(self):
         ""
@@ -227,8 +227,8 @@ class integration_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : bar = x
             """ )
 
-        idtraits = {}
-        tc = testcreator.TestCreator( idtraits )
+        idflags = {}
+        tc = testcreator.TestCreator( idflags )
         tL = check_sort( tc.fromFile( 'atest.vvt' ) )
 
         assert tL[0].getExecuteDirectory() == 'atest.bar=x.foo=a'
@@ -236,8 +236,8 @@ class integration_tests( vtu.vvtestTestCase ):
         assert tL[1].getExecuteDirectory() == 'atest.bar=x.foo=b'
         assert tL[1].getDisplayString()    == 'atest.bar=x.foo=b'
 
-        idtraits = { 'minxdirs':True }
-        tc = testcreator.TestCreator( idtraits )
+        idflags = { 'minxdirs':True }
+        tc = testcreator.TestCreator( idflags )
         tL = check_sort( tc.fromFile( 'atest.vvt' ) )
 
         assert tL[0].getExecuteDirectory() == 'atest.foo=a'
@@ -328,6 +328,19 @@ class command_line_tests( vtu.vvtestTestCase ):
 
         assert len(depdirs) == 1
         assert os.path.samefile( depdirs[0], tdir+'/step1.' )
+
+    def test_mixing_minimal_xdirs_with_staging(self):
+        ""
+        util.writefile( 'meal.vvt', """
+            # VVT: parameterize (staged) : breakfast = first second
+            # VVT: parameterize : food = banana
+            """ )
+
+        vrun = vtu.runvvtest( '--minimal-xdirs' )
+        vrun.assertCounts( total=2, npass=2 )
+        self.assertEquals( sorted(vrun.getTestIds()),
+                           ['meal.breakfast stage=1(breakfast=first)',
+                            'meal.breakfast stage=2(breakfast=second)'] )
 
 
 ############################################################################

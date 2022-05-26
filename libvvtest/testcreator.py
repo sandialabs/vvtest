@@ -15,7 +15,7 @@ from .parsexml import XMLTestParser
 
 class TestCreator:
 
-    def __init__(self, idtraits={},
+    def __init__(self, idflags={},
                        platname=None,
                        optionlist=[],
                        force_params=None ):
@@ -24,7 +24,7 @@ class TestCreator:
         are in the 'force_params' dictionary will have their values replaced
         for that parameter name.
         """
-        self.idtraits = idtraits
+        self.idflags = idflags
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist
         self.force_params = force_params
@@ -91,7 +91,7 @@ class TestCreator:
                                        self.optionlist,
                                        self.force_params )
 
-        maker = TestMaker( parser, self.idtraits )
+        maker = TestMaker( parser, self.idflags )
 
         return maker
 
@@ -106,10 +106,10 @@ def map_extension_to_spec_form( filepath ):
 
 class TestMaker:
 
-    def __init__(self, parser, idtraits={}):
+    def __init__(self, parser, idflags={}):
         ""
         self.parser = parser
-        self.idtraits = idtraits
+        self.idflags = idflags
 
     def createTests(self):
         ""
@@ -171,7 +171,7 @@ class TestMaker:
             raise TestSpecError( 'an analyze requires at least one ' + \
                                  'parameter to be defined' )
 
-        idt = get_idtraits( self.idtraits, [] )
+        idt = make_idtraits( self.idflags, [] )
         parent = self.parser.makeTestInstance( testname, idt )
 
         parent.setIsAnalyze()
@@ -185,16 +185,16 @@ class TestMaker:
         testL = []
 
         if len( paramset.getParameters() ) == 0:
-            idt = get_idtraits( self.idtraits, [] )
+            idt = make_idtraits( self.idflags, [] )
             t = self.parser.makeTestInstance( tname, idt )
             testL.append(t)
 
         else:
-            suppress = get_suppressed_parameters( paramset, self.idtraits )
+            suppress = get_suppressed_parameters( paramset, self.idflags )
 
             # take a cartesian product of all the parameter values
             for pdict in paramset.getInstances():
-                idt = get_idtraits( self.idtraits, suppress )
+                idt = make_idtraits( self.idflags, suppress )
                 t = self.parser.makeTestInstance( tname, idt )
                 t.setParameters( pdict )
                 t.setParameterSet( paramset )
@@ -203,9 +203,9 @@ class TestMaker:
         return testL
 
 
-def get_suppressed_parameters( paramset, idtraits ):
+def get_suppressed_parameters( paramset, idflags ):
     ""
-    if 'minxdirs' in idtraits:
+    if 'minxdirs' in idflags:
 
         keyvals = {}
         for params in paramset.getInstances():
@@ -229,21 +229,17 @@ def get_suppressed_parameters( paramset, idtraits ):
         return suppress
 
     else:
-        return None
+        return []
 
 
-def get_idtraits( idtraits, suppressed ):
-    ""
-    if 'minxdirs' in idtraits:
-
-        idt = dict( idtraits )
-
-        if suppressed:
-            idt['minxdirs'] = suppressed
-        else:
-            del idt['minxdirs']
-
+def make_idtraits( idflags, suppressed ):
+    """
+    idtraits are almost a copy of the idflags dict, except the minxdirs
+    is handled specially
+    """
+    if 'minxdirs' in idflags:
+        idt = dict( idflags )
+        idt['minxdirs'] = suppressed or []
         return idt
-
     else:
-        return idtraits
+        return idflags

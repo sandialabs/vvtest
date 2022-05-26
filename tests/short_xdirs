@@ -153,7 +153,7 @@ class using_short_xdirs( vtu.vvtestTestCase ):
         lds = outpututils.location_display_string( tspec, trpath, cwd )
         assert lds == 'sdir/atest.np=4'
 
-        tspec = vtu.make_fake_TestSpec( idtraits={'numchars':5} )
+        tspec = vtu.make_fake_TestSpec( idflags={'numchars':5} )
 
         xdir = tspec.getExecuteDirectory()
         displ = tspec.getDisplayString()

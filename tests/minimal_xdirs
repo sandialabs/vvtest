@@ -254,6 +254,7 @@ class command_line_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : foo = x
             import vvtest_util as vvt
             assert vvt.foo == 'x'
+            assert vvt.TESTID == 'atest.foo=x'
             """ )
 
         util.writefile( 'btest.vvt', """
@@ -264,8 +265,10 @@ class command_line_tests( vtu.vvtestTestCase ):
             if '--analyze' in sys.argv[1:]:
                 assert len( vvt.DEPDIRS ) == 1
                 assert os.path.basename( vvt.DEPDIRS[0] ) == 'btest.'
+                assert vvt.TESTID == 'btest'
             else:
                 assert vvt.foo == 'y'
+                assert vvt.TESTID == 'btest.foo=y'
             """ )
 
         util.writefile( 'ctest.vvt', """
@@ -278,9 +281,14 @@ class command_line_tests( vtu.vvtestTestCase ):
                 bnL = [ os.path.basename(d) for d in vvt.DEPDIRS ]
                 assert len(bnL) == 2
                 assert sorted(bnL) == ['ctest.bar=a','ctest.bar=b']
+                assert vvt.TESTID == 'ctest'
             else:
                 assert vvt.foo == 'z'
                 assert vvt.bar in ['a','b']
+                if vvt.bar == 'a':
+                    assert vvt.TESTID == 'ctest.bar=a.foo=z'
+                else:
+                    assert vvt.TESTID == 'ctest.bar=b.foo=z'
             """ )
 
         for batch in [False,True]:

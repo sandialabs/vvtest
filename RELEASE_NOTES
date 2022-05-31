@@ -118,6 +118,13 @@ Fixes:
 
 Changes:
 
+    - For each test, the vvtest_util.py and .sh files are written to the
+      test execution directory, and those contain the TESTID variable. The
+      value of this variable has changed a little when the --minimal-xdirs
+      option is given and for staged tests. The value now is always the same
+      regardless of whether --minimal-xdirs is given or not. Also, the stage
+      info is added for staged tests.
+
     - Using -S param=value on a test with a staged parameter will now retain
       the number of stages as defined by the test's list of values.
 

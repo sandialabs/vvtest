@@ -25,7 +25,7 @@ class TestID:
 
     def computeExecuteDirectory(self):
         ""
-        paramL = self._get_parameters( compress_stage=True )
+        paramL = self._get_parameters( compress_stage=True, compress_hidden=True )
         return self._compute_execute_path( paramL )
 
     def computeDisplayString(self):

@@ -56,7 +56,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
         w.add( 'import os, sys',
                '',
                'NAME = '+repr(tname),
-               'TESTID = '+repr( testobj.getDisplayString() ),
+               'TESTID = '+repr( testobj.getTestID().computeMatchString() ),
                'PLATFORM = '+repr(platname),
                'COMPILER = '+repr(cplrname),
                'VVTESTSRC = '+repr(tdir),
@@ -168,7 +168,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
 
         w.add( '',
                'NAME="'+tname+'"',
-               'TESTID="'+testobj.getDisplayString()+'"',
+               'TESTID="'+testobj.getTestID().computeMatchString()+'"',
                'PLATFORM="'+platname+'"',
                'COMPILER="'+cplrname+'"',
                'VVTESTSRC="'+tdir+'"',

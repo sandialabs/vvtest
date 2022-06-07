@@ -89,25 +89,50 @@ class rundir_usage( vtu.vvtestTestCase ):
         assert len( glob( cdir+'/TestResults*' ) ) == 0
         vrun.assertCounts( total=1, npass=1 )
 
-    def test_using_rundir_option(self):
+    def test_rundir_with_single_path_segment(self):
         ""
         write_unit_test_files()
-        time.sleep(1)
 
         for batch in [False,True]:
 
-            vtu.remove_results()
+            rdir = 'myrundir.'+str(batch)
 
-            if os.path.exists( 'myrundir' ):
-                shutil.rmtree( 'myrundir' )
-
-            vrun = vtu.runvvtest( '--run-dir myrundir', batch=batch )
+            vrun = vtu.runvvtest( '--run-dir '+repr(rdir), batch=batch )
             vrun.assertCounts( total=2, npass=2 )
 
             assert len( glob( 'TestResults*' ) ) == 0
-            assert os.path.isdir( 'myrundir' )
-            logL = glob( 'myrundir/test*/execute.log' )
-            assert len(logL) == 2
+            assert os.path.isdir( rdir )
+            assert len( glob( rdir+'/*/execute.log' ) ) == 2
+
+    def test_rundir_as_an_absolute_path(self):
+        ""
+        write_unit_test_files()
+        rdir = abspath( 'myrundir' )
+
+        vrun = vtu.runvvtest( '--run-dir '+rdir )
+        vrun.assertCounts( total=2, npass=2 )
+        assert len( glob( rdir+'/*/execute.log' ) ) == 2
+
+    def test_rundir_with_multiple_path_segments(self):
+        ""
+        write_unit_test_files()
+
+        vrun = vtu.runvvtest( '--run-dir foo/bar' )
+        vrun.assertCounts( total=2, npass=2 )
+        assert len( glob( 'foo/bar/*/execute.log' ) ) == 2
+
+    def test_rundir_with_multiple_path_segments_as_absolute_path(self):
+        ""
+        os.mkdir('xdir')
+        write_unit_test_files()
+
+        rdir = abspath('foo/bar')
+        tsrc = os.getcwd()
+
+        with util.change_directory('xdir'):
+            vrun = vtu.runvvtest( '--run-dir '+rdir+' '+tsrc )
+            vrun.assertCounts( total=2, npass=2 )
+        assert len( glob( 'foo/bar/*/execute.log' ) ) == 2
 
     def test_using_rundir_option_and_M_option(self):
         ""
@@ -136,14 +161,15 @@ class rundir_usage( vtu.vvtestTestCase ):
             logL = glob( 'myrundir/test*/execute.log' )
             assert len(logL) == 2
 
-    def test_rundir_can_only_be_a_single_word(self):
+    def test_multi_segment_rundir_path_and_M_option(self):
         ""
+        os.mkdir( 'mirdir' )
+        mirdir = abspath('mirdir')
         write_unit_test_files()
-        time.sleep(1)
 
-        self.assertRaises( Exception, vtu.runvvtest, '--run-dir foo/bar' )
-        self.assertRaises( Exception, vtu.runvvtest,
-                           '--run-dir '+os.path.abspath('myrundir') )
+        vrun = vtu.runvvtest( '--run-dir my/rundir -M '+mirdir )
+        vrun.assertCounts( total=2, npass=2 )
+        assert len( glob( 'my/rundir/test*/execute.log' ) ) == 2
 
 
 def write_unit_test_files():

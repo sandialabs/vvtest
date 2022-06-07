@@ -5,6 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
+from os.path import join as pjoin
 
 from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
@@ -17,9 +18,9 @@ class TestFileScanner:
                        specform=None,
                        warning_output_stream=sys.stdout):
         """
-        If 'specform' is not None, it must be 'vvt' or 'xml'.  The scanner
-        will only pick up files for those test specification forms.  Default
-        is both 'vvt' and 'xml'.
+        If 'specform' is not None, it must be a list of strings, such as
+        'vvt' and 'xml'.  The scanner will only pick up files for those test
+        specification forms.  Default is only 'vvt' files.
         """
         self.creator = creator
         self.fact = tcasefactory
@@ -73,8 +74,8 @@ class TestFileScanner:
             assert basedir+os.sep == d[:len(basedir)+1]
             reldir = d[len(basedir)+1:]
 
-        # scan files with extension "xml" or "vvt"; soft links to directories
-        # are skipped by os.walk so special handling is performed
+        # scan files with extension specific extensions; soft links to
+        # directories are skipped by os.walk so special handling is performed
 
         for f in files:
             bn,ext = os.path.splitext(f)
@@ -87,7 +88,11 @@ class TestFileScanner:
             rd = os.path.join( d, subd )
             if not os.path.exists(rd) or \
                     subd.startswith("TestResults.") or \
-                    subd.startswith("Build_"):
+                    subd.startswith("Build_") or \
+                    is_vvtest_cache_directory(rd):
+                # Note: using specific directory names to exclude is not
+                # necessary anymore (because of the vvtest.cache file), but
+                # is benign (until its not :)
                 dirs.remove( subd )
             elif os.path.islink(rd):
                 linkdirs.append( rd )
@@ -162,6 +167,25 @@ class TestFileScanner:
             return True
 
         return False
+
+
+def is_vvtest_cache_directory( cdir ):
+    ""
+    fname = pjoin( cdir, 'vvtest.cache' )
+    if os.path.exists( fname ):
+        return True
+
+    # June 2022: name changed from test.cache to vvtest.cache, but look
+    #            for the old name for a while (a year?)
+    # this note is also in vvtest and location.py
+    fname = pjoin( cdir, 'test.cache' )
+    if os.path.exists( fname ):
+        with open( fname, 'rt' ) as fp:
+            ver = fp.read(20).strip()
+        if ver.startswith('VERSION='):
+            return True
+
+    return False
 
 
 def print_warning( stream, *args ):

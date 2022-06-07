@@ -121,9 +121,7 @@ def run_vvtest( rtdata, opts, optD ):
         baseline_tests( opts, optD, rtdata )
 
     elif opts.extract:
-        extract_test_files( opts.scan_type,
-                            optD['param_dict'],
-                            opts.extract, rtdata )
+        extract_test_files( optD['param_dict'], opts.extract, rtdata )
 
     else:
 
@@ -186,7 +184,7 @@ def construct_and_process_cache_file( rtdata, opts, optD ):
 
     if cache_file:
         is_restart = True
-        rtdata.cash.setCacheFilename( dirname( cache_file ) )
+        rtdata.cash.setCacheDirectory( dirname( cache_file ) )
         check_options_not_allowed_for_restart( opts, optD )
         rtdata.cash.readCache()
     else:
@@ -292,7 +290,7 @@ def compute_testing_directory( rtdata, opts, optD ):
                                          optD['offopts'],
                                          rtdata.plat.getName() )
 
-    rtdata.cash.setCacheFilename( td )
+    rtdata.cash.setCacheDirectory( td )
     rtdata.rtinfo.setInfo( rundir=td )
     rtdata.testdir = td
 
@@ -699,7 +697,7 @@ def generate_test_list( opts, optD, rtdata ):
     print3( "\nTest directory:", basename( rtdata.testdir ) )
 
 
-def extract_test_files( scan_type, param_dict, target_dir, rtdata ):
+def extract_test_files( param_dict, target_dir, rtdata ):
     """
     Uses all the regular filtering mechanisms to gather tests from a test
     source area and copies the files used for each test into a separate
@@ -908,15 +906,17 @@ class CacheFileHandler:
         self.optD = optD
         self.rtconfig = rtconfig
 
-        self.filename = None
+        self.cachedir = None
 
-    def setCacheFilename(self, test_dir):
+    def setCacheDirectory(self, test_dir):
         ""
-        self.filename = pjoin( test_dir, 'test.cache' )
+        self.cachedir = test_dir
 
     def writeCache(self, perms):
         ""
-        with open( self.filename, "w" ) as fp:
+        fname = pjoin( self.cachedir, 'vvtest.cache' )
+
+        with open( fname, "w" ) as fp:
             fp.write( 'VERSION=' + str(version) + '\n' )
             if self.opts.plat:
                   fp.write( 'PLATFORM=' + self.opts.plat.strip() + '\n' )
@@ -935,11 +935,19 @@ class CacheFileHandler:
             if self.opts.short_xdirs:
                 fp.write( 'SHORT_XDIRS='+self.opts.short_xdirs + '\n' )
 
-        perms.apply( abspath(self.filename) )
+        perms.apply( abspath(fname) )
 
     def readCache(self):
         ""
-        with open( self.filename, "r" ) as fp:
+        fname = pjoin( self.cachedir, 'vvtest.cache' )
+
+        # June 2022: name changed from test.cache to vvtest.cache, but look
+        #            for the old name for a while (a year?)
+        # this note is also in location.py and scanner.py
+        if not os.path.exists(fname):
+            fname = pjoin( self.cachedir, 'test.cache' )
+
+        with open( fname, "r" ) as fp:
             write_version = 0
             for line in fp.readlines():
                 line = line.strip()

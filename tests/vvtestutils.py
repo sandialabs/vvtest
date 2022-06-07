@@ -442,6 +442,12 @@ def vvtest_command_line( *cmd_args, **options ):
         # add -v when running in order to extract the full test list
         cmdL.append( '-v' )
 
+    if '--scan-type' not in argL:
+        # June 2022: the default scan type changed to only vvt, so add xml
+        #            here because so many tests still use xml; when xml support
+        #            is removed, then this logic can be removed
+        cmdL.extend( ['--scan-type','vvt,xml'] )
+
     if options.get( 'addplatform', True ) and '--plat' not in argL:
         cmdL.extend( [ '--plat', core_platform_name() ] )
 

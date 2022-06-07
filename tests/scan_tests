@@ -30,6 +30,20 @@ from libvvtest.tcfactory import TestCaseFactory
 
 class TestList_scan_behavior( vtu.vvtestTestCase ):
 
+    def test_getting_the_valid_test_extensions(self):
+        ""
+        creator = TestCreator()
+
+        # default is just *.vvt now [June 2022]
+        self.assertEquals( sorted(creator.getValidFileExtensions()), ['.vvt'] )
+
+        self.assertEquals( sorted(creator.getValidFileExtensions(['vvt'])), ['.vvt'] )
+        self.assertEquals( sorted(creator.getValidFileExtensions(['xml'])), ['.xml'] )
+        self.assertEquals( sorted(creator.getValidFileExtensions(['xml','vvt'])), ['.vvt','.xml'] )
+
+        self.assertEquals( sorted(creator.getValidFileExtensions([])), ['.vvt'] )
+        self.assertEquals( sorted(creator.getValidFileExtensions(None)), ['.vvt'] )
+
     def test_scan_a_directory_for_tests(self):
         ""
         util.writefile( 'subdir/scr.vvt', """
@@ -44,7 +58,9 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        tlist,scan = construct_TestList_and_TestFileScanner()
+        # as of June 2022, the default extension became only *.vvt files
+
+        tlist,scan = construct_TestList_and_TestFileScanner( specform=['vvt','xml'] )
         scan.scanPath( tlist, 'subdir' )
 
         tL = list( tlist.getTests() )
@@ -95,7 +111,7 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         self.write_vvt_and_xml_test_files()
         time.sleep(1)
 
-        tlist,scan = construct_TestList_and_TestFileScanner( specform='vvt' )
+        tlist,scan = construct_TestList_and_TestFileScanner( specform=['vvt'] )
         scan.scanPath( tlist, '.' )
 
         tL = list( tlist.getTests() )
@@ -103,7 +119,7 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         assert tL[0].getSpec().getName() == 'scr'
         assert tL[0].getSpec().getFilepath() == 'scr.vvt'
 
-        tlist,scan = construct_TestList_and_TestFileScanner( specform='xml' )
+        tlist,scan = construct_TestList_and_TestFileScanner( specform=['xml'] )
         scan.scanPath( tlist, '.' )
 
         tL = list( tlist.getTests() )
@@ -180,11 +196,32 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         assert not out.strip()
         assert len( tL ) == 0
 
+    def test_scans_ignore_previous_results_directories(self):
+        ""
+        os.mkdir( 'xdir1' )
+        os.mkdir( 'xdir2' )
 
-def scan_path_with_warnings_output( path ):
+        util.writefile( 'src/atest.vvt', """
+            pass
+            """ )
+
+        with util.change_directory( 'src' ):
+            vtu.runvvtest().assertCounts( total=1, npass=1 )
+
+        with util.change_directory( 'xdir1' ):
+            vtu.runvvtest( '../src' ).assertCounts( total=1, npass=1 )
+
+        with util.change_directory( 'src' ):
+            vtu.runvvtest( '--run-dir rdir' ).assertCounts( total=1, npass=1 )
+
+        with util.change_directory( 'xdir2' ):
+            vtu.runvvtest( '../src' ).assertCounts( total=1, npass=1 )
+
+
+def scan_path_with_warnings_output( path, specform=['vvt','xml'] ):
     ""
     sio = StringIO()
-    tlist,scan = construct_TestList_and_TestFileScanner( ostream=sio )
+    tlist,scan = construct_TestList_and_TestFileScanner( specform=specform, ostream=sio )
     scan.scanPath( tlist, path )
     val = sio.getvalue()
 

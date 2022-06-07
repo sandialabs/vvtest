@@ -31,12 +31,16 @@ class TestCreator:
 
     def getValidFileExtensions(self, specform=None):
         ""
-        if specform == 'vvt':
-            return ['.vvt']
-        elif specform == 'xml':
-            return ['.xml']
+        if specform:
+            ext = set()
+            for form in specform:
+                if form == 'vvt':
+                    ext.add( '.vvt' )
+                elif form == 'xml':
+                    ext.add( '.xml' )
+            return list( ext )
         else:
-            return ['.xml','.vvt']
+            return ['.vvt']
 
     def fromFile(self, relpath, rootpath=None):
         """

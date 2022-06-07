@@ -101,6 +101,13 @@ class PermissionSetter:
             else:
                 self.specs.apply( path )
 
+    def set(self, path):
+        """
+        Apply permissions to the given path only.
+        """
+        if self.specs:
+            self.specs.apply( path )
+
 
 def make_permission_specs( speclist ):
     ""

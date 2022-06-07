@@ -180,14 +180,14 @@ class test_results_directory( vtu.vvtestTestCase ):
         self.assertRaises( Exception,
                 determine_test_directory, 'subdir', None, 'some/path' )
 
-        td = determine_test_directory( None, '/path/to/test.cache', None )
+        td = determine_test_directory( None, '/path/to/vvtest.cache', None )
         assert td == normpath( '/path/to' )
 
-        td = determine_test_directory( 'foo', '/path/to/test.cache', 'bar' )
+        td = determine_test_directory( 'foo', '/path/to/vvtest.cache', 'bar' )
         assert td == normpath( '/path/to' )
 
         self.assertRaises( Exception,
-                determine_test_directory, None, 'path/to/test.cache', None )
+                determine_test_directory, None, 'path/to/vvtest.cache', None )
 
     def test_the_test_subdirectory_name(self):
         ""
@@ -275,18 +275,18 @@ class test_results_directory( vtu.vvtestTestCase ):
         scr = util.globfile( '*/vvtest_rundir' )
         assert len( os.listdir(scr) ) == 0
 
-    def test_making_a_directory(self):
+    def test_making_a_leaf_directory(self):
         ""
         os.mkdir( 'existing' )
         util.writefile( 'afile', 'junk' )
 
-        location.check_and_make_directory( abspath('newdir') )
+        location.make_leaf_directory( abspath('newdir') )
         assert not os.path.islink( 'newdir' ) and os.path.isdir( 'newdir' )
 
-        location.check_and_make_directory( abspath('existing') )
+        location.make_leaf_directory( abspath('existing') )
         assert not os.path.islink( 'existing' ) and os.path.isdir( 'existing' )
 
-        location.check_and_make_directory( abspath('afile') )
+        location.make_leaf_directory( abspath('afile') )
         assert not os.path.islink( 'afile' ) and os.path.isdir( 'afile' )
 
         if not windows:
@@ -294,39 +294,65 @@ class test_results_directory( vtu.vvtestTestCase ):
             os.symlink( abspath('existing'), 'goodlink' )
             os.symlink( abspath('noexist'), 'badlink' )
 
-            location.check_and_make_directory( abspath('goodlink') )
+            location.make_leaf_directory( abspath('goodlink') )
             assert os.path.islink( 'goodlink' ) and os.path.isdir( 'goodlink' )
 
-            location.check_and_make_directory( abspath('badlink') )
+            location.make_leaf_directory( abspath('badlink') )
             assert not os.path.islink( 'badlink' ) and os.path.isdir( 'badlink' )
+
+    def test_make_a_directory_path(self):
+        ""
+        os.mkdir( 'sdir' )
+        os.symlink( 'dontcare', 'broken' )  # create broken soft link
+
+        perms = PermissionSetter( os.getcwd(), None )
+
+        location.make_directory( 'foo/bar', perms )
+        assert os.path.isdir( 'foo/bar' )
+
+        location.make_directory( '.', perms )
+        location.make_directory( '', perms )
+        location.make_directory( '..', perms )
+
+        with util.change_directory( 'sdir' ):
+            location.make_directory( '../some/name', perms )
+        assert os.path.isdir( 'some/name' )
+
+        location.make_directory( abspath('moon/rise'), perms )
+        assert os.path.isdir( 'moon/rise' )
+
+        location.make_directory( abspath('broken/segment'), perms )
+        assert os.path.isdir( 'broken/segment' )
 
     @not_windows
     def test_force_linking_a_directory(self):
         ""
         # symlinks not reliable on Windows
 
+        perms = PermissionSetter( os.getcwd(), None )
+
         util.writefile( 'somedir/afile', 'foo' )
         util.writefile( 'somefile', 'bar' )
 
-        location.force_link_directory( abspath('frompath'), abspath('topath') )
+        location.force_link_directory( abspath('frompath'), abspath('topath'), perms )
         assert os.path.islink( 'frompath' )
         assert os.readlink('frompath') == abspath('topath')
 
         # idempotent
-        location.force_link_directory( abspath('frompath'), abspath('topath') )
+        location.force_link_directory( abspath('frompath'), abspath('topath'), perms )
         assert os.path.islink( 'frompath' )
         assert os.readlink('frompath') == abspath('topath')
 
         # same from path but different target
-        location.force_link_directory( abspath('frompath'), abspath('target') )
+        location.force_link_directory( abspath('frompath'), abspath('target'), perms )
         assert os.path.islink( 'frompath' )
         assert os.readlink('frompath') == abspath('target')
 
-        location.force_link_directory( abspath('somedir'), abspath('t2') )
+        location.force_link_directory( abspath('somedir'), abspath('t2'), perms )
         assert os.path.islink( 'somedir' )
         assert os.readlink('somedir') == abspath('t2')
 
-        location.force_link_directory( abspath('somefile'), abspath('t3') )
+        location.force_link_directory( abspath('somefile'), abspath('t3'), perms )
         assert os.path.islink( 'somefile' )
         assert os.readlink('somefile') == abspath('t3')
 

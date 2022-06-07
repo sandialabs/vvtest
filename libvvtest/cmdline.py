@@ -109,9 +109,10 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '--include-tdd', action='store_true',
         help='Include tests that contain the keyword "TDD", which are '
              'normally not included.' )
-    grp.add_argument( '--scan-type',
-        help='Value can be "vvt" or "xml", and restricts test scanning to '
-             'one type of test specification (extension). Default is both.' )
+    grp.add_argument( '--scan-type', metavar='TYPE', dest='scan_type', action='append',
+        help='Value can be "vvt" or "xml" or "vvt,xml", and restricts test '
+             'file scanning to certain type(s) of test specification (i.e., the '
+             'test file extensions). Default is only *.vvt files.' )
 
     # behavior
     grp = psr.add_argument_group( 'Runtime behavior' )
@@ -129,13 +130,14 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '-C', '--postclean', dest='postclean', action='store_true',
         help='Clean the test execution directory after a "pass".' )
     grp.add_argument( '--force', action='store_true',
-        help='Force vvtest to run even if it appears to be running in '
-             'another process.' )
+        help='Force vvtest to run even if a separate vvtest process appears to '
+             'be running.' )
     grp.add_argument( '-M', metavar='PATH', dest='dash_M',
         help='Use this path to contain the test executions.' )
     grp.add_argument( '--run-dir',
-        help='The name of the subdir under the current working '
-             'directory to contain the test execution results.' )
+        help='The name of the directory to contain the test execution results. '
+             'Defaults to TestResults.*, where * is the platform name plus '
+             'any -o options.' )
     grp.add_argument( '-L', dest='dash_L', action='store_true',
         help='Do not redirect test output to log files.' )
     grp.add_argument( '-a', '--analyze', dest='analyze', action='store_true',
@@ -349,11 +351,11 @@ def adjust_options_and_create_derived_options( opts ):
         derived_opts['platopt_dict'] = platD
 
         errtype = 'batch-limit'
-        if opts.batch_limit != None and opts.batch_limit < 0:
+        if opts.batch_limit is not None and opts.batch_limit < 0:
             raise Exception( 'limit cannot be negative' )
 
         errtype = 'batch-length'
-        if opts.batch_length != None and opts.batch_length < 0:
+        if opts.batch_length is not None and opts.batch_length < 0:
             raise Exception( 'length cannot be negative' )
 
         errtype = 'on/off options'
@@ -362,25 +364,24 @@ def adjust_options_and_create_derived_options( opts ):
         derived_opts['offopts'] = offL
 
         errtype = '--run-dir'
-        if opts.run_dir != None:
-            d = opts.run_dir
-            if os.sep in d or d != os.path.basename(d):
-                raise Exception( 'must be a non-empty, single path segment' )
+        if opts.run_dir is not None:
+            if not opts.run_dir:
+                raise Exception( 'cannot be an empty string' )
 
         errtype = 'num procs'
-        if opts.dash_n != None and opts.dash_n <= 0:
+        if opts.dash_n is not None and opts.dash_n <= 0:
             raise Exception( 'must be positive' )
 
         errtype = 'max procs'
-        if opts.dash_N != None and float(opts.dash_N) <= 0:
+        if opts.dash_N is not None and float(opts.dash_N) <= 0:
             raise Exception( 'must be positive' )
 
         errtype = 'num devices'
-        if opts.devices != None and opts.devices <= 0:
+        if opts.devices is not None and opts.devices <= 0:
             raise Exception( 'must be positive' )
 
         errtype = 'max devices'
-        if opts.max_devices != None and float(opts.max_devices) <= 0:
+        if opts.max_devices is not None and float(opts.max_devices) <= 0:
             raise Exception( 'must be positive' )
 
         errtype = 'tmin/tmax/tsum'
@@ -390,12 +391,16 @@ def adjust_options_and_create_derived_options( opts ):
         opts.tsum = sm
 
         errtype = '-j option'
-        if opts.bin_dir != None:
+        if opts.bin_dir is not None:
             opts.bin_dir = os.path.normpath( os.path.abspath( opts.bin_dir ) )
 
         errtype = '--results-date'
-        if opts.results_date != None:
+        if opts.results_date is not None:
             opts.results_date = check_convert_date_spec( opts.results_date )
+
+        errtype = '--scan-type'
+        if opts.scan_type is not None:
+            opts.scan_type = check_adjust_scan_type( opts.scan_type )
 
     except Exception:
         sys.stderr.write( '*** error: command line problem with ' + \
@@ -410,7 +415,7 @@ def create_search_regex_list( pattern_list ):
     ""
     regexL = None
 
-    if pattern_list != None:
+    if pattern_list is not None:
 
         regexL = []
 
@@ -516,15 +521,15 @@ def gather_on_off_values( onoff ):
 
 def convert_test_time_options( tmin, tmax, tsum ):
     ""
-    if tmin != None:
+    if tmin is not None:
         tmin = float(tmin)
 
-    if tmax != None:
+    if tmax is not None:
         tmax = float(tmax)
         if tmax < 0.0:
             raise Exception( 'tmax cannot be negative' )
 
-    if tsum != None:
+    if tsum is not None:
         tsum = float(tsum)
 
     return tmin, tmax, tsum
@@ -548,3 +553,20 @@ def check_convert_date_spec( date_spec ):
             pass
 
     return spec
+
+
+def check_adjust_scan_type( scan_type ):
+    ""
+    types = set()
+    for val1 in scan_type:
+        for val2 in val1.split(','):
+            val2 = val2.strip()
+            if val2:
+                if val2 not in ['vvt','xml']:
+                    raise Exception( 'unknown scan type: '+repr(val2) )
+                types.add( val2 )
+
+    if len(types) > 0:
+        return list( types )
+    else:
+        return None

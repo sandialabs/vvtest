@@ -1,6 +1,9 @@
 
 Improvements:
 
+    - The --run-dir option can now contain multiple path segments and/or can
+      be an absolute path.
+
     - The script_util.platform_expr() and script_util.option_expr() now take
       shell-style wildcards in the expressions. For example,
 
@@ -102,6 +105,12 @@ Improvements:
 
 Fixes:
 
+    - After using the --run-dir option to name the test results directory,
+      a subsequent vvtest run would not recognize the directory as containing
+      test results. The effect was that vvtest would "find" and run more
+      tests than it should. This was fixed by using a "vvtest.cache" file
+      as a marker file in test results directories.
+
     - Fix bug when using --minimal-xdirs. Staged tests would fail to run
       correctly if there was also a single valued parameter.
 
@@ -117,6 +126,12 @@ Fixes:
       set for the platform.
 
 Changes:
+
+    - The XML test format is now officially deprecated and will be removed
+      at some future point. As a result, the default --scan-type option value
+      has changed. By default, only "*.vvt" files will now be scanned. To use
+      the previous behavior, add "--scan-type vvt,xml" to the vvtest command
+      line.
 
     - For each test, the vvtest_util.py and .sh files are written to the
       test execution directory, and those contain the TESTID variable. The

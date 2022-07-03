@@ -16,7 +16,7 @@ Notable features include:
 * Test parameterization, allowing a single script file to produce multiple
   test instances with different parameter values
 * Inter-test dependencies - tests can depend on other tests. Dependencies
-  are run first and the results are available in the dependent test.
+  are run first and the results are available to the dependent test.
 * Test selection and execution control, such as by keyword, parameter,
   platform, and a general option string
 * Tests can be any script language, but there is built-in support for Python
@@ -30,24 +30,13 @@ Notable features include:
 ## Documentation
 
 * Run `vvtest -h` to show the options.
-* Run `vvtest help <subhelp>` to get help by topic area, such as "resources"
-  and "filters".
 * The RELEASE_NOTES file is kept up to date.
-* Additional documentation available on the wiki.
-
-
-## Additional Utilities
-
-* The vvtools V&V testing utilities. This is a collection of Exodus-based
-  utilities for running verification analyses on simulation output. It has
-  its origins in ALEGRA but is much more generally applicable. The main tools
-  here are `exodus.py`, not to be confused with the  seacas file of the same
-  name, and `vcomp`, a convergence analysis tool.
+* Additional documentation is available on the wiki.
 
 
 ## Download and Install
 
-Since the only dependency is a *NIX OS with basic Python, just clone the
+Since the only dependency is Python, just clone the
 **vvtest** repository and run the `vvtest` script. You can optionally run the
 `install_vvtest` script to install into a prefix of your choice.
 
@@ -69,14 +58,7 @@ stuff.check_results()
 ```
 This test could be run as follows:
 ```
-$ ls -R
-.:
-configdir  mytest.vvt
-
-./configdir:
-shared_stuff.py
-
-$ vvtest --config=configdir
+$ vvtest mytest.vvt
 ==================================================
 Test list:
     completed: 0
@@ -99,21 +81,19 @@ Summary:
 
 Finish date: Fri Jun  5 18:07:35 2020 (elapsed time 2s)
 Test directory: TestResults.ceelan
+```
+Note that the test specification file, `mytest.vvt`, resulted in two test
+instances, `mytest.np=1` and `mytest.np=2`, which were run and both passed.
+A test can import the `vvtest_util.py` file, which is specific to each
+test and contains information about the test instance and runtime parameters.
 
+The test is run in a subdirectory to keep the output and artifacts separate.
+```
 $ ls -F TestResults.ceelan/mytest.np=2
 execute.log  mytest.vvt@  vvtest_util.py  vvtest_util.pyc  vvtest_util.sh
 ```
-Note that the test specification file, `mytest.vvt`, resulted in two test
-instances, `mytest.np=1` and `mytest.np=2`, which ran and passed.
-In the test script, the `vvtest_util` Python module is specific to each
-test and contains information about the test instance and runtime parameters.
-The `shared_stuff` is a (hypothetical) Python module that the software
-project itself supplies in a configuration directory.
-Finally, whether the test passes or fails, the `execute.log` file contains
-the output (stdout and stderr).
-
-
-## Testing
+The output from the test script (both stdout and stderr) is contained in
+the file `execute.log`.
 
 
 ## History

@@ -2,7 +2,6 @@
 
 import os, sys
 
-from . import depend
 from .teststatus import TestStatus
 
 

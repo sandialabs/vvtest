@@ -8,6 +8,79 @@ import os, sys
 import fnmatch
 
 
+class DependencyPattern:
+    """
+    A dependency pattern consists of a simple shell pattern (not a regular
+    expression), an "expect" pattern applied to the number of dependency match
+    results, and an optional word expression to be applied to the test result.
+
+    Example pattern: "subdir/name*.np=8"
+    Example word expressions: "pass or diff", "pass"
+
+    The expect pattern is one of
+        '+' : one or more matches must be found
+        '*' : zero or more matches
+        '?' : exactly one match
+         N  : an integer number of matches must be found (non-negative)
+    """
+
+    def __init__(self, pattern, expect='+', result_word_expr=None):
+        ""
+        self.pat = pattern
+        self.expect = expect
+        self.expr = result_word_expr
+
+    def find_deps(self, strict, testfile, params, testcasemap):
+        ""
+        depL = self._find_tests( testfile, params, testcasemap )
+        if self._matched_as_expected( depL, strict ):
+            return depL,''
+        else:
+            errinfo = self._match_info( testfile, params, len(depL) )
+            return None,errinfo
+
+    def _find_tests(self, testfile, params, testcasemap):
+        ""
+        srcdir = os.path.dirname( testfile )
+        matchpat = self._make_match_pattern( testfile, params )
+        dep_ids = find_tests_by_pattern( srcdir, matchpat, testcasemap )
+        depL = [ testcasemap[tid] for tid in dep_ids ]
+        return depL
+
+    def _matched_as_expected(self, depL, strict=True):
+        ""
+        if strict:
+            if self.expect == '*':
+                return True
+            elif self.expect == '?':
+                return len( depL ) in [0,1]
+            elif self.expect == '+':
+                return len( depL ) > 0
+            else:
+                ival = int( self.expect )
+                return len( depL ) == ival
+
+        return True
+
+    def _make_match_pattern(self, testfile, params):
+        ""
+        srcdir = os.path.dirname( testfile )
+        matchpat = apply_variable_substitution( self.pat, params )
+        return matchpat
+
+    def _match_info(self, testfile, params, num_matches):
+        ""
+        infL = [ '   test file='+repr(testfile) ]
+        depline = '   depends on pattern='+repr(self.pat)
+        matchpat = self._make_match_pattern( testfile, params )
+        if matchpat != self.pat:
+            depline += ' (expanded='+repr(matchpat)+')'
+        depline += ', match(es) expected='+repr(self.expect)
+        depline += ', but got '+repr(num_matches)
+        infL.append( depline )
+        return '\n'.join( infL )
+
+
 class TestDependency:
 
     def __init__(self, tcase, matchpat, wordexpr):
@@ -33,7 +106,7 @@ class TestDependency:
         ""
         result = self.tcase.getStat().getResultStatus()
 
-        if self.wordexpr == None:
+        if self.wordexpr is None:
             if result not in ['pass','diff']:
                 return False
 
@@ -105,7 +178,7 @@ class FailedTestDependency:
 def find_tests_by_pattern( srcdir, pattern, testcasemap ):
     """
     The 'srcdir' is the directory of the dependent test source file relative
-    the scan root.  The shell glob 'pattern' is matched against the display
+    to the scan root.  The shell glob 'pattern' is matched against the match
     strings of tests in the 'testcasemap', in this order:
 
         1. srcdir/pat
@@ -217,6 +290,13 @@ def add_test_to_map( stagemap, tspec ):
         tL.append( tspec )
 
 
+def apply_variable_substitution( pat, paramD ):
+    ""
+    for n,v in paramD.items():
+        pat = pat.replace( '${'+n+'}', v )
+    return pat
+
+
 def connect_analyze_dependencies( analyze, tcaseL, testcasemap ):
     ""
     for tcase in tcaseL:
@@ -232,43 +312,16 @@ def check_connect_dependencies( tcase, testcasemap, strict=True ):
     ""
     tspec = tcase.getSpec()
 
-    for dep_pat,expr,expect in tspec.getDependencies():
+    for dpat in tspec.getDependencyPatterns():
 
-        srcdir = os.path.dirname( tspec.getFilepath() )
-        matchpat = apply_variable_substitution( dep_pat, tspec.getParameters() )
-        depL = find_tests_by_pattern( srcdir, matchpat, testcasemap )
+        depL,info = dpat.find_deps( strict, tspec.getFilepath(), tspec.getParameters(), testcasemap )
 
-        if match_criteria_satisfied( strict, depL, expr, expect ):
-            for dep_id in depL:
-                dep_obj = testcasemap.get( dep_id, None )
-                if dep_obj != None:
-                    connect_dependency( tcase, dep_obj, dep_pat, expr )
+        if depL is None:
+            # print ( 'magic: failed dep '+tspec.getDisplayString()+'\n' + info )
+            connect_failed_dependency( tcase, info )
         else:
-            connect_failed_dependency( tcase )
-
-
-def apply_variable_substitution( pat, paramD ):
-    ""
-    for n,v in paramD.items():
-        pat = pat.replace( '${'+n+'}', v )
-    return pat
-
-
-def match_criteria_satisfied( strict, depL, expr, expect ):
-    ""
-    if strict:
-        if expect == '*':
-            return True
-        elif expect == '?':
-            return len( depL ) in [0,1]
-        elif expect == '+':
-            return len( depL ) > 0
-        else:
-            ival = int( expect )
-            return len( depL ) == ival
-
-    return True
-
+            for dep in depL:
+                connect_dependency( tcase, dep, dpat.pat, dpat.expr )
 
 def connect_dependency( from_tcase, to_tcase, pattrn=None, expr=None ):
     ""
@@ -278,7 +331,7 @@ def connect_dependency( from_tcase, to_tcase, pattrn=None, expr=None ):
     to_tcase.setHasDependent()
 
 
-def connect_failed_dependency( from_tcase ):
+def connect_failed_dependency( from_tcase, info ):
     ""
     testdep = FailedTestDependency( "failed 'depends on' matching criteria" )
     from_tcase.addDependency( testdep )

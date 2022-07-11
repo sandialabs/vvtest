@@ -65,7 +65,7 @@ class WordExpression:
 
             expr = expr.strip()
 
-            if self.expr != None:
+            if self.expr is not None:
                 expr = combine_two_expressions( self.expr, expr )
 
             self.expr = expr
@@ -111,6 +111,13 @@ class WordExpression:
         r = eval( self.evalexpr )
 
         return r
+
+    def __str__(self):
+        ""
+        if self.evalexpr is None:
+            return "<no expression>"
+        else:
+            return str(self.expr)
 
 
 class WildcardWordExpression( WordExpression ):

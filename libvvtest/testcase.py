@@ -60,17 +60,13 @@ class TestCase:
 
     def isBlocked(self):
         ""
-        for tdep in self.deps:
-            if tdep.isBlocking():
-                return True
-        return False
+        blocked,reason = self._get_blocking()
+        return blocked
 
     def getBlockedReason(self):
         ""
-        for tdep in self.deps:
-            if tdep.isBlocking():
-                return tdep.blockedReason()
-        return ''
+        blocked,reason = self._get_blocking()
+        return reason
 
     def willNeverRun(self):
         ""
@@ -91,6 +87,14 @@ class TestCase:
         for dep_dir,match_pattern in self.depdirs.items():
             dirlist.append( (match_pattern,dep_dir) )
         return dirlist
+
+    def _get_blocking(self):
+        ""
+        for tdep in self.deps:
+            blocked,reason = tdep.getBlocking()
+            if blocked:
+                return True,reason
+        return False,None
 
 
 def determine_test_size( params, nodesize ):

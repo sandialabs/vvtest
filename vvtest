@@ -808,7 +808,7 @@ def baseline_tests( opts, optD, rtdata ):
                                     shbang_supported=not windows_platform )
 
         xlist = TestExecList( tlist, handler )
-        xlist.createTestExecs()
+        xlist.createTestExecs( check_dependencies=False )
 
         execute.run_baseline( xlist, rtdata.plat )
 

@@ -264,7 +264,7 @@ def print_notrun_reasons( notrunlist ):
         xdir = tcase.getSpec().getDisplayString()
         # magic: reason = tcase.getBlockedReason()
         print3( '*** Warning: test "'+xdir+'"',
-                'notrun due to "' + reason + '"' )
+                'notrun due to dependency: ' + str(reason) )
 
 
 def get_batch_info( batch ):

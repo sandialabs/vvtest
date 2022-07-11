@@ -28,8 +28,6 @@ from libvvtest.depend import DependencyPattern
 from libvvtest import depend
 find_tests_by_pattern = depend.find_tests_by_pattern
 
-failed_match_reason = "failed 'depends on' matching criteria"
-
 
 class Parse_Dependencies( vtu.vvtestTestCase ):
 
@@ -274,9 +272,11 @@ class tests_for_TestDependency_class( vtu.vvtestTestCase ):
 
     def test_a_dependency_that_fails_to_satisfy_glob_criteria(self):
         ""
-        dep = depend.FailedTestDependency( failed_match_reason )
+        a_reason = "anything cast-able to a string"
+        dep = depend.FailedTestDependency( a_reason )
 
-        assert dep.isBlocking()
+        blocking,reason = dep.getBlocking()
+        assert blocking
         assert dep.willNeverRun()
 
         tcase = vtu.make_fake_TestCase( 'notrun' )
@@ -284,7 +284,7 @@ class tests_for_TestDependency_class( vtu.vvtestTestCase ):
 
         assert tcase.isBlocked()
         assert tcase.willNeverRun()
-        assert tcase.getBlockedReason() == failed_match_reason
+        assert tcase.getBlockedReason() == a_reason
 
         tcase1 = vtu.make_fake_TestCase( 'notrun', name='atest' )
         tcase2 = vtu.make_fake_TestCase( 'pass', name='btest' )
@@ -293,7 +293,7 @@ class tests_for_TestDependency_class( vtu.vvtestTestCase ):
 
         assert tcase1.isBlocked()
         assert tcase1.willNeverRun()
-        assert tcase1.getBlockedReason() == failed_match_reason
+        assert tcase1.getBlockedReason() == a_reason
 
     def test_will_never_run_logic(self):
         ""
@@ -531,7 +531,7 @@ class dependency_related_functions( vtu.vvtestTestCase ):
         depend.check_connect_dependencies( tB, xD )
         assert tB.numDependencies() == 1
         assert tB.isBlocked()
-        self.assertEquals( tB.getBlockedReason(), failed_match_reason )
+        assert 'failed "depends on" matching criter' in str(tB.getBlockedReason())
 
     def test_variable_substitution_in_dependency_matching(self):
         ""
@@ -680,6 +680,40 @@ class integration_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, npass=4 )
+
+    def test_warnings_are_issued_for_tests_that_will_never_run(self):
+        """
+        A "depends on" criterion may not be satisfied at test generation time
+        and therefore will never be run. A warning for such tests should be
+        printed before execution starts.
+        """
+        util.writefile( 'testX.vvt', """
+            #VVT: depends on : testY
+            """ )
+
+        util.writefile( 'testZ.vvt', """
+            pass
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( batch=batch )
+            vrun.assertCounts( total=2, npass=1, notrun=1 )
+
+            # the Warning message is a little different at startup compared
+            # to execution time
+            lines = vrun.grepLines( 'Warning: test *testX* will not be run due to dependency' )
+            assert len(lines) == 1
+            lines = vrun.grepLines( 'Warning: test *testX* notrun due to dependency' )
+            assert len(lines) == 1
+
+        # test generation mode also prints a warning
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '-g' )
+        lines = vrun.grepLines( 'Warning: test *testX* will not be run due to dependency' )
+        assert len(lines) == 1
 
 
 #######################################

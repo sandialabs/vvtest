@@ -6,6 +6,7 @@
 
 from .parseutil import create_dependency_result_expression
 from .testid import TestID
+from .depend import DependencyPattern
 
 
 def mark_staged_tests( pset, testL ):
@@ -41,7 +42,8 @@ def set_stage_params( tspec, oracle ):
 def add_staged_dependency( from_tspec, to_display_string ):
     ""
     wx = create_dependency_result_expression( None )
-    from_tspec.addDependency( to_display_string, wx )
+    dpat = DependencyPattern( to_display_string, '1', wx )
+    from_tspec.addDependencyPattern( dpat )
 
 
 class StagingOracle:

@@ -400,7 +400,7 @@ class staged_parameters( vtu.vvtestTestCase ):
         staging.mark_staged_tests( pset, testL )
 
         for tspec in testL:
-            depL = tspec.getDependencies()
+            depL = tspec.getDependencyPatterns()
             np = tspec.getParameterValue( 'np' )
             if np == '2':
                 assert len( depL ) == 0
@@ -419,7 +419,7 @@ class staged_parameters( vtu.vvtestTestCase ):
         staging.mark_staged_tests( pset, testL )
 
         for tspec in testL:
-            depL = tspec.getDependencies()
+            depL = tspec.getDependencyPatterns()
             np = tspec.getParameterValue( 'np' )
             sz = tspec.getParameterValue( 'sz' )
             if np == '1' and sz == '1.1':
@@ -685,9 +685,9 @@ def find_single_dependency( tspec, testL ):
     for ts in testL:
         testcasemap[ ts.getID() ] = TestCase( ts )
 
-    depL = tspec.getDependencies()
+    depL = tspec.getDependencyPatterns()
     assert len( depL ) == 1
-    pat,expr,expect = depL[0]
+    pat = depL[0].pat
 
     xdir = tspec.getExecuteDirectory()
 

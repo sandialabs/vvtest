@@ -23,11 +23,10 @@ from libvvtest.testcase import TestCase
 from libvvtest.testspec import TestSpec
 from libvvtest.testexec import TestExec
 from libvvtest.wordexpr import WordExpression
+from libvvtest.depend import DependencyPattern
 
 from libvvtest import depend
 find_tests_by_pattern = depend.find_tests_by_pattern
-
-failed_match_reason = "failed 'depends on' matching criteria"
 
 
 class Parse_Dependencies( vtu.vvtestTestCase ):
@@ -201,11 +200,7 @@ class Parse_Dependencies( vtu.vvtestTestCase ):
 
 def assert_dependencies( tspec, *check_names ):
     ""
-    depL = tspec.getDependencies()
-
-    nameL = []
-    for name,expr,expect in depL:
-        nameL.append( name )
+    nameL = [ dpat.pat for dpat in tspec.getDependencyPatterns() ]
     nameL.sort()
 
     checkL = list( check_names )
@@ -216,9 +211,9 @@ def assert_dependencies( tspec, *check_names ):
 
 def get_depencency_expr( tspec, dep_name ):
     ""
-    for name,expr,expect in tspec.getDependencies():
-        if name == dep_name:
-            return expr
+    for dpat in tspec.getDependencyPatterns():
+        if dpat.pat == dep_name:
+            return dpat.expr
 
     raise Exception( 'could not find dependency name: ' + dep_name )
 
@@ -277,9 +272,11 @@ class tests_for_TestDependency_class( vtu.vvtestTestCase ):
 
     def test_a_dependency_that_fails_to_satisfy_glob_criteria(self):
         ""
-        dep = depend.FailedTestDependency( failed_match_reason )
+        a_reason = "anything cast-able to a string"
+        dep = depend.FailedTestDependency( a_reason )
 
-        assert dep.isBlocking()
+        blocking,reason = dep.getBlocking()
+        assert blocking
         assert dep.willNeverRun()
 
         tcase = vtu.make_fake_TestCase( 'notrun' )
@@ -287,7 +284,7 @@ class tests_for_TestDependency_class( vtu.vvtestTestCase ):
 
         assert tcase.isBlocked()
         assert tcase.willNeverRun()
-        assert tcase.getBlockedReason() == failed_match_reason
+        assert tcase.getBlockedReason() == a_reason
 
         tcase1 = vtu.make_fake_TestCase( 'notrun', name='atest' )
         tcase2 = vtu.make_fake_TestCase( 'pass', name='btest' )
@@ -296,7 +293,7 @@ class tests_for_TestDependency_class( vtu.vvtestTestCase ):
 
         assert tcase1.isBlocked()
         assert tcase1.willNeverRun()
-        assert tcase1.getBlockedReason() == failed_match_reason
+        assert tcase1.getBlockedReason() == a_reason
 
     def test_will_never_run_logic(self):
         ""
@@ -521,20 +518,20 @@ class dependency_related_functions( vtu.vvtestTestCase ):
         xD = make_tspec_map( 'testA', 'testB', 'testD' )
 
         tA = find_test( xD, 'testA' )
-        tA.getSpec().addDependency( 'testB' )
+        tA.getSpec().addDependencyPattern( DependencyPattern('testB') )
 
         assert tA.numDependencies() == 0
         depend.check_connect_dependencies( tA, xD )
         assert tA.numDependencies() == 1
 
         tB = find_test( xD, 'testB' )
-        tB.getSpec().addDependency( 'testC' )
+        tB.getSpec().addDependencyPattern( DependencyPattern('testC') )
 
         assert tB.numDependencies() == 0
         depend.check_connect_dependencies( tB, xD )
         assert tB.numDependencies() == 1
         assert tB.isBlocked()
-        assert tB.getBlockedReason() == failed_match_reason
+        assert 'failed "depends on" matching criter' in str(tB.getBlockedReason())
 
     def test_variable_substitution_in_dependency_matching(self):
         ""
@@ -584,24 +581,24 @@ class dependency_related_functions( vtu.vvtestTestCase ):
         time.sleep(1)
 
         tspec = vtu.parse_single_test_file( 'blue.vvt' )
-        deps = tspec.getDependencies()
-        assert len(deps) == 1 and deps[0][0] == 'green' and deps[0][2] == '+'
+        deps = tspec.getDependencyPatterns()
+        assert len(deps) == 1 and deps[0].pat == 'green' and deps[0].expect == '+'
 
         tspec = vtu.parse_single_test_file( 'green.vvt' )
-        deps = tspec.getDependencies()
-        assert len(deps) == 1 and deps[0][0] == 'red' and deps[0][2] == '+'
+        deps = tspec.getDependencyPatterns()
+        assert len(deps) == 1 and deps[0].pat == 'red' and deps[0].expect == '+'
 
         tspec = vtu.parse_single_test_file( 'red.vvt' )
-        deps = tspec.getDependencies()
-        assert len(deps) == 1 and deps[0][0] == 'pink' and deps[0][2] == '*'
+        deps = tspec.getDependencyPatterns()
+        assert len(deps) == 1 and deps[0].pat == 'pink' and deps[0].expect == '*'
 
         tspec = vtu.parse_single_test_file( 'pink.vvt' )
-        deps = tspec.getDependencies()
-        assert len(deps) == 1 and deps[0][0] == 'silver' and deps[0][2] == '?'
+        deps = tspec.getDependencyPatterns()
+        assert len(deps) == 1 and deps[0].pat == 'silver' and deps[0].expect == '?'
 
         tspec = vtu.parse_single_test_file( 'silver.vvt' )
-        deps = tspec.getDependencies()
-        assert len(deps) == 1 and deps[0][0] == 'oran*' and deps[0][2] == '2'
+        deps = tspec.getDependencyPatterns()
+        assert len(deps) == 1 and deps[0].pat == 'oran*' and deps[0].expect == '2'
 
         self.assertRaises( TestSpecError,
                            vtu.parse_single_test_file, 'bad1.vvt' )
@@ -610,10 +607,10 @@ class dependency_related_functions( vtu.vvtestTestCase ):
                            vtu.parse_single_test_file, 'bad2.vvt' )
 
         tspec = vtu.parse_single_test_file( 'multi.vvt' )
-        deps = tspec.getDependencies()
+        deps = tspec.getDependencyPatterns()
         assert len(deps) == 2
-        assert deps[0][0] == 'red' and deps[0][2] == '2'
-        assert deps[1][0] == 'pink' and deps[0][2] == '2'
+        assert deps[0].pat == 'red' and deps[0].expect == '2'
+        assert deps[1].pat == 'pink' and deps[1].expect == '2'
 
     def test_using_testname_with_trailing_depends_on_attributes(self):
         ""
@@ -627,41 +624,36 @@ class dependency_related_functions( vtu.vvtestTestCase ):
         assert len(tL) == 1
         tspec = tL[0].getSpec()
         assert tspec.getName() == 'venus'
-        deps = tspec.getDependencies()
+        deps = tspec.getDependencyPatterns()
         assert len(deps) == 1
-        pat,res,exp = deps[0]
-        assert pat == 'pluto.*'
-        assert res != None
-        assert exp == '3'
+        assert deps[0].pat == 'pluto.*'
+        assert deps[0].expr != None
+        assert deps[0].expect == '3'
 
-    def test_depends_on_match_criterion(self):
+    def test_depends_on_match_expectation(self):
         ""
-        depL = []
-        assert not depend.match_criteria_satisfied( True, depL, None, '+'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '*'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '?'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '0'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '1'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '2'  )
+        assert not DependencyPattern('junk','+')._matched_as_expected([])
+        assert     DependencyPattern('junk','*')._matched_as_expected([])
+        assert     DependencyPattern('junk','?')._matched_as_expected([])
+        assert     DependencyPattern('junk','0')._matched_as_expected([])
+        assert not DependencyPattern('junk','1')._matched_as_expected([])
+        assert not DependencyPattern('junk','2')._matched_as_expected([])
 
-        tA = vtu.make_fake_TestCase( name='Atest' )
-        depL = [ tA.getSpec().getID() ]
-        assert     depend.match_criteria_satisfied( True, depL, None, '+'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '*'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '?'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '0'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '1'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '2'  )
+        assert     DependencyPattern('junk','+')._matched_as_expected(['foo'])
+        assert     DependencyPattern('junk','*')._matched_as_expected(['foo'])
+        assert     DependencyPattern('junk','?')._matched_as_expected(['foo'])
+        assert not DependencyPattern('junk','0')._matched_as_expected(['foo'])
+        assert     DependencyPattern('junk','1')._matched_as_expected(['foo'])
+        assert not DependencyPattern('junk','2')._matched_as_expected(['foo'])
 
-        tA = vtu.make_fake_TestCase( name='Atest' )
-        tB = vtu.make_fake_TestCase( name='Btest' )
-        depL = [ tA.getSpec().getID(), tB.getSpec().getID() ]
-        assert     depend.match_criteria_satisfied( True, depL, None, '+'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '*'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '?'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '0'  )
-        assert not depend.match_criteria_satisfied( True, depL, None, '1'  )
-        assert     depend.match_criteria_satisfied( True, depL, None, '2'  )
+        assert     DependencyPattern('junk','+')._matched_as_expected(['foo','bar'])
+        assert     DependencyPattern('junk','*')._matched_as_expected(['foo','bar'])
+        assert not DependencyPattern('junk','?')._matched_as_expected(['foo','bar'])
+        assert not DependencyPattern('junk','0')._matched_as_expected(['foo','bar'])
+        assert not DependencyPattern('junk','1')._matched_as_expected(['foo','bar'])
+        assert     DependencyPattern('junk','2')._matched_as_expected(['foo','bar'])
+
+        assert DependencyPattern('junk','1')._matched_as_expected(['foo','bar'],False)
 
 
 class integration_tests( vtu.vvtestTestCase ):
@@ -688,6 +680,40 @@ class integration_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, npass=4 )
+
+    def test_warnings_are_issued_for_tests_that_will_never_run(self):
+        """
+        A "depends on" criterion may not be satisfied at test generation time
+        and therefore will never be run. A warning for such tests should be
+        printed before execution starts.
+        """
+        util.writefile( 'testX.vvt', """
+            #VVT: depends on : testY
+            """ )
+
+        util.writefile( 'testZ.vvt', """
+            pass
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( batch=batch )
+            vrun.assertCounts( total=2, npass=1, notrun=1 )
+
+            # the Warning message is a little different at startup compared
+            # to execution time
+            lines = vrun.grepLines( 'Warning: test *testX* will not be run due to dependency' )
+            assert len(lines) == 1
+            lines = vrun.grepLines( 'Warning: test *testX* notrun due to dependency' )
+            assert len(lines) == 1
+
+        # test generation mode also prints a warning
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '-g' )
+        lines = vrun.grepLines( 'Warning: test *testX* will not be run due to dependency' )
+        assert len(lines) == 1
 
 
 #######################################

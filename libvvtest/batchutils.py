@@ -504,6 +504,7 @@ class ResultsHandler:
             if reason:
                 notrunL.append( (tcase,reason) )
             else:
+                # assert False, "magic"
                 notrunL.append( (tcase,fallback_reason) )
 
         return notrunL

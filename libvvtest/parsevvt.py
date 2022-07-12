@@ -11,6 +11,7 @@ import re
 from .errors import TestSpecError
 from . import timehandler
 from .testspec import TestSpec
+from .depend import DependencyPattern
 
 from .ScriptReader import ScriptReader, check_parse_attributes_section
 
@@ -484,7 +485,8 @@ class ScriptTestParser:
                 exp = parse_expect_criterion( spec.attrs, spec.lineno )
 
                 for val in spec.value.strip().split():
-                    tspec.addDependency( val, wx, exp )
+                    dpat = DependencyPattern( val, exp, wx )
+                    tspec.addDependencyPattern( dpat )
 
         for spec in self.itr_specs( testname, "testname", "name"):
 
@@ -498,7 +500,8 @@ class ScriptTestParser:
                 exp = parse_expect_criterion( attrD, spec.lineno )
 
                 for depname in attrD.get( 'depends on', '' ).split():
-                    tspec.addDependency( depname, wx, exp )
+                    dpat = DependencyPattern( depname, exp, wx )
+                    tspec.addDependencyPattern( dpat )
 
     def parse_preload_label(self, tspec):
         """

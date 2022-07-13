@@ -189,8 +189,14 @@ class SimpleAprepro:
                   " and not ^. As aprepro supports both, please use ** instead." + 
                   " Encountered while processing '{0}'".format(txt))
 
-        if "=" in txt:
-            name, expression = [_.strip() for _ in txt.split("=", 1)]
+        # look for an equals sign that is not preceded or followed by
+        # another equals sign.
+        pattern = re.compile(r"(?<!=)=(?!=)")
+        if re.search(pattern, txt):
+            splitted = re.split(pattern, txt)
+            if len(splitted) != 2:
+                raise Exception("Unsupported syntax: {0}".format(txt))
+            name, expression = [_.strip() for _ in splitted]
 
             if self.immutable and name in self.eval_locals.keys():
                 raise Exception("Cannot change '{0}'".format(name)
@@ -260,21 +266,23 @@ class SimpleAprepro:
             print("*   override = {0}".format(self.override))
 
         # Process the input file line-by-line
-        for jdx, line in enumerate(self.src_txt):
+        for jdx, clean_line in enumerate(self.src_txt):
 
-            # Process escaped curly braces.
-            clean_line = line.replace(r"\{", "{").replace(r"\}", "}")
-
-            # Process the aprepro directive blocks.
-            split_line = re.split(r"({[^{]*?})", clean_line)
+            # Process the aprepro directive blocks. Only split on curly
+            # braces that are not escaped.
+            split_line = re.split(r"(?<!\\)({[^{]*?})", clean_line)
             for idx, chunk in enumerate(split_line):
                 if chunk.startswith("{") and chunk.endswith("}"):
                     # Found a chunk to evaluate.
                     split_line[idx] = self.safe_eval(chunk[1:-1])
             joined_line = "".join(split_line)
+
+            # Process escaped curly braces.
+            joined_line = joined_line.replace(r"\{", "{").replace(r"\}", "}")
+
             if self.chatty:
                 print("* {0: 4d}: {1}".format(jdx, repr(joined_line)))
-            self.dst_txt.append("".join(split_line))
+            self.dst_txt.append(joined_line)
 
         if self.chatty:
             print("* End call to SimpleAprepro.process()")
@@ -331,10 +339,51 @@ def test4():
     """
     processor = SimpleAprepro("", "")
     processor.src_txt = ["# abc = {abc = 2 ^ 2}"]
-    out = processor.process()
-    assert out == {"abc": 4}
-    assert processor.dst_txt == ["# abc = 4",]
+    try:
+        out = processor.process()
+    except Exception as exc:
+        assert "simple_aprepro() only supports exponentiation via ** and not ^" in str(exc)
 
+def test5():
+    """
+    Test for escaped curly braces
+    """
+
+    cases = {
+        "\{": "{",
+        "\}": "}",
+        "\{\{": "{{",
+        "\}\}": "}}",
+        "foo \} bar": "foo } bar",
+        "foo \{ bar": "foo { bar",
+        "foo \} bar": "foo } bar",
+        "# abc = \{abc = 1 / 3\}": "# abc = {abc = 1 / 3}",
+        "# abc = \{abc = {1 / 2}\}": "# abc = {abc = 0.5}",
+        '\{2 * 3\} * {1 / 2} * \{np\}': "{2 * 3} * 0.5 * {np}",
+        "{1 == 1}": "True",
+        "{var = 1 == 1}": "True",
+        "{'ON' if True else 'OFF'}": "ON",
+        "{'' if True else 'foo'}": "",
+    }
+
+    for src, dst in cases.items():
+        print("\nchecking {0}".format(src))
+        processor = SimpleAprepro("", "")
+        processor.src_txt = [src]
+        out = processor.process()
+        print("out", out)
+        print("dst_txt", processor.dst_txt)
+        #assert out == {}
+        assert processor.dst_txt[0] == dst
+        print("  PASS")
+
+def run_tests():
+    test0()
+    test1()
+    test2()
+    test3()
+    test4()
+    test5()
 
 def simple_aprepro(src_f, dst_f,
                    chatty=True,
@@ -424,4 +473,5 @@ def main(args):
 
 
 if __name__ == '__main__':
+    #run_tests()
     main(sys.argv[1:])

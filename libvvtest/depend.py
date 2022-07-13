@@ -221,9 +221,8 @@ class BadMatchReason:
             s += ', expanded = '+repr(self.matchpat)
         s += '\n    - num matches expected: '+repr(self.expect)
         s += '\n    - actual matches: '+repr(len(self.deplist))
-        if len(self.deplist) > 0:
-            tmpL = [ repr(tc.getSpec().getDisplayString()) for tc in self.deplist ]
-            s += ' (' + ', '.join(tmpL) + ')'
+        for i,tc in enumerate(self.deplist):
+            s += '\n        '+str(i+1)+') '+repr( tc.getSpec().getDisplayString() )
         return s
 
 

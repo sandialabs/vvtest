@@ -1,6 +1,10 @@
 
 Improvements:
 
+    - Failed "depends on" specifications are now printed before tests are
+      actually run. This means the messages will show up when using the '-g'
+      option. Also, additional information is given about the failure.
+
     - The --run-dir option can now contain multiple path segments and/or can
       be an absolute path.
 

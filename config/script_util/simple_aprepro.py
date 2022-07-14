@@ -193,7 +193,7 @@ class SimpleAprepro:
         # another equals sign.
         pattern = re.compile(r"(?<!=)=(?!=)")
         if re.search(pattern, txt):
-            splitted = re.split(pattern, txt)
+            splitted = re.split(pattern, txt, maxsplit=1)
             if len(splitted) != 2:
                 raise Exception("Unsupported syntax: {0}".format(txt))
             name, expression = [_.strip() for _ in splitted]
@@ -364,6 +364,7 @@ def test5():
         "{var = 1 == 1}": "True",
         "{'ON' if True else 'OFF'}": "ON",
         "{'' if True else 'foo'}": "",
+        '# PRODUCT_SETS = {PRODUCT_SETS = "+0, +0, =1"}': "# PRODUCT_SETS = +0, +0, =1",
     }
 
     for src, dst in cases.items():

@@ -6,6 +6,9 @@
 
 # for convenience, add symbols from each submodule
 
+from .wait_for_disk import wait_for_disk
+from .flush_streams import flush_streams
+from .timer import timer
 from .standard_utilities import *
 from .simple_aprepro import simple_aprepro
 from .simple_aprepro import main as simple_aprepro_main

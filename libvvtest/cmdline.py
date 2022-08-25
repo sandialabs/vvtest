@@ -14,7 +14,7 @@ from .keyexpr import create_keyword_expression
 from .platexpr import create_platform_expression
 from .paramexpr import create_parameter_expression
 from . import wordcheck
-
+from timeutils import parse_num_seconds
 
 def parse_command_line( argvlist, vvtest_version=None ):
     ""
@@ -215,10 +215,10 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '--batch-limit', type=int,
         help='Limit the number of batch jobs in the queue at any one time. '
              'Default is 5.' )
-    grp.add_argument( '--batch-length', type=int,
+    grp.add_argument( '--batch-length',
         help='Limit the number of tests in each job group such that the '
-             'sum of their runtimes is less than the given value. '
-             'Default is 30 minutes.' )
+             'sum of their runtimes is less than the given value (number '
+             'of seconds or 10m or 2h or HH:MM:SS). Default is 30 minutes.' )
     psr.add_argument( '--qsub-id', type=int, help=argutil.SUPPRESS )
 
     # results
@@ -355,8 +355,13 @@ def adjust_options_and_create_derived_options( opts ):
             raise Exception( 'limit cannot be negative' )
 
         errtype = 'batch-length'
-        if opts.batch_length is not None and opts.batch_length < 0:
-            raise Exception( 'length cannot be negative' )
+        if opts.batch_length is not None:
+            nsecs,err = parse_time_span_value( opts.batch_length )
+            if err:
+                raise Exception( 'invalid specification: '+err )
+            if nsecs < 0:
+                raise Exception( 'cannot be negative: '+repr(opts.batch_length) )
+            opts.batch_length = nsecs
 
         errtype = 'on/off options'
         onL,offL = clean_on_off_options( opts.dash_o, opts.dash_O )
@@ -570,3 +575,23 @@ def check_adjust_scan_type( scan_type ):
         return list( types )
     else:
         return None
+
+
+def parse_time_span_value( value ):
+    """
+    Parses a time value like "90" or "321.5" or "2h 30m" into seconds.
+    Returns (num seconds, error string) where num seconds is a number if no
+    error occurred.
+    """
+    err = ''
+    nsecs = None
+
+    try:
+        nsecs = parse_num_seconds( value, negatives=True )
+    except Exception as e:
+        err = str(e)
+    else:
+        if nsecs is None:
+            err = "could not parse time value: "+repr(value)
+
+    return nsecs,err

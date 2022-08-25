@@ -197,6 +197,50 @@ class create_derived_options( vtu.vvtestTestCase ):
         assert cmdline.check_convert_date_spec( '0' ) == '0'
         assert cmdline.check_convert_date_spec( '-100000000000' ) == '-100000000000'
 
+    def test_batch_length_option(self):
+        ""
+        nsecs,err = cmdline.parse_time_span_value( '2:04:33' )
+        assert not err
+        self.assertEqual( nsecs, 2*3600+4*60+33 )
+
+        nsecs,err = cmdline.parse_time_span_value( '2h' )
+        assert not err
+        self.assertEqual( nsecs, 2*3600 )
+
+        nsecs,err = cmdline.parse_time_span_value( '2h 30m' )
+        assert not err
+        self.assertEqual( nsecs, 2*3600+30*60 )
+
+        nsecs,err = cmdline.parse_time_span_value( '0' )
+        assert not err
+        self.assertEqual( nsecs, 0 )
+
+        rtn,out,err = util.call_capture_output(
+                        cmdline.parse_command_line,
+                        [ '--batch-length', '42' ] )
+        assert not out.strip() and not err.strip()
+        opts,dopts,args = rtn
+        self.assertEqual( opts.batch_length, 42 )
+
+        rtn,out,err = util.call_capture_output(
+                        cmdline.parse_command_line,
+                        [ '--batch-length', '42m' ] )
+        assert not out.strip() and not err.strip()
+        opts,dopts,args = rtn
+        self.assertEqual( opts.batch_length, 42*60 )
+
+        rtn,out,err = util.call_capture_output(
+                        cmdline.parse_command_line,
+                        [ '--batch-length', '0' ] )
+        assert not out.strip() and not err.strip()
+        opts,dopts,args = rtn
+        self.assertEqual( opts.batch_length, 0 )
+
+        rtn,out,err = util.call_capture_output(
+                        cmdline.parse_command_line,
+                        [ '--batch-length', '-1' ] )
+        assert err and 'cannot be negative' in err
+
 
 ########################################################################
 

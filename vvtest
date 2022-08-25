@@ -20,7 +20,6 @@ except Exception:
     from pipes import quote
 
 
-import libvvtest.cmdline as cmdline
 from libvvtest.execlist import TestExecList
 from libvvtest.exechandler import ExecutionHandler
 import libvvtest.pathutil as pathutil
@@ -67,6 +66,8 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     """
     'vvtestdir' is the (real) directory containing the vvtest script
     """
+    import libvvtest.cmdline as cmdline
+
     curdir = os.getcwd()
     start_epoch = time.time()
 

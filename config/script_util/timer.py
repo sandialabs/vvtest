@@ -99,7 +99,7 @@ def timer(*args):
 
     if len(args) == 0:
 
-        def _random_name(*, n_chars):
+        def _random_name(n_chars):
             """ Generate a random ASCII name """
             valid_chars = string.ascii_lowercase + string.digits
             chars = [random.choice(valid_chars) for _ in range(n_chars)]

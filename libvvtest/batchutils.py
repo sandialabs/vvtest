@@ -20,12 +20,11 @@ class Batcher:
 
     def __init__(self, vvtestcmd,
                        tlist, xlist, perms,
-                       qsublimit,
-                       batch_length, max_timeout,
-                       namer, jobhandler, tcasefactory ):
+                       batchlimit,
+                       grouper, namer, jobhandler, tcasefactory ):
         ""
         self.perms = perms
-        self.maxjobs = qsublimit
+        self.maxjobs = batchlimit
 
         self.namer = namer
         self.jobhandler = jobhandler
@@ -36,16 +35,18 @@ class Batcher:
         self.rundate = tlist.getResultsDate()
         self.vvtestcmd = vvtestcmd
 
-        self.grouper = BatchTestGrouper( xlist, batch_length, max_timeout )
+        self.grouper = grouper
 
     def getMaxJobs(self):
         ""
         return self.maxjobs
 
-    def writeQsubScripts(self):
+    def clearBatchDirectories(self):
         ""
         self._remove_batch_directories()
 
+    def constructBatchJobs(self):
+        ""
         self.grouper.construct()
         for qL in self.grouper.getGroups():
             bjob = self.jobhandler.createJob()
@@ -178,7 +179,7 @@ class Batcher:
 
         tname = tl.stringFileWrite( extended=True )
 
-        cmd = self.vvtestcmd + ' --qsub-id='+str( bjob.getBatchID() )
+        cmd = self.vvtestcmd + ' --batch-id='+str( bjob.getBatchID() )
 
         qtime = self.grouper.computeQueueTime( tl )
         if len( tl.getTestMap() ) == 1:

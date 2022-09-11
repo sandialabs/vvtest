@@ -219,7 +219,7 @@ def create_parser( argvlist, vvtest_version ):
         help='Limit the number of tests in each job group such that the '
              'sum of their runtimes is less than the given value (number '
              'of seconds or 10m or 2h or HH:MM:SS). Default is 30 minutes.' )
-    psr.add_argument( '--qsub-id', type=int, help=argutil.SUPPRESS )
+    psr.add_argument( '--batch-id', type=int, help=argutil.SUPPRESS )
 
     # results
     grp = psr.add_argument_group( 'Results handling' )

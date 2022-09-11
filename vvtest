@@ -252,7 +252,7 @@ def construct_platform( rtdata, opts, optD ):
     mode = 'direct'
     if opts.batch:
         mode = 'batch'
-    elif opts.qsub_id is not None:
+    elif opts.batch_id is not None:
         mode = 'batchjob'
 
     plat = create_Platform_instance(
@@ -476,7 +476,7 @@ def construct_results_writers( rtdata, opts, optD ):
         conobj = construct_console_writer( rtdata.testdir, opts, optD )
         writers.addWriter( conobj )
 
-    if opts.qsub_id is None:
+    if opts.batch_id is None:
 
         if opts.html:
             htmlobj = construct_html_writer( rtdata.testdir, opts, optD,
@@ -749,7 +749,7 @@ def run_tests( opts, optD, rtdata ):
 
 def restart_tests( opts, optD, rtdata ):
     ""
-    batchid = opts.qsub_id
+    batchid = opts.batch_id
 
     if batchid is None:
         rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
@@ -1053,13 +1053,13 @@ def run_test_exec_list( opts, optD, rtdata ):
                                     shbang_supported=not windows_platform )
 
         xlist = TestExecList( tlist, handler )
-        xlist.createTestExecs( check_dependencies=(opts.qsub_id is None) )
+        xlist.createTestExecs( check_dependencies=(opts.batch_id is None) )
 
         totaltime = get_total_timeout( opts.total_timeout )
 
         if not opts.batch:
             tlrun = construct_direct_runner( rtdata, tlist, xlist,
-                                             opts.qsub_id, totaltime )
+                                             opts.batch_id, totaltime )
         else:
             tlrun = construct_batch_runner( rtdata, tlist, xlist, totaltime,
                                             opts, optD )
@@ -1073,14 +1073,14 @@ def run_test_exec_list( opts, optD, rtdata ):
     return xstat
 
 
-def construct_direct_runner( rtdata, tlist, xlist, qsub_id, totaltime ):
+def construct_direct_runner( rtdata, tlist, xlist, batch_id, totaltime ):
     ""
     drun = execute.DirectRunner( rtdata.testdir, tlist, xlist, rtdata.perms,
                                  rtdata.rtinfo, rtdata.results_writer,
                                  rtdata.plat, totaltime )
 
-    if qsub_id is not None:
-        drun.setQsubID( qsub_id )
+    if batch_id is not None:
+        drun.setBatchID( batch_id )
 
     return drun
 
@@ -1107,15 +1107,15 @@ def create_Batcher( opts, optD, rtdata, namer,
     import batch.batching as batching
     from batch.qinterface import BatchQueueInterface
 
-    assert opts.qsub_id is None
+    assert opts.batch_id is None
 
     batchitf = BatchQueueInterface( plat.getNodeSize(),
                                     plat.getAttributes(),
                                     plat.getEnvironment() )
 
-    qsublimit = opts.batch_limit
-    if qsublimit == None:
-        qsublimit = plat.getDefaultQsubLimit()
+    batchlimit = opts.batch_limit
+    if batchlimit == None:
+        batchlimit = plat.getDefaultBatchLimit()
 
     vvtestcmd = vvtest_command_line_for_batch( opts, optD,
                                                rtdata.exepath,
@@ -1127,13 +1127,12 @@ def create_Batcher( opts, optD, rtdata, namer,
                                            batchitf, namer )
 
     maxtmo = get_max_timeout( opts.max_timeout )
+    grouper = batchutils.BatchTestGrouper( xlist, opts.batch_length, maxtmo )
 
     batch = batchutils.Batcher( vvtestcmd,
                                 tlist, xlist, perms,
-                                qsublimit,
-                                opts.batch_length,
-                                maxtmo,
-                                namer, jobhandler, tcasefactory )
+                                batchlimit,
+                                grouper, namer, jobhandler, tcasefactory )
 
     return batch
 

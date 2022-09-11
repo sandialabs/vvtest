@@ -461,7 +461,7 @@ def vvtest_command_line( *cmd_args, **options ):
         if '--batch-length' not in argL:
             cmdL.extend( [ '--batch-length', '0' ] )
 
-    else:
+    elif '--batch' not in argL:
         if '-n' not in argL:
             cmdL.extend( [ '-n', '8' ] )
 

@@ -47,7 +47,7 @@ class Batcher:
 
     def constructBatchJobs(self):
         ""
-        self.grouper.construct()
+        self.grouper.createGroups()
         for qL in self.grouper.getGroups():
             bjob = self.jobhandler.createJob()
             self._construct_job( bjob, qL )
@@ -178,6 +178,7 @@ class Batcher:
         check_make_directory( bdir, self.perms )
 
         tname = tl.stringFileWrite( extended=True )
+        # print ( 'magic: just wrote '+repr(tname) )
 
         cmd = self.vvtestcmd + ' --batch-id='+str( bjob.getBatchID() )
 
@@ -293,20 +294,14 @@ class BatchTestGrouper:
         # TODO: make Tzero a platform plugin thing
         self.Tzero = 21*60*60  # no timeout in batch mode is 21 hours
 
-        self.groups = []
-
-    def construct(self):
+    def createGroups(self):
         ""
-        batches = self._process_groups()
-
-        qL = [ grp.asList() for grp in batches ]
-        qL.sort( reverse=True )
-
-        self.groups = [ L[3] for L in qL ]
+        self._process_groups()
+        self._sort_groups()
 
     def getGroups(self):
         ""
-        return self.groups
+        return [ grp.getTests() for grp in self.batches ]
 
     def computeQueueTime(self, tlist):
         ""
@@ -325,10 +320,20 @@ class BatchTestGrouper:
 
         return qtime
 
+    def _sort_groups(self):
+        ""
+        sortL = []
+        for grp in self.batches:
+            sortL.append( ( grp.makeSortableKey(), grp ) )
+        sortL.sort( reverse=True )
+
+        self.batches = [ grp for _,grp in sortL ]
+
     def _process_groups(self):
         ""
         self.batches = []
         self.group = None
+        self.num_groups = 0
 
         self.xlist.sortBySizeAndTimeout()
         while True:
@@ -344,8 +349,6 @@ class BatchTestGrouper:
         if self.group != None and not self.group.empty():
             self.batches.append( self.group )
 
-        return self.batches
-
     def _add_test_case(self, size, timeval, tcase):
         ""
         tspec = tcase.getSpec()
@@ -353,11 +356,11 @@ class BatchTestGrouper:
 
         if tcase.numDependencies() > 0:
             # tests with dependencies (like analyze tests) get their own group
-            self.batches.append( BatchGroup( size, timeval, [tcase] ) )
+            self._add_new_group( size, timeval, [tcase] )
 
         elif tstat.getAttr('timeout') < 1:
             # zero timeout means no limit, so give it the max time value
-            self.batches.append( BatchGroup( size, self.Tzero, [tcase] ) )
+            self._add_new_group( size, self.Tzero, [tcase] )
 
         else:
             self._check_start_new_group( size, timeval )
@@ -366,24 +369,34 @@ class BatchTestGrouper:
     def _check_start_new_group(self, size, timeval):
         ""
         if self.group == None:
-            self.group = BatchGroup( size )
+            self.group = self._make_new_group( size )
         elif self.group.needNewGroup( size, timeval, self.qlen ):
             self.batches.append( self.group )
-            self.group = BatchGroup( size )
+            self.group = self._make_new_group( size )
+
+    def _add_new_group(self, size, timeval, tests):
+        ""
+        self.batches.append( self._make_new_group( size, timeval, tests ) )
+
+    def _make_new_group(self, size, timeval=None, tests=None):
+        ""
+        grp = BatchGroup( self.num_groups, size, timeval, tests )
+        self.num_groups += 1
+        return grp
 
 
 class BatchGroup:
 
-    uniqid = 0
-
-    def __init__(self, size, timeval=None, tests=None):
+    def __init__(self, groupid, size, timeval=None, tests=None):
         ""
+        self.groupid = groupid
         self.size = size
         self.tsum = ( 0 if timeval == None else timeval )
         self.tests = ( [] if tests == None else tests )
 
-        self.groupid = BatchGroup.uniqid
-        BatchGroup.uniqid += 1
+    def getTests(self):
+        ""
+        return self.tests
 
     def appendTest(self, tcase, timeval):
         ""
@@ -402,9 +415,9 @@ class BatchGroup:
 
         return False
 
-    def asList(self):
+    def makeSortableKey(self):
         ""
-        return [ self.tsum, self.size, self.groupid, self.tests ]
+        return ( self.tsum, self.size, self.groupid )
 
 
 def compute_job_size( tlist, nodesize ):

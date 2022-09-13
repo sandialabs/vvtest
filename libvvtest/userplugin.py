@@ -145,7 +145,7 @@ class UserPluginBridge:
 
         self.runtime = None
         if self.plugin and hasattr( self.plugin, 'test_runtime' ):
-            self.runtime = self.plugin.runtime
+            self.runtime = self.plugin.test_runtime
 
     def _check_print_exc(self, xs, tb):
         ""

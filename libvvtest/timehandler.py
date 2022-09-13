@@ -34,11 +34,11 @@ class TimeHandler:
             tspec = tcase.getSpec()
             tstat = tcase.getStat()
 
-            rt = self.plugin.testRuntime( tcase )
-            print(tcase, rt)
-            if rt is not None:
+            tout = self.plugin.testRuntime( tcase )
+            print("{0}: {1}".format(tcase, tout))
+            if tout is not None:
                 # Prefer plugin value
-                tstat.setRuntime( int(rt) )
+                tstat.setRuntime( int(tout) )
             else:
                 tlen, _ = self.cache.getRunTime( tspec )
                 if tlen is not None:

@@ -35,7 +35,6 @@ class TimeHandler:
             tstat = tcase.getStat()
 
             tout = self.plugin.testRuntime( tcase )
-            print("{0}: {1}".format(tcase, tout))
             if tout is not None:
                 # Prefer plugin value
                 tstat.setRuntime( int(tout) )

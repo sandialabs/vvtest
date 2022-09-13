@@ -35,9 +35,10 @@ class TimeHandler:
             tstat = tcase.getStat()
 
             rt = self.plugin.testRuntime( tcase )
+            print(tcase, rt)
             if rt is not None:
                 # Prefer plugin value
-                tstat.setRuntime( int(tlen) )
+                tstat.setRuntime( int(rt) )
             else:
                 tlen, _ = self.cache.getRunTime( tspec )
                 if tlen is not None:

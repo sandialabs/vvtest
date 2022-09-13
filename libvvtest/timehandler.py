@@ -63,7 +63,7 @@ class TimeHandler:
             # look for a previous runtime value
             tlen,tresult = self.cache.getRunTime( tspec )
 
-            if tlen != None:
+            if tlen is not None:
 
                 if tout == None:
                     if tresult == "timeout":
@@ -120,13 +120,13 @@ class TimeHandler:
 
     def _apply_timeout_options(self, timeout):
         ""
-        if self.cmdline_timeout != None:
+        if self.cmdline_timeout is not None:
             timeout = self.cmdline_timeout
 
-        if self.tmult != None and timeout and timeout > 0:
+        if self.tmult is not None and timeout and timeout > 0:
             timeout = max( 1, int( float(timeout) * self.tmult + 0.5 ) )
 
-        if self.maxtime != None and timeout:
+        if self.maxtime is not None and timeout:
             timeout = min( timeout, self.maxtime )
 
         return timeout
@@ -145,7 +145,7 @@ def parse_timeout_value( value ):
     except Exception as e:
         err = str(e)
     else:
-        if nsecs != None:
+        if nsecs is not None:
             if nsecs < 0 or not nsecs > 0.0:
                 nsecs = 0
             else:
@@ -157,7 +157,7 @@ def parse_timeout_value( value ):
 def parse_timeout_multiplier( value ):
     ""
     val,err = timeutils.parse_number( value )
-    if not err and val != None and ( val < 0 or not val > 0.0 ):
+    if not err and val is not None and ( val < 0 or not val > 0.0 ):
         err = 'cannot be negative or zero: '+repr(value)
 
     return val,err
@@ -176,7 +176,7 @@ def parse_max_time( value ):
     except Exception as e:
         err = str(e)
     else:
-        if nsecs != None:
+        if nsecs is not None:
             if nsecs < 0 or not nsecs > 0.0:
                 nsecs = None
             else:

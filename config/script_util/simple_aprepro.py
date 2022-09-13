@@ -189,8 +189,14 @@ class SimpleAprepro:
                   " and not ^. As aprepro supports both, please use ** instead." + 
                   " Encountered while processing '{0}'".format(txt))
 
-        if "=" in txt:
-            name, expression = [_.strip() for _ in txt.split("=", 1)]
+        # look for an equals sign that is not preceded or followed by
+        # another equals sign.
+        pattern = re.compile(r"(?<!=)=(?!=)")
+        if re.search(pattern, txt):
+            splitted = re.split(pattern, txt, maxsplit=1)
+            if len(splitted) != 2:
+                raise Exception("Unsupported syntax: {0}".format(txt))
+            name, expression = [_.strip() for _ in splitted]
 
             if self.immutable and name in self.eval_locals.keys():
                 raise Exception("Cannot change '{0}'".format(name)
@@ -260,80 +266,29 @@ class SimpleAprepro:
             print("*   override = {0}".format(self.override))
 
         # Process the input file line-by-line
-        for jdx, line in enumerate(self.src_txt):
+        for jdx, clean_line in enumerate(self.src_txt):
 
-            # Process escaped curly braces.
-            clean_line = line.replace(r"\{", "{").replace(r"\}", "}")
-
-            # Process the aprepro directive blocks.
-            split_line = re.split(r"({[^{]*?})", clean_line)
+            # Process the aprepro directive blocks. Only split on curly
+            # braces that are not escaped.
+            split_line = re.split(r"(?<!\\)({[^{]*?})", clean_line)
             for idx, chunk in enumerate(split_line):
                 if chunk.startswith("{") and chunk.endswith("}"):
                     # Found a chunk to evaluate.
                     split_line[idx] = self.safe_eval(chunk[1:-1])
             joined_line = "".join(split_line)
+
+            # Process escaped curly braces.
+            joined_line = joined_line.replace(r"\{", "{").replace(r"\}", "}")
+
             if self.chatty:
                 print("* {0: 4d}: {1}".format(jdx, repr(joined_line)))
-            self.dst_txt.append("".join(split_line))
+            self.dst_txt.append(joined_line)
 
         if self.chatty:
             print("* End call to SimpleAprepro.process()")
             print("*" * 72 + "\n")
 
         return self.eval_locals
-
-
-def test0():
-    """
-    Test how integers are represented.
-    """
-    processor = SimpleAprepro("", "")
-    processor.src_txt = ["# abc = {abc = 123}", "# abc = { abc }"]
-    out = processor.process()
-    assert processor.dst_txt == ["# abc = 123", "# abc = 123"]
-    assert out == {"abc": 123}
-
-def test1():
-    """
-    Test how floats are represented with only several digits.
-    """
-    processor = SimpleAprepro("", "")
-    processor.src_txt = ["# abc = {abc = 123.456}", "# abc = { abc }"]
-    out = processor.process()
-    assert processor.dst_txt == ["# abc = 123.456", "# abc = 123.456"]
-    assert out == {"abc": 123.456}
-
-def test2():
-    """
-    Test how floats are represented with machine precision.
-    """
-    processor = SimpleAprepro("", "")
-    processor.src_txt = ["# abc = {abc = PI}", "# abc = { abc }"]
-    out = processor.process()
-    assert processor.dst_txt == ["# abc = 3.141592653589793",
-                                 "# abc = 3.141592653589793"]
-    assert out == {"abc": math.pi}
-
-def test3():
-    """
-    Test for integer division
-    """
-    processor = SimpleAprepro("", "")
-    processor.src_txt = ["# abc = {abc = 1 / 3}"]
-    out = processor.process()
-    assert out == {"abc": float(1.0) / float(3.0)}  # all floats, in case you were unsure
-    #                                    12345678901234567
-    assert processor.dst_txt[0][:17] == "# abc = 0.3333333"
-
-def test4():
-    """
-    Test for wrong exponentiation.
-    """
-    processor = SimpleAprepro("", "")
-    processor.src_txt = ["# abc = {abc = 2 ^ 2}"]
-    out = processor.process()
-    assert out == {"abc": 4}
-    assert processor.dst_txt == ["# abc = 4",]
 
 
 def simple_aprepro(src_f, dst_f,
@@ -424,4 +379,5 @@ def main(args):
 
 
 if __name__ == '__main__':
+    #run_tests()
     main(sys.argv[1:])

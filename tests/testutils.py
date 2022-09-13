@@ -593,6 +593,22 @@ def greplines( shell_pattern, string_output ):
     return matchlines
 
 
+def findline( shell_pattern, string_output ):
+    ""
+    pattern = adjust_shell_pattern_to_work_with_fnmatch( shell_pattern )
+
+    if type(string_output) == type(''):
+        lines = list( string_output.splitlines() )
+    else:
+        lines = string_output
+
+    for i,line in enumerate(lines):
+        if fnmatch.fnmatch( line, pattern ):
+            return i
+
+    raise Exception( 'no lines found with pattern '+repr(shell_pattern) )
+
+
 def globfile( shell_pattern ):
     ""
     fL = glob.glob( shell_pattern )

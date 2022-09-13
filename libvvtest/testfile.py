@@ -41,7 +41,7 @@ class TestFile:
         self.baseline_files = []   # list of (test name, src name)
         self.baseline_spec = None
         self.src_files = []        # extra source files listed by the test
-        self.deps = []             # list of (xdir pattern, result expr)
+        self.deps = []             # list of DependencyPattern
 
     def getFilename(self):
         """
@@ -300,29 +300,15 @@ class TestFile:
         ""
         return list( self.src_files )
 
-    def addDependency(self, xdir_pattern, result_word_expr=None, expect='+'):
-        ""
-        self.deps.append( (xdir_pattern, result_word_expr, expect) )
-
-    def getDependencies(self):
+    def addDependencyPattern(self, dep):
         """
-        Returns a list of ( xdir pattern, result expression, expect pattern )
-        specifying test dependencies and their expected results.
+        The 'dep' must be a DependencyPattern object.
+        """
+        self.deps.append( dep )
 
-        The xdir pattern is a shell pattern (not a regular expression) and
-        will be matched against the execution directory of the dependency
-        test.  For example "subdir/name*.np=8".
-
-        The result expression is a WordExpression object and should be
-        evaluated against the dependency test result.  For example it could
-        be "pass or diff" or just "pass".  If the dependency result expression
-        is not true, then this test should not be run.
-
-        The expect pattern is one of
-            '+' : one or more matches must be found
-            '*' : zero or more matches
-            '?' : exactly one match
-             N  : an integer number of matches must be found (non-negative)
+    def getDependencyPatterns(self):
+        """
+        Returns a list of DependencyPattern objects.
         """
         return list( self.deps )
 

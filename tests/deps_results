@@ -55,7 +55,10 @@ class dependency_result_expressions( vtu.vvtestTestCase ):
             vrun.assertCounts( total=2, fail=1, notrun=1 )
 
             assert len( glob.glob( 'TestResults*/*/execute.log' ) ) == 1
-            assert len( vrun.grepLines( 'testX*notrun due to*testY' ) ) == 1
+
+            lines = vrun.out.splitlines()
+            idx = util.findline( 'testX*notrun due to dependency', lines )
+            assert idx > 0 and 'testY' in lines[idx+1]
 
     def test_allow_dependent_to_run_even_if_dependency_fails(self):
         ""
@@ -94,7 +97,7 @@ class dependency_result_expressions( vtu.vvtestTestCase ):
 
         tcase = vtu.make_TestCase_with_a_dependency( 'fail' )
         assert tcase.isBlocked()
-        assert tcase.getBlockedReason() == 'sdir/atest.np=4'
+        assert 'sdir/atest.np=4' in str( tcase.getBlockedReason() )
 
         tcase = vtu.make_TestCase_with_a_dependency( 'fail', '*' )
         assert not tcase.isBlocked()

@@ -34,7 +34,9 @@ class TimeHandler:
             tspec = tcase.getSpec()
             tstat = tcase.getStat()
 
-            tlen,tresult = self.cache.getRunTime( tspec )
+            tlen = self.plugin.testRuntime( tcase )
+            if tlen is None:
+                tlen,tresult = self.cache.getRunTime( tspec )
 
             if tlen != None:
 

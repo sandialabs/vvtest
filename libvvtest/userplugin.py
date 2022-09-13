@@ -82,6 +82,24 @@ class UserPluginBridge:
 
         return rtn
 
+    def testRuntime(self, tcase):
+        """
+        Returns None for no change or an integer value.
+        """
+        rtn = None
+        if self.runtime != None:
+            specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
+            try:
+                rtn = self.runtime( specs )
+                if rtn != None:
+                    rtn = max( 0, int(rtn) )
+            except Exception:
+                xs,tb = outpututils.capture_traceback( sys.exc_info() )
+                self._check_print_exc( xs, tb )
+                rtn = None
+
+        return rtn
+
     def testPreload(self, tcase):
         """
         May modify os.environ and return value is either None/empty or
@@ -124,6 +142,10 @@ class UserPluginBridge:
         self.epilog = None
         if self.plugin and hasattr( self.plugin, 'epilogue' ):
             self.epilog = self.plugin.epilogue
+
+        self.runtime = None
+        if self.plugin and hasattr( self.plugin, 'test_runtime' ):
+            self.runtime = self.plugin.runtime
 
     def _check_print_exc(self, xs, tb):
         ""

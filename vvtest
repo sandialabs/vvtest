@@ -1126,12 +1126,13 @@ def create_Batcher( opts, optD, rtdata, namer,
     jobhandler = batching.BatchJobHandler( check_interval, check_timeout,
                                            batchitf, namer )
 
+    grouper = batchutils.BatchTestGrouper( xlist, opts.batch_length )
+
     maxtmo = get_max_timeout( opts.max_timeout )
-    grouper = batchutils.BatchTestGrouper( xlist, opts.batch_length, maxtmo )
 
     batch = batchutils.Batcher( vvtestcmd,
                                 tlist, xlist, perms,
-                                batchlimit,
+                                batchlimit, maxtmo,
                                 grouper, namer, jobhandler, tcasefactory )
 
     return batch

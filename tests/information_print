@@ -231,11 +231,11 @@ def make_fake_Batcher( tlist ):
 
     batch = batchutils.Batcher( None,
                                 tlist, None, None,
-                                None,
+                                None, None,
                                 None, None, jobhandler, None )
 
     bjob = jobhandler.createJob()
-    bjob.setAttr( 'testlist', tlist )
+    bjob.setJobObject( tlist )
 
     jid = 42
     jobhandler.markJobStarted( bjob, jid )

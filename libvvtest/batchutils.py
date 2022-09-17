@@ -20,11 +20,12 @@ class Batcher:
 
     def __init__(self, vvtestcmd,
                        tlist, xlist, perms,
-                       batchlimit,
+                       batchlimit, max_qtime,
                        grouper, namer, jobhandler, tcasefactory ):
         ""
         self.perms = perms
         self.maxjobs = batchlimit
+        self.maxqtime = max_qtime
 
         self.namer = namer
         self.jobhandler = jobhandler
@@ -48,9 +49,9 @@ class Batcher:
     def constructBatchJobs(self):
         ""
         self.grouper.createGroups()
-        for qL in self.grouper.getGroups():
+        for grp in self.grouper.getGroups():
             bjob = self.jobhandler.createJob()
-            self._construct_job( bjob, qL )
+            self._construct_job( bjob, grp )
 
     def getNumStarted(self):
         """
@@ -140,24 +141,25 @@ class Batcher:
 
     #####################################################################
 
-    def _construct_job(self, bjob, testL):
+    def _construct_job(self, bjob, batchgrp):
         ""
-        tlist = self._make_TestList( bjob.getBatchID(), testL )
+        tlist = self._make_TestList( bjob.getBatchID(), batchgrp )
 
         jobsize = compute_job_size( tlist, self.jobhandler.getNodeSize() )
 
         bjob.setJobSize( jobsize )
-        bjob.setAttr( 'testlist', tlist )
+        bjob.setJobObject( batchgrp )
 
-    def _make_TestList(self, batchid, qlist ):
+    def _make_TestList(self, batchid, batchgrp ):
         ""
         fn = self.namer.getBatchPath( batchid )
 
         tl = TestList.TestList( self.fact, fn )
+        batchgrp.setTestList( tl )
 
         tl.setResultsDate( self.rundate )
 
-        for tcase in qlist:
+        for tcase in batchgrp.getTests():
             tl.addTest( tcase )
 
         return tl
@@ -172,7 +174,8 @@ class Batcher:
 
     def _write_job(self, bjob):
         ""
-        tl = bjob.getAttr('testlist')
+        grp = bjob.getJobObject()
+        tl = grp.getTestList()
 
         bdir = dirname( bjob.getJobScriptName() )
         check_make_directory( bdir, self.perms )
@@ -182,7 +185,11 @@ class Batcher:
 
         cmd = self.vvtestcmd + ' --batch-id='+str( bjob.getBatchID() )
 
-        qtime = self.grouper.computeQueueTime( tl )
+        # this is arbitrary (for now?)
+        no_timeout_value = 21*60*60
+
+        qtime = compute_queue_time( grp, self.maxqtime, no_timeout_value )
+
         if len( tl.getTestMap() ) == 1:
             # force a timeout for batches with only one test
             if qtime < 600: cmd += ' -T ' + str(qtime*0.90)
@@ -247,7 +254,7 @@ class Batcher:
     def _check_for_clean_finish(self, bjob):
         ""
         ofile = bjob.getOutputFilename()
-        rfile = bjob.getAttr('testlist').getResultsFilename()
+        rfile = bjob.getJobObject().getTestList().getResultsFilename()
 
         finished = False
         if self.jobhandler.checkBatchOutputForExit( ofile ):
@@ -260,7 +267,7 @@ class Batcher:
         if not os.path.exists( bjob.getOutputFilename() ):
             mark = 'notrun'
 
-        elif os.path.exists( bjob.getAttr('testlist').getResultsFilename() ):
+        elif os.path.exists( bjob.getJobObject().getTestList().getResultsFilename() ):
             mark = 'notdone'
             self.results.readJobResults( bjob, tdoneL )
 
@@ -280,19 +287,14 @@ class Batcher:
 
 class BatchTestGrouper:
 
-    def __init__(self, xlist, batch_length, max_timeout):
+    def __init__(self, xlist, batch_length):
         ""
         self.xlist = xlist
 
-        if batch_length == None:
-            self.qlen = 30*60
+        if batch_length is None:
+            self.tsize = 30*60
         else:
-            self.qlen = batch_length
-
-        self.max_timeout = max_timeout
-
-        # TODO: make Tzero a platform plugin thing
-        self.Tzero = 21*60*60  # no timeout in batch mode is 21 hours
+            self.tsize = batch_length
 
     def createGroups(self):
         ""
@@ -301,24 +303,7 @@ class BatchTestGrouper:
 
     def getGroups(self):
         ""
-        return [ grp.getTests() for grp in self.batches ]
-
-    def computeQueueTime(self, tlist):
-        ""
-        qtime = 0
-
-        for tcase in tlist.getTests():
-            qtime += int( tcase.getStat().getAttr('timeout') )
-
-        if qtime == 0:
-            qtime = self.Tzero  # give it the "no timeout" length of time
-        else:
-            qtime = apply_queue_timeout_bump_factor( qtime )
-
-        if self.max_timeout:
-            qtime = min( qtime, float(self.max_timeout) )
-
-        return qtime
+        return self.batches
 
     def _sort_groups(self):
         ""
@@ -338,70 +323,103 @@ class BatchTestGrouper:
         self.xlist.sortBySizeAndTimeout()
         while True:
             texec = self.xlist.getNextTest()
-            if texec != None:
-                tcase = texec.getTestCase()
-                size = tcase.getSize()
-                tm = tcase.getStat().getAttr('timeout')
-                self._add_test_case( size, tm, tcase )
-            else:
+            if texec is None:
                 break
+            else:
+                self._add_test_case( texec.getTestCase() )
 
         if self.group != None and not self.group.empty():
             self.batches.append( self.group )
 
-    def _add_test_case(self, size, timeval, tcase):
+    def _add_test_case(self, tcase):
         ""
-        tspec = tcase.getSpec()
-        tstat = tcase.getStat()
+        timeval = tcase.getStat().getAttr('timeout')
 
         if tcase.numDependencies() > 0:
             # tests with dependencies (like analyze tests) get their own group
-            self._add_new_group( size, timeval, [tcase] )
+            self._add_single_group( tcase, timeval )
 
-        elif tstat.getAttr('timeout') < 1:
-            # zero timeout means no limit, so give it the max time value
-            self._add_new_group( size, self.Tzero, [tcase] )
+        elif timeval < 1:
+            # a zero timeout means no limit
+            self._add_single_group( tcase, 0 )
 
         else:
-            self._check_start_new_group( size, timeval )
-            self.group.appendTest( tcase, timeval )
+            self._check_start_new_group( tcase )
 
-    def _check_start_new_group(self, size, timeval):
+    def _check_start_new_group(self, tcase):
         ""
-        if self.group == None:
-            self.group = self._make_new_group( size )
-        elif self.group.needNewGroup( size, timeval, self.qlen ):
+        size = tcase.getSize()
+        timeval = tcase.getStat().getAttr('timeout')
+
+        if self.group is None:
+            self.group = self._make_new_group()
+
+        elif self.group.needNewGroup( size, timeval, self.tsize ):
             self.batches.append( self.group )
-            self.group = self._make_new_group( size )
+            self.group = self._make_new_group()
 
-    def _add_new_group(self, size, timeval, tests):
-        ""
-        self.batches.append( self._make_new_group( size, timeval, tests ) )
+        self.group.appendTest( tcase, timeval )
 
-    def _make_new_group(self, size, timeval=None, tests=None):
+    def _add_single_group(self, tcase, timeval):
         ""
-        grp = BatchGroup( self.num_groups, size, timeval, tests )
+        grp = self._make_new_group()
+        grp.appendTest( tcase, timeval )
+        self.batches.append( grp )
+
+    def _make_new_group(self):
+        ""
+        grp = BatchGroup( self.num_groups )
         self.num_groups += 1
         return grp
 
 
+def compute_queue_time( grp, maxqtime, no_timeout_value ):
+    ""
+    qtime = grp.getTime()
+
+    if qtime == 0:
+        qtime = no_timeout_value
+    else:
+        qtime = apply_queue_timeout_bump_factor( qtime )
+
+    if maxqtime:
+        qtime = min( qtime, float(maxqtime) )
+
+    return qtime
+
+
 class BatchGroup:
 
-    def __init__(self, groupid, size, timeval=None, tests=None):
+    def __init__(self, groupid):
         ""
         self.groupid = groupid
-        self.size = size
-        self.tsum = ( 0 if timeval == None else timeval )
-        self.tests = ( [] if tests == None else tests )
+        self.size = None
+        self.tsum = 0
+        self.tests = []  # magic: having the tests and the testlist is duplicative
+        self.testlist = None
 
     def getTests(self):
         ""
         return self.tests
 
+    def getTime(self):
+        ""
+        return self.tsum
+
     def appendTest(self, tcase, timeval):
         ""
+        if self.size is None:
+            self.size = tcase.getSize()
         self.tests.append( tcase )
         self.tsum += timeval
+
+    def getTestList(self):
+        ""
+        return self.testlist
+
+    def setTestList(self, testlist):
+        ""
+        self.testlist = testlist
 
     def empty(self):
         ""
@@ -489,7 +507,7 @@ class ResultsHandler:
 
     def readJobResults(self, bjob, donetests):
         ""
-        rfile = bjob.getAttr('testlist').getResultsFilename()
+        rfile = bjob.getJobObject().getTestList().getResultsFilename()
 
         if os.path.isfile( rfile ):
 
@@ -513,19 +531,18 @@ class ResultsHandler:
         notrunL = []
         fallback_reason = 'batch number '+str(bjob.getJobID())+' did not run'
 
-        for tcase in bjob.getAttr('testlist').getTests():
+        for tcase in bjob.getJobObject().getTestList().getTests():
             reason = tcase.getBlockedReason()
             if reason:
                 notrunL.append( (tcase,reason) )
             else:
-                # assert False, "magic"
                 notrunL.append( (tcase,fallback_reason) )
 
         return notrunL
 
     def hasBlockingDependency(self, bjob):
         ""
-        for tcase in bjob.getAttr('testlist').getTests():
+        for tcase in bjob.getJobObject().getTestList().getTests():
             if tcase.isBlocked():
                 return True
         return False
@@ -539,7 +556,7 @@ def get_relative_results_filename( tlist_from, to_bjob ):
     ""
     fromdir = os.path.dirname( tlist_from.getResultsFilename() )
 
-    tofile = to_bjob.getAttr('testlist').getResultsFilename()
+    tofile = to_bjob.getJobObject().getTestList().getResultsFilename()
 
     return pathutil.compute_relative_path( fromdir, tofile )
 

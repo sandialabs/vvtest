@@ -53,7 +53,7 @@ class TimeHandler:
             tstat = tcase.getStat()
 
             tout = self.plugin.testTimeout( tcase )
-            if tout == None:
+            if tout is None:
                 # grab explicit timeout value, if the test specifies it
                 tout = tspec.getTimeout()
 
@@ -62,13 +62,13 @@ class TimeHandler:
 
             if tlen is not None:
 
-                if tout == None:
+                if tout is None:
                     if tresult == "timeout":
                         tout = self._timeout_if_test_timed_out( tspec, tlen )
                     else:
                         tout = self._timeout_from_previous_runtime( tlen )
 
-            elif tout == None:
+            elif tout is None:
                 tout = self._default_timeout( tspec )
 
             tout = self._apply_timeout_options( tout )

@@ -27,10 +27,7 @@ class TestList:
     def __init__(self, tcasefactory, filename=None):
         ""
         self.fact = tcasefactory
-        if filename:
-            self.filename = normpath( abspath( filename ) )
-        else:
-            self.filename = abspath( default_filename )
+        self.setFilename( filename )
 
         self.rundate = None
         self.startdate = None
@@ -39,6 +36,13 @@ class TestList:
         self.tlistwriter = None
         self.groups = None  # a ParameterizeAnalyzeGroups class instance
         self.tcasemap = {}  # TestSpec ID -> TestCase object
+
+    def setFilename(self, filename):
+        ""
+        if filename:
+            self.filename = normpath( abspath( filename ) )
+        else:
+            self.filename = abspath( default_filename )
 
     def getFilename(self):
         ""
@@ -125,7 +129,7 @@ class TestList:
             tlr.read()
 
             rd = tlr.getAttr( 'rundate', None )
-            if rd != None:
+            if rd is not None:
                 self.rundate = rd
 
             for xdir,tcase in tlr.getTests().items():
@@ -289,6 +293,10 @@ class TestList:
             self.groups.rebuild( self.tcasemap )
 
         return self.groups
+
+    def getTestCaseFactory(self):
+        ""
+        return self.fact
 
 
 def glob_results_files( basename ):

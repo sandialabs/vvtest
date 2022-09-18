@@ -152,15 +152,12 @@ class Batcher:
 
     def _make_TestList(self, batchid, batchgrp ):
         ""
-        fn = self.namer.getBatchPath( batchid )
+        tl = batchgrp.getTestList()
 
-        tl = TestList.TestList( self.fact, fn )
-        batchgrp.setTestList( tl )
+        fn = self.namer.getBatchPath( batchid )
+        tl.setFilename( fn )
 
         tl.setResultsDate( self.rundate )
-
-        for tcase in batchgrp.getTests():
-            tl.addTest( tcase )
 
         return tl
 
@@ -368,7 +365,8 @@ class BatchTestGrouper:
 
     def _make_new_group(self):
         ""
-        grp = BatchGroup( self.num_groups )
+        tlist = TestList.TestList( self.xlist.getTestCaseFactory() )
+        grp = BatchGroup( tlist, self.num_groups )
         self.num_groups += 1
         return grp
 
@@ -390,17 +388,17 @@ def compute_queue_time( grp, maxqtime, no_timeout_value ):
 
 class BatchGroup:
 
-    def __init__(self, groupid):
+    def __init__(self, testlist, groupid):
         ""
         self.groupid = groupid
+        self.tlist = testlist
+
         self.size = None
         self.tsum = 0
-        self.tests = []  # magic: having the tests and the testlist is duplicative
-        self.testlist = None
 
     def getTests(self):
         ""
-        return self.tests
+        return self.tlist.getTests()
 
     def getTime(self):
         ""
@@ -410,24 +408,20 @@ class BatchGroup:
         ""
         if self.size is None:
             self.size = tcase.getSize()
-        self.tests.append( tcase )
+        self.tlist.addTest( tcase )
         self.tsum += timeval
 
     def getTestList(self):
         ""
-        return self.testlist
-
-    def setTestList(self, testlist):
-        ""
-        self.testlist = testlist
+        return self.tlist
 
     def empty(self):
         ""
-        return len( self.tests ) == 0
+        return len( self.tlist.getTests() ) == 0
 
     def needNewGroup(self, size, timeval, tlimit):
         ""
-        if len(self.tests) > 0:
+        if len( self.tlist.getTests() ) > 0:
             if self.size != size or self.tsum + timeval > tlimit:
                 return True
 
@@ -507,6 +501,8 @@ class ResultsHandler:
 
     def readJobResults(self, bjob, donetests):
         ""
+        # magic: move this activity into TestList class ??
+
         rfile = bjob.getJobObject().getTestList().getResultsFilename()
 
         if os.path.isfile( rfile ):

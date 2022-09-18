@@ -23,6 +23,10 @@ class TestExecList:
         self.started = {}  # TestSpec ID -> TestExec object
         self.stopped = {}  # TestSpec ID -> TestExec object
 
+    def getTestCaseFactory(self):
+        ""
+        return self.tlist.getTestCaseFactory()
+
     def createTestExecs(self, check_dependencies=True):
         """
         Creates the set of TestExec objects from the active test list.

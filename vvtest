@@ -680,6 +680,7 @@ def generate_test_list( opts, optD, rtdata ):
     rtdata.scanner.scanPaths( tlist )
     rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
     rtdata.selector.applyPermanentFilters( tlist )
+    tlist.connectDependencies()
     rtdata.tlm.writeTestList()
 
     rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
@@ -795,6 +796,7 @@ def baseline_tests( opts, optD, rtdata ):
     rtdata.selector.applyRuntimeFilters( tlist )
     rtdata.scanner.completeTestParsing( tlist )
     rtdata.selector.applyBaselineFilter( tlist )
+    tlist.connectDependencies( check_dependencies=False )
 
     rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
     print3()
@@ -809,7 +811,7 @@ def baseline_tests( opts, optD, rtdata ):
                                     shbang_supported=not windows_platform )
 
         xlist = TestExecList( tlist, handler )
-        xlist.createTestExecs( check_dependencies=False )
+        xlist.createTestExecs()
 
         execute.run_baseline( xlist, rtdata.plat )
 
@@ -1035,6 +1037,8 @@ def run_test_exec_list( opts, optD, rtdata ):
     ""
     tlist = rtdata.tlm.getTestList()
 
+    tlist.connectDependencies( check_dependencies=(opts.batch_id is None) )
+
     rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=0 )
     print3()
 
@@ -1053,7 +1057,7 @@ def run_test_exec_list( opts, optD, rtdata ):
                                     shbang_supported=not windows_platform )
 
         xlist = TestExecList( tlist, handler )
-        xlist.createTestExecs( check_dependencies=(opts.batch_id is None) )
+        xlist.createTestExecs()
 
         totaltime = get_total_timeout( opts.total_timeout )
 
@@ -1126,6 +1130,7 @@ def create_Batcher( opts, optD, rtdata, namer,
     jobhandler = batching.BatchJobHandler( check_interval, check_timeout,
                                            batchitf, namer )
 
+    # magic: try sending tlist instead of xlist here
     grouper = batchutils.BatchTestGrouper( xlist, opts.batch_length )
 
     maxtmo = get_max_timeout( opts.max_timeout )

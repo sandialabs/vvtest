@@ -13,6 +13,7 @@ from os.path import join as pjoin
 from . import testlistio
 from .groups import ParameterizeAnalyzeGroups
 from .teststatus import copy_test_results
+from . import depend
 
 
 default_filename = 'testlist'
@@ -75,10 +76,7 @@ class TestList:
 
         tlw = testlistio.TestListWriter( self.filename )
 
-        if self.rundate != None:
-            tlw.start( rundate=self.rundate, **file_attrs )
-        else:
-            tlw.start( **file_attrs)
+        tlw.start( rundate=self.rundate, **file_attrs )
 
         for tcase in self.tcasemap.values():
             tlw.append( tcase, extended=extended )
@@ -177,7 +175,7 @@ class TestList:
         for tcase in tcaselist:
             tspec = tcase.getSpec()
             t = self.tcasemap.get( tspec.getID(), None )
-            if t != None:
+            if t is not None:
                 copy_test_results( t.getStat(), tcase.getStat() )
                 t.getSpec().setIDTraits( tspec.getIDTraits() )
 
@@ -297,6 +295,24 @@ class TestList:
     def getTestCaseFactory(self):
         ""
         return self.fact
+
+    def connectDependencies(self, check_dependencies=True):
+        """
+        Find and set inter-test dependencies. If 'check_dependencies' is True
+        and a dependency cannot be found or will always fail, then a warning
+        is printed.
+        """
+        tmap = self.getTestMap()
+        groups = self.getGroupMap()
+
+        for tcase in self.getTests():
+            if not tcase.getStat().skipTest():
+                assert tcase.getSpec().constructionCompleted()
+                if tcase.getSpec().isAnalyze():
+                    grpL = groups.getGroup( tcase )
+                    depend.connect_analyze_dependencies( tcase, grpL, tmap )
+
+                depend.check_connect_dependencies( tcase, tmap, check_dependencies )
 
 
 def glob_results_files( basename ):

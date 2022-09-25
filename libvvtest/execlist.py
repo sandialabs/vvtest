@@ -27,13 +27,11 @@ class TestExecList:
         ""
         return self.tlist.getTestCaseFactory()
 
-    def createTestExecs(self, check_dependencies=True):
+    def createTestExecs(self):
         """
         Creates the set of TestExec objects from the active test list.
         """
         self._generate_backlog_from_testlist()
-        self._sort_by_size_and_runtime()
-        self._connect_execute_dependencies( check_dependencies )
 
         for texec in self.backlog.iterate():
             self.handler.initialize_for_execution( texec )
@@ -71,6 +69,10 @@ class TestExecList:
             self.waiting[ tcase.getSpec().getID() ] = tcase
             self._move_to_started( texec )
             yield texec
+
+    def consumeTest(self, tcase):
+        ""
+        assert False  # magic: WIP
 
     def popRemaining(self):
         """
@@ -166,28 +168,9 @@ class TestExecList:
                 texec = TestExec( tcase )
                 self.backlog.insert( texec )
 
-    def _sort_by_size_and_runtime(self):
-        """
-        Sort the TestExec objects by runtime, descending order.  This is so
-        popNext() will try to avoid launching long running tests at the end
-        of the testing sequence, which can add significantly to the total wall
-        time.
-        """
+        # sort by runtime, descending order so that popNext() will try to avoid
+        # launching long running tests at the end of the testing sequence
         self.backlog.sort()
-
-    def _connect_execute_dependencies(self, strict):
-        ""
-        tmap = self.tlist.getTestMap()
-        groups = self.tlist.getGroupMap()
-
-        for texec in self.backlog.iterate():
-
-            tcase = texec.getTestCase()
-            if tcase.getSpec().isAnalyze():
-                grpL = groups.getGroup( tcase )
-                depend.connect_analyze_dependencies( tcase, grpL, tmap )
-
-            depend.check_connect_dependencies( tcase, tmap, strict )
 
     def _pop_next_test(self, maxsize):
         ""

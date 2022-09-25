@@ -164,9 +164,8 @@ class Batcher:
     def _start_job(self, bjob):
         ""
         self._write_job( bjob )
-
         self.results.addResultsInclude( bjob )
-
+        self.results.readyTests( bjob )
         self.jobhandler.startJob( bjob )
 
     def _write_job(self, bjob):
@@ -489,6 +488,12 @@ class ResultsHandler:
         self.xlist = xlist
         self.fact = tcasefactory
 
+    def readyTests(self, bjob):
+        ""
+        pass  # magic: WIP
+        #for tcase in bjob.getJobObject().getTests():
+        #    self.xlist.consumeTest( tcase )
+
     def addResultsInclude(self, bjob):
         ""
         fname = get_relative_results_filename( self.tlist, bjob )
@@ -501,7 +506,7 @@ class ResultsHandler:
 
     def readJobResults(self, bjob, donetests):
         ""
-        # magic: move this activity into TestList class ??
+        # magic: move this activity into TestExecList class ??
 
         rfile = bjob.getJobObject().getTestList().getResultsFilename()
 

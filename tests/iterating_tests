@@ -95,11 +95,11 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
 
     def test_iterate_TestExecList_by_size_and_constraint(self):
         ""
+        # by default, tests are sorted by size and runtime
+
         tlist, xlist = vtu.make_fake_TestExecList( timespec='runtime' )
         tlist.setResultsDate()
         tlist.initializeResultsFile()
-
-        xlist._sort_by_size_and_runtime()
 
         texec1 = xlist.popNext( (1,0) )
         assert texec1.getTestCase().getStat().getRuntime() == 21
@@ -209,7 +209,6 @@ def prepare_TestExecList():
     tlist,xlist = vtu.scan_to_make_TestExecList( '.' )
     xlist = TestExecList( tlist, None )
     xlist._generate_backlog_from_testlist()
-    xlist._sort_by_size_and_runtime()
 
     return tlist, xlist
 

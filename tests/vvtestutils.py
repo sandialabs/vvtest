@@ -926,7 +926,7 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
 
     xlist = TestExecList( tlist, None )
     xlist._generate_backlog_from_testlist()
-    xlist._connect_execute_dependencies( strict=True )
+    tlist.connectDependencies()
 
     return tlist, xlist
 

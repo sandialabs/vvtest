@@ -365,7 +365,10 @@ def check_connect_dependencies( tcase, testcasemap, strict=True ):
 
     for dpat in tspec.getDependencyPatterns():
 
-        depL,reason = dpat.find_deps( strict, tspec.getFilepath(), tspec.getParameters(), testcasemap )
+        depL,reason = dpat.find_deps( strict,
+                                      tspec.getFilepath(),
+                                      tspec.getParameters(), 
+                                      testcasemap )
 
         if depL is None:
             if strict:

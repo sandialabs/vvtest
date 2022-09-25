@@ -263,7 +263,6 @@ def print_notrun_reasons( notrunlist ):
     ""
     for tcase,reason in notrunlist:
         xdir = tcase.getSpec().getDisplayString()
-        # magic: reason = tcase.getBlockedReason()
         print3( '*** Warning: test "'+xdir+'"',
                 'notrun due to dependency: ' + str(reason) )
 

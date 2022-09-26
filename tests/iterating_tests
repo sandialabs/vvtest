@@ -17,7 +17,7 @@ import testutils as util
 print3 = util.print3
 
 import libvvtest.testcase as testcase
-import libvvtest.execlist as execlist
+from libvvtest.backlog import TestBacklog
 from libvvtest.execlist import TestExecList
 from libvvtest.TestList import TestList
 from libvvtest.testexec import TestExec
@@ -53,31 +53,23 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         ""
         back = make_test_backlog_object()
 
-        class MyConstraint:
-            def __init__(self, maxnp):
-                self.maxnp = maxnp
-            def getMaxNP(self):
-                return self.maxnp
-            def apply(self, texec):
-                return texec.getTestCase().getStat().getRuntime() < 20
-
-        texec = back.pop( MyConstraint(4) )
+        texec = back.pop_by_size( (4,0) )
 
         print3( runtime_tuple(texec) )
-        assert runtime_tuple(texec) == [ 'sdir/atest0.np=2', (2,0), 12 ]
+        self.assertEqual( runtime_tuple(texec), [ 'sdir/atest1.np=2', (2,0), 22 ] )
 
-        texec = back.pop( MyConstraint(1) )
+        texec = back.pop_by_size( (1,0) )
 
         print3( runtime_tuple(texec) )
-        assert runtime_tuple(texec) == [ 'sdir/atest0.np=1', (1,0), 11 ]
+        self.assertEqual( runtime_tuple(texec), [ 'sdir/atest1.np=1', (1,0), 21 ] )
 
         tL = []
         for texec in back.consume():
             tL.append( runtime_tuple(texec) )
             print3( tL[-1] )
 
-        assert tL == [ [ 'sdir/atest1.np=2', (2,0), 22 ],
-                       [ 'sdir/atest1.np=1', (1,0), 21 ] ]
+        self.assertEqual( tL, [ [ 'sdir/atest0.np=2', (2,0), 12 ],
+                                [ 'sdir/atest0.np=1', (1,0), 11 ] ] )
 
     def test_iterate_backlog_by_size_and_timeout(self):
         ""
@@ -230,7 +222,7 @@ def timeout_tuple( texec ):
 
 def make_test_backlog_object( timespec='runtime' ):
     ""
-    back = execlist.TestBacklog()
+    back = TestBacklog()
     for tcase in vtu.make_TestCase_list( timespec=timespec ):
         back.insert( TestExec( tcase ) )
 

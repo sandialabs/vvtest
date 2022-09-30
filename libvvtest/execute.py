@@ -255,8 +255,7 @@ class DirectRunner( TestListRunner ):
         ""
         if len(nrL) > 0:
             print3()
-        tcase_with_reason = [ (T[0].getTestCase(),T[1]) for T in nrL ]
-        print_notrun_reasons( tcase_with_reason )
+        print_notrun_reasons( [ (tc,tc.getBlockedReason()) for tc in nrL ] )
 
 
 def print_notrun_reasons( notrunlist ):

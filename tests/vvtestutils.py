@@ -895,6 +895,11 @@ def make_TestCase_list( timespec='runtime' ):
     return tests
 
 
+class FakeHandler:
+    def initialize_for_execution(self, *args):
+        pass
+
+
 def make_fake_TestExecList( timespec='runtime' ):
     ""
     tests = make_TestCase_list( timespec=timespec )
@@ -903,7 +908,7 @@ def make_fake_TestExecList( timespec='runtime' ):
     for tcase in tests:
         tlist.addTest( tcase )
 
-    xlist = TestExecList( tlist, None )
+    xlist = TestExecList( tlist, FakeHandler() )
 
     xlist._generate_backlog_from_testlist()
 
@@ -924,7 +929,7 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
 
     tlist.createAnalyzeGroupMap()
 
-    xlist = TestExecList( tlist, None )
+    xlist = TestExecList( tlist, FakeHandler() )
     xlist._generate_backlog_from_testlist()
     tlist.connectDependencies()
 

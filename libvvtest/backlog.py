@@ -9,7 +9,7 @@ import os, sys
 
 class TestBacklog:
     """
-    Stores a list of TestExec objects.  They can be sorted either by
+    Stores a list of TestCcase objects.  They can be sorted either by
 
         ( num procs, runtime )
     or
@@ -24,20 +24,20 @@ class TestBacklog:
         self.tests = []
         self.testcmp = None
 
-    def insert(self, texec):
+    def insert(self, tcase):
         """
         Note: to support streaming, this function would have to use
               self.testcmp to do an insert (rather than an append)
         """
-        self.tests.append( texec )
+        self.tests.append( tcase )
 
     def sort(self, secondary='runtime'):
         ""
         if secondary == 'runtime':
-            self.testcmp = TestExecCompare( make_runtime_key )
+            self.testcmp = TestCaseCompare( make_runtime_key )
         else:
             assert secondary == 'timeout'
-            self.testcmp = TestExecCompare( make_timeout_key )
+            self.testcmp = TestCaseCompare( make_timeout_key )
 
         if sys.version_info[0] < 3:
             self.tests.sort( self.testcmp.compare, reverse=True )
@@ -56,17 +56,17 @@ class TestBacklog:
     def consume(self):
         ""
         while len( self.tests ) > 0:
-            texec = self.tests.pop( 0 )
-            yield texec
+            tcase = self.tests.pop( 0 )
+            yield tcase
 
     def iterate(self):
         ""
-        for texec in self.tests:
-            yield texec
+        for tcase in self.tests:
+            yield tcase
 
     def _pop_test(self, constraint):
         ""
-        texec = None
+        tcase = None
 
         if constraint:
             idx = self._get_starting_index( constraint.getMaxNP() )
@@ -75,11 +75,11 @@ class TestBacklog:
 
         while idx < len( self.tests ):
             if constraint == None or constraint.apply( self.tests[idx] ):
-                texec = self.tests.pop( idx )
+                tcase = self.tests.pop( idx )
                 break
             idx += 1
 
-        return texec
+        return tcase
 
     def _get_starting_index(self, max_np):
         ""
@@ -102,10 +102,8 @@ class TestConstraint:
         else:
             return self.maxsize[0]
 
-    def apply(self, texec):
+    def apply(self, tcase):
         ""
-        tcase = texec.getTestCase()
-
         if self.maxsize != None:
 
             np,nd = tcase.getSize()
@@ -120,18 +118,16 @@ class TestConstraint:
         return True
 
 
-def make_runtime_key( texec ):
+def make_runtime_key( tcase ):
     ""
-    tcase = texec.getTestCase()
     return [ tcase.getSize()[0], tcase.getStat().getRuntime( 0 ) ]
 
-def make_timeout_key( texec ):
+def make_timeout_key( tcase ):
     ""
-    tcase = texec.getTestCase()
     return [ tcase.getSize()[0], tcase.getStat().getAttr( 'timeout' ) ]
 
 
-class TestExecCompare:
+class TestCaseCompare:
     """
     This class is a convenience for supporting Python 2 and 3 sorting.
     Python 2 needs the compare function.  Python 3 just needs a "get key"
@@ -161,7 +157,7 @@ def bisect_left( tests, np ):
     hi = len(tests)
     while lo < hi:
         mid = (lo+hi)//2
-        if np < tests[mid].getTestCase().getSize()[0]: lo = mid+1
+        if np < tests[mid].getSize()[0]: lo = mid+1
         else: hi = mid
     return lo
 

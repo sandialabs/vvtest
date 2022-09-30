@@ -45,6 +45,20 @@ class ExecutionHandler:
 
         self.commondb = None
 
+    def create_execution_directory(self, tcase):
+        ""
+        tspec = tcase.getSpec()
+
+        xdir = tspec.getExecuteDirectory()
+        wdir = pjoin( self.test_dir, xdir )
+
+        if not os.path.exists( wdir ):
+            os.makedirs( wdir )
+            self.perms.apply( xdir )
+
+        # magic: why does this have to go here rather than below?
+        tcase.getStat().resetResults()
+
     def initialize_for_execution(self, texec):
         ""
         tcase = texec.getTestCase()
@@ -56,16 +70,9 @@ class ExecutionHandler:
 
         texec.setTimeout( tstat.getAttr( 'timeout', 0 ) )
 
-        tstat.resetResults()
-
         xdir = tspec.getExecuteDirectory()
         wdir = pjoin( self.test_dir, xdir )
         texec.setRunDirectory( wdir )
-
-        if not os.path.exists( wdir ):
-            os.makedirs( wdir )
-
-        self.perms.apply( xdir )
 
     def loadCommonXMLDB(self):
         ""

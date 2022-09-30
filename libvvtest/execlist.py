@@ -19,6 +19,7 @@ class TestExecList:
         self.handler = handler
 
         self.backlog = TestBacklog()
+        # magic: TODO: change waiting to TestCase and delay initialize_for_execution
         self.waiting = {}  # TestSpec ID -> TestExec object
         self.started = {}  # TestSpec ID -> TestExec object
         self.stopped = {}  # TestSpec ID -> TestExec object
@@ -31,10 +32,17 @@ class TestExecList:
         """
         Creates the set of TestExec objects from the active test list.
         """
+        # magic: this function changes to calling the backlog obj with self.tlist
         self._generate_backlog_from_testlist()
 
-        for texec in self.backlog.iterate():
-            self.handler.initialize_for_execution( texec )
+        # magic: - add separate function in ExecutionHandler to create the
+        #          test exec directory, and only call that function here
+        #          (that function only needs TestSpec)
+        #        - then for each new TestExec, need to call the handler to
+        #          set a few other things in the TestExec object
+        for tcase in self.backlog.iterate():
+            self.handler.create_execution_directory( tcase )
+            # self.handler.initialize_for_execution( texec )
 
     def getExecutionHandler(self):
         ""
@@ -64,14 +72,17 @@ class TestExecList:
 
     def consumeBacklog(self):
         ""
-        for texec in self.backlog.consume():
-            tcase = texec.getTestCase()
-            self.waiting[ tcase.getSpec().getID() ] = tcase
+        for tcase in self.backlog.consume():
+            # tcase = texec.getTestCase()
+            texec = TestExec( tcase )
+            self.handler.initialize_for_execution( texec )
+            self.waiting[ tcase.getSpec().getID() ] = texec
             self._move_to_started( texec )
             yield texec
 
     def consumeTest(self, tcase):
         ""
+        # magic: assert that tcase is in tlist
         assert False  # magic: WIP
 
     def popRemaining(self):
@@ -80,9 +91,10 @@ class TestExecList:
         list of (testexec,blocked_reason).
         """
         tL = []
-        for texec in self.backlog.consume():
-            tcase = texec.getTestCase()
-            tL.append( (texec,tcase.getBlockedReason()) )
+        for tcase in self.backlog.consume():
+            # magic: don't need texec here
+            # tcase = texec.getTestCase()
+            tL.append( tcase )
         return tL
 
     def getRunning(self):
@@ -113,17 +125,22 @@ class TestExecList:
 
     def sortBySizeAndTimeout(self):
         ""
+        # magic: this should be decided by the type of TestBacklog object
         self.backlog.sort( secondary='timeout' )
 
     def getNextTest(self):
         ""
-        texec = self.backlog.pop()
+        tcase = self.backlog.pop()
 
-        if texec != None:
-            tcase = texec.getTestCase()
+        if tcase is not None:
+            # tcase = texec.getTestCase()
+            # magic: maybe short term, but create TestExec
+            texec = TestExec( tcase )
+            self.handler.initialize_for_execution( texec )
             self.waiting[ tcase.getSpec().getID() ] = texec
+            return texec
 
-        return texec
+        return None
 
     def checkStateChange(self, tmp_tcase):
         ""
@@ -167,8 +184,8 @@ class TestExecList:
         for tcase in self.tlist.getTests():
             if not tcase.getStat().skipTest():
                 assert tcase.getSpec().constructionCompleted()
-                texec = TestExec( tcase )
-                self.backlog.insert( texec )
+                # texec = TestExec( tcase )
+                self.backlog.insert( tcase )
 
         # sort by runtime, descending order so that popNext() will try to avoid
         # launching long running tests at the end of the testing sequence
@@ -176,10 +193,14 @@ class TestExecList:
 
     def _pop_next_test(self, maxsize):
         ""
-        texec = self.backlog.pop_by_size( maxsize )
+        tcase = self.backlog.pop_by_size( maxsize )
 
-        if texec != None:
-            tcase = texec.getTestCase()
-            self.waiting[ tcase.getSpec().getID() ] = tcase
+        if tcase is not None:
+            # magic: make a new TestExec and init with handler
+            # tcase = texec.getTestCase()
+            texec = TestExec( tcase )
+            self.handler.initialize_for_execution( texec )
+            self.waiting[ tcase.getSpec().getID() ] = texec
+            return texec
 
-        return texec
+        return None

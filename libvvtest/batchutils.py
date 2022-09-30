@@ -316,6 +316,7 @@ class BatchTestGrouper:
         self.group = None
         self.num_groups = 0
 
+        # magic: use a TestBacklog to form the group (rather than xlist)
         self.xlist.sortBySizeAndTimeout()
         while True:
             texec = self.xlist.getNextTest()
@@ -490,7 +491,7 @@ class ResultsHandler:
 
     def readyTests(self, bjob):
         ""
-        pass  # magic: WIP
+        pass  # magic: WIP, move all tests in this batch job to "waiting"
         #for tcase in bjob.getJobObject().getTests():
         #    self.xlist.consumeTest( tcase )
 

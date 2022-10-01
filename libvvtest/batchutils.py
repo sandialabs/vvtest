@@ -319,11 +319,11 @@ class BatchTestGrouper:
         # magic: use a TestBacklog to form the group (rather than xlist)
         self.xlist.sortBySizeAndTimeout()
         while True:
-            texec = self.xlist.getNextTest()
-            if texec is None:
+            tcase = self.xlist.getNextTest()
+            if tcase is None:
                 break
             else:
-                self._add_test_case( texec.getTestCase() )
+                self._add_test_case( tcase )
 
         if self.group != None and not self.group.empty():
             self.batches.append( self.group )
@@ -522,9 +522,10 @@ class ResultsHandler:
                 pass
             else:
                 for file_tcase in jobtests.values():
-                    texec = self.xlist.checkStateChange( file_tcase )
-                    if texec:
-                        tcase = texec.getTestCase()
+                    tid = file_tcase.getSpec().getID()
+                    tstat = file_tcase.getStat()
+                    tcase = self.xlist.checkStateChange( tid, tstat )
+                    if tcase:
                         if tcase.getStat().isDone():
                             donetests.append( tcase )
 

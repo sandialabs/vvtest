@@ -116,11 +116,9 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
 
         tL = []
         while True:
-            texec = xlist.getNextTest()
-            if texec:
-                tL.append( timeout_tuple( texec.getTestCase() ) )
-                # this checks that the test is "waiting"
-                xlist._move_to_started( texec )
+            tcase = xlist.getNextTest()
+            if tcase:
+                tL.append( timeout_tuple( tcase ) )
             else:
                 break
 

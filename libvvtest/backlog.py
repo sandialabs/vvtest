@@ -9,7 +9,7 @@ import os, sys
 
 class TestBacklog:
     """
-    Stores a list of TestCcase objects.  They can be sorted either by
+    Stores a list of TestCase objects.  They can be sorted either by
 
         ( num procs, runtime )
     or

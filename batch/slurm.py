@@ -31,6 +31,9 @@ class BatchSLURM:
             hdr.append( '#SBATCH --account='+self.attrs['account'] )
         if 'QoS' in self.attrs:
             hdr.append( '#SBATCH --qos='+self.attrs['QoS'] )
+        if 'extra_flags' in self.attrs:
+            for extra_flag in self.attrs['extra_flags']:
+                hdr.append( '#SBATCH {0}'.format(extra_flag) )
 
         return hdr
 

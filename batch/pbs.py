@@ -26,7 +26,7 @@ class BatchPBS:
         self.attrs = attrs
         self.ppn,self.dpn = get_node_size( attrs )
         self.variation = attrs.get( 'variation', None )
-        self.xflags = format_extra_flags( attrs.get("extra_flags",None) )
+        self.xflags = format_extra_flags( attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""

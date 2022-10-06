@@ -147,13 +147,15 @@ class slurm_tests( vtu.vvtestTestCase ):
         obj = construct_batch_system( { 'batchsys':'slurm',
                                         'ppn':16,
                                         'account':'foo',
-                                        'QoS':'bar' } )
+                                        'QoS':'bar',
+                                        'submit_flags': ['--fake-flag=value'] } )
 
         hdrL = obj.header( (3,8,0), 123, abspath('out.txt') )
 
         assert len( util.greplines( 'SBATCH *--nodes=3', hdrL ) ) == 1
         assert len( util.greplines( 'SBATCH *--account=foo', hdrL ) ) == 1
         assert len( util.greplines( 'SBATCH *--qos=bar', hdrL ) ) == 1
+        assert len( util.greplines( 'SBATCH *--fake-flag=value', hdrL ) ) == 1
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
         self.assertEqual( jobid, '291041' )
@@ -182,12 +184,7 @@ class slurm_tests( vtu.vvtestTestCase ):
     def test_batch_queue_interface(self):
         ""
         check_batch_queue_interface( 'slurm', '291041',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
-
-        cmdL = eval( util.readfile( 'bin/sbatch.out' ) )
-        i = cmdL.index( '--fake-flag' )
-        self.assertEqual( cmdL[i+1], 'fakevalue' )
-
+                                     {'submit_flags':'--fake-flag fakevalue'} )
         assert 'scancel' in util.readfile( 'bin/scancel.out' )
 
 
@@ -235,7 +232,7 @@ class lsf_tests( vtu.vvtestTestCase ):
     def test_batch_queue_interface(self):
         ""
         check_batch_queue_interface( 'lsf', '68628',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+                                     {'submit_flags':'--fake-flag fakevalue'} )
 
         cmdL = eval( util.readfile( 'bin/bsub.out' ) )
         i = cmdL.index( '--fake-flag' )
@@ -285,7 +282,7 @@ class craypbs_tests( vtu.vvtestTestCase ):
     def test_batch_queue_interface(self):
         ""
         check_batch_queue_interface( 'craypbs', '123457.sdb',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+                                     {'submit_flags':'--fake-flag fakevalue'} )
 
         cmdL = eval( util.readfile( 'bin/msub.out' ) )
         i = cmdL.index( '--fake-flag' )
@@ -335,7 +332,7 @@ class pbs_tests( vtu.vvtestTestCase ):
     def test_batch_queue_interface(self):
         ""
         check_batch_queue_interface( 'pbs', '123456.ladmin1',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+                                     {'submit_flags':'--fake-flag fakevalue'} )
 
         cmdL = eval( util.readfile( 'bin/qsub.out' ) )
         i = cmdL.index( '--fake-flag' )
@@ -385,7 +382,7 @@ class moab_tests( vtu.vvtestTestCase ):
     def test_batch_queue_interface(self):
         ""
         check_batch_queue_interface( 'moab', '123456.ladmin1',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+                                     {'submit_flags':'--fake-flag fakevalue'} )
 
         cmdL = eval( util.readfile( 'bin/msub.out' ) )
         i = cmdL.index( '--fake-flag' )

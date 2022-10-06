@@ -14,7 +14,7 @@ class BatchSLURM:
     def __init__(self, **attrs):
         ""
         self.attrs = attrs
-        self.xflags = format_extra_flags( self.attrs.get("extra_flags",None) )
+        self.xflags = format_extra_flags( self.attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""
@@ -31,9 +31,8 @@ class BatchSLURM:
             hdr.append( '#SBATCH --account='+self.attrs['account'] )
         if 'QoS' in self.attrs:
             hdr.append( '#SBATCH --qos='+self.attrs['QoS'] )
-        if 'extra_flags' in self.attrs:
-            for extra_flag in self.attrs['extra_flags']:
-                hdr.append( '#SBATCH {0}'.format(extra_flag) )
+        for flag in self.xflags:
+            hdr.append( '#SBATCH {0}'.format(flag) )
 
         return hdr
 
@@ -43,7 +42,7 @@ class BatchSLURM:
             ( jobid, submit command, raw output from submit command )
         where jobid is None if an error occurred.
         """
-        x,cmd,out = runcmd( ['sbatch']+self.xflags+[fname] )
+        x,cmd,out = runcmd( ['sbatch', fname] )
 
         # output should contain something like the following
         #    sbatch: Submitted batch job 291041

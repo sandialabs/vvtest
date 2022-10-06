@@ -6,11 +6,18 @@
 
 import sys
 import os
+import shlex
 from os.path import join as pjoin, normpath, abspath, basename
 import platform
 
 from .vvplatform import Platform
 from .importutil import import_file_from_sys_path, gather_modules_by_filename
+
+
+def list_like(arg):
+    if isinstance(arg, str):
+        return shlex.split(arg)
+    return list(arg)
 
 
 platform_attrs = [
@@ -40,7 +47,7 @@ platform_attrs = [
             '"Quality of Service" e.g. "normal", "long", etc.' ],
     [ 'testingdir', str,
             "(under development)" ],
-    [ 'submit_flags', str, 'extra_flags',
+    [ 'submit_flags', list_like, 'extra_flags',
             "arbitrary command line options passed to the batch submit command" ],
 ]
 

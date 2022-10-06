@@ -19,7 +19,7 @@ class BatchCrayPBS:
     def __init__(self, **attrs):
         ""
         self.attrs = attrs
-        self.xflags = format_extra_flags( attrs.get("extra_flags",None) )
+        self.xflags = format_extra_flags( attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""

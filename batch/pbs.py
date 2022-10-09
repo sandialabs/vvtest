@@ -6,7 +6,7 @@
 
 import os, sys
 
-from .helpers import runcmd, format_extra_flags, get_node_size
+from .helpers import runcmd, format_shell_flags, get_node_size
 
 
 class BatchPBS:
@@ -26,7 +26,7 @@ class BatchPBS:
         self.attrs = attrs
         self.ppn,self.dpn = get_node_size( attrs )
         self.variation = attrs.get( 'variation', None )
-        self.xflags = format_extra_flags( attrs.get("submit_flags",None) )
+        self.xflags = format_shell_flags( attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""

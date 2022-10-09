@@ -85,9 +85,15 @@ class vvtestTestCase( unittest.TestCase ):
         # it is used in vvtest when handling the --save-results option
         os.environ['TESTING_DIRECTORY'] = os.getcwd()
 
+        self.savePATH = os.environ.get( 'PATH', None )
+
     def tearDown(self):
         ""
-        pass
+        if self.savePATH is None:
+            if 'PATH' in os.environ:
+                del os.environ['PATH']
+        else:
+            os.environ['PATH'] = self.savePATH
 
 
 def copy_vvtest_into_directory( dest_dir ):

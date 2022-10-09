@@ -25,7 +25,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
-        util.setup_test( cleanout=False )
+        vtu.vvtestTestCase.setUp( self, cleanout=False )
 
     def test_translating_the_exit_status(self):
         ""

@@ -11,7 +11,7 @@ This batch handler was used on the Cray XE machines.  Most commands are MOAB
 but it has aspects of PBS.
 """
 
-from .helpers import runcmd, format_extra_flags, get_node_size
+from .helpers import runcmd, format_shell_flags, get_node_size
 
 
 class BatchCrayPBS:
@@ -19,7 +19,7 @@ class BatchCrayPBS:
     def __init__(self, **attrs):
         ""
         self.attrs = attrs
-        self.xflags = format_extra_flags( attrs.get("submit_flags",None) )
+        self.xflags = format_shell_flags( attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""

@@ -6,7 +6,7 @@
 
 import os, sys
 
-from .helpers import format_extra_flags, runcmd
+from .helpers import format_shell_flags, runcmd
 
 
 class BatchSLURM:
@@ -14,7 +14,7 @@ class BatchSLURM:
     def __init__(self, **attrs):
         ""
         self.attrs = attrs
-        self.xflags = format_extra_flags( self.attrs.get("submit_flags",None) )
+        self.xflags = format_shell_flags( self.attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""
@@ -31,8 +31,9 @@ class BatchSLURM:
             hdr.append( '#SBATCH --account='+self.attrs['account'] )
         if 'QoS' in self.attrs:
             hdr.append( '#SBATCH --qos='+self.attrs['QoS'] )
-        for flag in self.xflags:
-            hdr.append( '#SBATCH {0}'.format(flag) )
+        if self.xflags:
+            # place on one line so a specification like "-L gpfs" will work
+            hdr.append( '#SBATCH {0}'.format( ' '.join( self.xflags ) ) )
 
         return hdr
 

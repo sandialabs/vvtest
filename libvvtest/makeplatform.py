@@ -6,7 +6,6 @@
 
 import sys
 import os
-import shlex
 from os.path import join as pjoin, normpath, abspath, basename
 import platform
 

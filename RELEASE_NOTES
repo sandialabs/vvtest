@@ -1,6 +1,10 @@
 
 Improvements:
 
+    - A new user plugin function was added, test_runtime(), which can be used
+      to set the runtime of tests. Test runtimes are used for some command line
+      options, such as --tmin, --tmax, and --tsum.
+
     - Failed "depends on" specifications are now printed before tests are
       actually run. This means the messages will show up when using the '-g'
       option. Also, additional information is given about the failure.
@@ -108,6 +112,14 @@ Improvements:
       The parameter 'material' is still defined in the vvtest_util.py file.
 
 Fixes:
+
+    - A previous refactoring broke the use of the 'extra_flags' and 'submit_flags'
+      platform options, such as
+
+          $ vvtest --batch --platopt extra_flags="--license=gpfs"
+
+      Both of those options work again (which adds arbitrary flags to batch
+      submissions).
 
     - After using the --run-dir option to name the test results directory,
       a subsequent vvtest run would not recognize the directory as containing

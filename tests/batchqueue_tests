@@ -17,7 +17,7 @@ from textwrap import dedent
 import vvtestutils as vtu
 import testutils as util
 
-from batch.qinterface import BatchQueueInterface
+from batch.qinterface import BatchQueueInterface, extract_non_None_job_ids
 from batch.batchfactory import construct_batch_system
 
 import batch.helpers as helpers
@@ -66,12 +66,12 @@ class function_tests( vtu.vvtestTestCase ):
 
     def test_formatting_extra_flags(self):
         ""
-        self.assertEqual( helpers.format_extra_flags( None ), [] )
-        self.assertEqual( helpers.format_extra_flags( ('-f',) ), ['-f'] )
-        self.assertEqual( helpers.format_extra_flags( '-V' ), ['-V'] )
-        self.assertEqual( helpers.format_extra_flags( ['-v','var=val'] ), ['-v','var=val'] )
-        self.assertEqual( helpers.format_extra_flags( '-v var=val' ), ['-v','var=val'] )
-        self.assertRaises( ValueError, helpers.format_extra_flags, 23 )
+        self.assertEqual( helpers.format_shell_flags( None ), [] )
+        self.assertEqual( helpers.format_shell_flags( ('-f',) ), ['-f'] )
+        self.assertEqual( helpers.format_shell_flags( '-V' ), ['-V'] )
+        self.assertEqual( helpers.format_shell_flags( ['-v','var=val'] ), ['-v','var=val'] )
+        self.assertEqual( helpers.format_shell_flags( '-v var=val' ), ['-v','var=val'] )
+        self.assertRaises( ValueError, helpers.format_shell_flags, 23 )
 
     def test_clean_exit_marker_mechanism(self):
         ""
@@ -84,6 +84,53 @@ class function_tests( vtu.vvtestTestCase ):
         time.sleep(3)
         assert bq.checkForJobScriptExit( 'log' ) is True
 
+    def test_extract_non_None_job_ids(self):
+        ""
+        self.assertEqual( extract_non_None_job_ids([]), [] )
+        self.assertEqual( extract_non_None_job_ids([None]), [] )
+        self.assertEqual( extract_non_None_job_ids(['a','1']), ['a','1'] )
+        self.assertEqual( extract_non_None_job_ids(['a',None,'1']), ['a','1'] )
+
+
+class failure_modes( vtu.vvtestTestCase ):
+    """
+    test the submission failure case and the total vvtest timeout case
+    to make sure we know what to grep for to determine when they occur
+    """
+
+    def test_submit_failure(self):
+        ""
+        # use slurm system for this test
+
+        write_mock_slurm_scripts( fake_submit_exception=True )
+
+        util.writefile( 'atest.vvt', """
+            pass
+            """ )
+
+        with util.set_environ( PATH=prepended_PATH('bin') ):
+            vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=slurm',
+                                  '--platopt ppn=4', batch=True )
+
+        vrun.assertCounts( total=1, notrun=1 )
+        assert vrun.grepLines('*** Batch submission failed')
+        assert vrun.grepLines('fake submit exception')
+
+    def test_total_timeout(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            import time
+            time.sleep(10)
+            """ )
+
+        with util.set_environ( PATH=prepended_PATH('bin') ):
+            vrun = vtu.runvvtest( '--total-timeout=5', batch=True )
+
+        vrun.assertCounts( total=1, notdone=1 )
+        assert vrun.grepLines('*** vvtest: total timeout expired')
+
+
+########## subprocs.py
 
 class subprocs_tests( vtu.vvtestTestCase ):
 
@@ -115,45 +162,60 @@ class subprocs_tests( vtu.vvtestTestCase ):
         assert len( util.grepfiles( 'running script', 'out.txt' ) ) == 1
 
 
+########## slurm.py
+
+def write_mock_slurm_scripts( fake_submit_exception=False ):
+    ""
+    write_mock_helpers()
+
+    if fake_submit_exception:
+        write_mock_script( 'bin/sbatch', '', """
+            raise Exception( 'fake submit exception' )
+            """ )
+    else:
+        write_mock_script( 'bin/sbatch', """
+            Submitted batch job 291041
+            """,
+            """
+            jobscript = sys.argv[-1]
+            ofile = get_header_option_value( jobscript, '#SBATCH --output=' )
+            run_in_background( jobscript, ofile )
+            """ )
+
+    write_mock_script( 'bin/squeue', """
+        15994641 PD
+        16004759 PD
+        16004368 R
+        291041 CD
+        16001384 CD
+        """ )
+
+    write_mock_script( 'bin/scancel', "" )
+
+
 class slurm_tests( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
         vtu.vvtestTestCase.setUp(self)
-
-        write_mock_script( 'bin/sbatch', """
-            Submitted batch job 291041
-            """ )
-
-        write_mock_script( 'bin/squeue', """
-            15994641 PD
-            16004759 PD
-            16004368 R
-            291041 PD
-            16001384 CD
-            """ )
-
-        write_mock_script( 'bin/scancel', "" )
-
-        self.save_PATH = os.environ.get( 'PATH', None )
-        os.environ['PATH'] = abspath('bin')+':'+os.environ.get( 'PATH', '/bin' )
-
-    def tearDown(self):
-        ""
-        os.environ['PATH'] = self.save_PATH
+        write_mock_slurm_scripts()
+        os.environ['PATH'] = prepended_PATH( 'bin' )
 
     def test_implementation_functions(self):
         ""
         obj = construct_batch_system( { 'batchsys':'slurm',
                                         'ppn':16,
                                         'account':'foo',
-                                        'QoS':'bar' } )
+                                        'QoS':'bar',
+                                        'submit_flags': '--fake-flag=value' } )
 
         hdrL = obj.header( (3,8,0), 123, abspath('out.txt') )
+        util.writefile( 'batchscript', '\n'.join( hdrL )+'\n' )
 
         assert len( util.greplines( 'SBATCH *--nodes=3', hdrL ) ) == 1
         assert len( util.greplines( 'SBATCH *--account=foo', hdrL ) ) == 1
         assert len( util.greplines( 'SBATCH *--qos=bar', hdrL ) ) == 1
+        assert len( util.greplines( 'SBATCH *--fake-flag=value', hdrL ) ) == 1
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
         self.assertEqual( jobid, '291041' )
@@ -181,14 +243,43 @@ class slurm_tests( vtu.vvtestTestCase ):
 
     def test_batch_queue_interface(self):
         ""
-        check_batch_queue_interface( 'slurm', '291041',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            """ )
 
-        cmdL = eval( util.readfile( 'bin/sbatch.out' ) )
-        i = cmdL.index( '--fake-flag' )
-        self.assertEqual( cmdL[i+1], 'fakevalue' )
+        vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=slurm',
+                              '--platopt ppn=4 --platopt submit_flags=--fake-flag',
+                              '--platopt PT=foobar',
+                              batch=True )
+        vrun.assertCounts( total=1, npass=1 )
+        assert not vrun.grepLines('*** Batch submission failed')
+        assert not vrun.grepLines('*** vvtest: total timeout expired')
+        fn = util.globfile( 'TestResults*/batchset*/qbat.0' )
+        assert '#SBATCH --account=foobar' in util.readfile(fn)
+        assert '#SBATCH --fake-flag' in util.readfile(fn)
 
-        assert 'scancel' in util.readfile( 'bin/scancel.out' )
+
+########## lsf.py
+
+def write_mock_lsf_scripts():
+    ""
+    write_mock_helpers()
+
+    write_mock_script( 'bin/bsub', """
+        Job <68628> is submitted to default queue <normal>.
+        """,
+        """
+        jobscript = sys.argv[-1]
+        ofile = get_header_option_value( jobscript, '#BSUB -o ' )
+        run_in_background( jobscript, ofile )
+        """ )
+
+    write_mock_script( 'bin/bjobs', """
+        68828   PEND
+        68728   RUN
+        """ )
+
+    write_mock_script( 'bin/bkill', "" )
 
 
 class lsf_tests( vtu.vvtestTestCase ):
@@ -196,37 +287,23 @@ class lsf_tests( vtu.vvtestTestCase ):
     def setUp(self):
         ""
         vtu.vvtestTestCase.setUp(self)
-
-        write_mock_script( 'bin/bsub', """
-            Job <68628> is submitted to default queue <normal>.
-            """ )
-
-        write_mock_script( 'bin/bjobs', """
-            68628   PEND
-            68728   RUN
-            """ )
-
-        write_mock_script( 'bin/bkill', "" )
-
-        self.save_PATH = os.environ.get( 'PATH', None )
-        os.environ['PATH'] = abspath('bin')+':'+os.environ.get( 'PATH', '/bin' )
-
-    def tearDown(self):
-        ""
-        os.environ['PATH'] = self.save_PATH
+        write_mock_lsf_scripts()
+        os.environ['PATH'] = prepended_PATH( 'bin' )
 
     def test_implementation_functions(self):
         ""
         obj = construct_batch_system( {'batchsys':'lsf', 'ppn':44} )
 
         hdrL = obj.header( (3,8,0), 123, abspath('out.txt') )
+        util.writefile( 'batchscript', '\n'.join( hdrL )+'\n' )
+
         assert len( util.greplines( 'BSUB *-nnodes 3', hdrL ) ) == 1
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
         self.assertEqual( jobid, '68628' )
 
-        jobs,cmd,out = obj.query( [ '68628', '68728', '38594' ] )
-        self.assertEqual( jobs, {'68628': 'pending', '68728': 'running'} )
+        jobs,cmd,out = obj.query( [ '68828', '68728', '38594' ] )
+        self.assertEqual( jobs, {'68828': 'pending', '68728': 'running'} )
 
         obj.cancel( '123456' )
         cmdL = eval( util.readfile( 'bin/bkill.out' ).strip() )
@@ -234,14 +311,41 @@ class lsf_tests( vtu.vvtestTestCase ):
 
     def test_batch_queue_interface(self):
         ""
-        check_batch_queue_interface( 'lsf', '68628',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            """ )
 
-        cmdL = eval( util.readfile( 'bin/bsub.out' ) )
-        i = cmdL.index( '--fake-flag' )
-        self.assertEqual( cmdL[i+1], 'fakevalue' )
+        vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=lsf',
+                              '--platopt ppn=4 --platopt extra_flags=--fake-flag',
+                              batch=True )
+        vrun.assertCounts( total=1, npass=1 )
+        assert not vrun.grepLines('*** Batch submission failed')
+        assert not vrun.grepLines('*** vvtest: total timeout expired')
+        assert '--fake-flag' in util.readfile( 'bin/bsub.out' )
 
-        assert 'bkill' in util.readfile( 'bin/bkill.out' )
+
+########## craypbs.py
+
+def write_mock_craypbs_scripts():
+    ""
+    write_mock_helpers()
+
+    write_mock_script( 'bin/msub', """
+        123457.sdb
+        """,
+        """
+        jobscript = sys.argv[-1]
+        ofile = get_header_option_value( jobscript, '#MSUB -o ' )
+        run_in_background( jobscript, ofile )
+        """ )
+
+    write_mock_script( 'bin/showq', """
+        123456.sdb n/a Running field
+        12345.sdb n/a Running field
+        123467.sdb n/a Idle field
+        """ )
+
+    # batch cancel not implemented for craypbs
 
 
 class craypbs_tests( vtu.vvtestTestCase ):
@@ -249,47 +353,62 @@ class craypbs_tests( vtu.vvtestTestCase ):
     def setUp(self):
         ""
         vtu.vvtestTestCase.setUp(self)
-
-        write_mock_script( 'bin/msub', """
-            123457.sdb
-            """ )
-
-        write_mock_script( 'bin/showq', """
-            123456.sdb n/a Running field
-            12345.sdb n/a Running field
-            123457.sdb n/a Idle field
-            """ )
-
-        # batch cancel not implemented for craypbs
-
-        self.save_PATH = os.environ.get( 'PATH', None )
-        os.environ['PATH'] = abspath('bin')+':'+os.environ.get( 'PATH', '/bin' )
-
-    def tearDown(self):
-        ""
-        os.environ['PATH'] = self.save_PATH
+        write_mock_craypbs_scripts()
+        os.environ['PATH'] = prepended_PATH( 'bin' )
 
     def test_implementation_functions(self):
         ""
         obj = construct_batch_system( {'batchsys':'craypbs', 'ppn':16} )
 
         hdrL = obj.header( (3,8,0), 123, abspath('out.txt') )
+        util.writefile( 'batchscript', '\n'.join( hdrL )+'\n' )
+
         assert len( util.greplines( 'MSUB*nodes*3', hdrL ) ) == 1
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
         self.assertEqual( jobid, '123457.sdb' )
 
-        jobs,cmd,out = obj.query( [ '12345.sdb', '123457.sdb', '7345.sdb' ] )
-        self.assertEqual( jobs, {'123457.sdb':'pending', '12345.sdb':'running'} )
+        jobs,cmd,out = obj.query( [ '12345.sdb', '123467.sdb', '7345.sdb' ] )
+        self.assertEqual( jobs, {'123467.sdb':'pending', '12345.sdb':'running'} )
 
     def test_batch_queue_interface(self):
         ""
-        check_batch_queue_interface( 'craypbs', '123457.sdb',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            """ )
 
-        cmdL = eval( util.readfile( 'bin/msub.out' ) )
-        i = cmdL.index( '--fake-flag' )
-        self.assertEqual( cmdL[i+1], 'fakevalue' )
+        vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=craypbs',
+                              '--platopt ppn=4 --platopt account=foobar',
+                              batch=True )
+        vrun.assertCounts( total=1, npass=1 )
+        assert not vrun.grepLines('*** Batch submission failed')
+        assert not vrun.grepLines('*** vvtest: total timeout expired')
+        fn = util.globfile( 'TestResults*/batchset*/qbat.0' )
+        assert '#MSUB -A foobar' in util.readfile(fn)
+
+
+########## pbs.py
+
+def write_mock_pbs_scripts():
+    ""
+    write_mock_helpers()
+
+    write_mock_script( 'bin/qsub', """
+        123456.ladmin1
+        """,
+        """
+        jobscript = sys.argv[-1]
+        ofile = get_header_option_value( jobscript, '#PBS -o ' )
+        run_in_background( jobscript, ofile )
+        """ )
+
+    write_mock_script( 'bin/qstat', """
+        123466.ladmin1 field1 field2 field3 Q field6
+        12345.ladmin1 field1 field2 field3 R field6
+        123457.ladmin1 field1 field2 field3 C field6
+        """ )
+
+    # batch cancel not implemented for pbs
 
 
 class pbs_tests( vtu.vvtestTestCase ):
@@ -297,49 +416,62 @@ class pbs_tests( vtu.vvtestTestCase ):
     def setUp(self):
         ""
         vtu.vvtestTestCase.setUp(self)
-
-        write_mock_script( 'bin/qsub', """
-            123456.ladmin1
-            """ )
-
-        write_mock_script( 'bin/qstat', """
-            123456.ladmin1 field1 field2 field3 Q field6
-            12345.ladmin1 field1 field2 field3 R field6
-            123457.ladmin1 field1 field2 field3 C field6
-            """ )
-
-        # batch cancel not implemented for pbs
-
-        self.save_PATH = os.environ.get( 'PATH', None )
-        os.environ['PATH'] = abspath('bin')+':'+os.environ.get( 'PATH', '/bin' )
-
-    def tearDown(self):
-        ""
-        os.environ['PATH'] = self.save_PATH
+        write_mock_pbs_scripts()
+        os.environ['PATH'] = prepended_PATH( 'bin' )
 
     def test_implementation_functions(self):
         ""
         obj = construct_batch_system( {'batchsys':'pbs', 'ppn':16} )
 
         hdr = obj.header( (1,8,0), 123, abspath('out.txt') )
+        util.writefile( 'batchscript', hdr+'\n' )
         assert 'PBS' in hdr
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
         self.assertEqual( jobid, '123456.ladmin1' )
 
         jobs,cmd,out = obj.query(
-                    [ '12345.ladmin1', '123456.ladmin1', '7345.ladmin1' ] )
-        self.assertEqual( jobs, {'123456.ladmin1':'pending',
+                    [ '12345.ladmin1', '123466.ladmin1', '7345.ladmin1' ] )
+        self.assertEqual( jobs, {'123466.ladmin1':'pending',
                                  '12345.ladmin1':'running'} )
 
     def test_batch_queue_interface(self):
         ""
-        check_batch_queue_interface( 'pbs', '123456.ladmin1',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            """ )
 
-        cmdL = eval( util.readfile( 'bin/qsub.out' ) )
-        i = cmdL.index( '--fake-flag' )
-        self.assertEqual( cmdL[i+1], 'fakevalue' )
+        vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=pbs',
+                              '--platopt ppn=4 --platopt submit_flags=--fake-flag',
+                              batch=True )
+        vrun.assertCounts( total=1, npass=1 )
+        assert not vrun.grepLines('*** Batch submission failed')
+        assert not vrun.grepLines('*** vvtest: total timeout expired')
+        assert '--fake-flag' in util.readfile( 'bin/qsub.out' )
+
+
+########## moab.py
+
+def write_mock_moab_scripts():
+    ""
+    write_mock_helpers()
+
+    write_mock_script( 'bin/msub', """
+        123456.ladmin1
+        """,
+        """
+        jobscript = sys.argv[-1]
+        ofile = get_header_option_value( jobscript, '#MSUB -o ' )
+        run_in_background( jobscript, ofile )
+        """ )
+
+    write_mock_script( 'bin/showq', """
+        123466.ladmin1 field1 Deferred field3
+        12345.ladmin1 field1 Running field3
+        123457.ladmin1 field1 Idle field3
+        """ )
+
+    # batch cancel not implemented for moab
 
 
 class moab_tests( vtu.vvtestTestCase ):
@@ -347,86 +479,98 @@ class moab_tests( vtu.vvtestTestCase ):
     def setUp(self):
         ""
         vtu.vvtestTestCase.setUp(self)
-
-        write_mock_script( 'bin/msub', """
-            123456.ladmin1
-            """ )
-
-        write_mock_script( 'bin/showq', """
-            123456.ladmin1 field1 Deferred field3
-            12345.ladmin1 field1 Running field3
-            123457.ladmin1 field1 Idle field3
-            """ )
-
-        # batch cancel not implemented for moab
-
-        self.save_PATH = os.environ.get( 'PATH', None )
-        os.environ['PATH'] = abspath('bin')+':'+os.environ.get( 'PATH', '/bin' )
-
-    def tearDown(self):
-        ""
-        os.environ['PATH'] = self.save_PATH
+        write_mock_moab_scripts()
+        os.environ['PATH'] = prepended_PATH( 'bin' )
 
     def test_implementation_functions(self):
         ""
         obj = construct_batch_system( {'batchsys':'moab', 'ppn':16} )
 
         hdr = obj.header( (1,8,0), 123, abspath('out.txt') )
+        util.writefile( 'batchscript', hdr+'\n' )
         assert 'MSUB' in hdr
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
         self.assertEqual( jobid, '123456.ladmin1' )
 
         jobs,cmd,out = obj.query(
-                    [ '12345.ladmin1', '123456.ladmin1', '7345.ladmin1' ] )
-        self.assertEqual( jobs, {'123456.ladmin1':'pending',
+                    [ '12345.ladmin1', '123466.ladmin1', '7345.ladmin1' ] )
+        self.assertEqual( jobs, {'123466.ladmin1':'pending',
                                  '12345.ladmin1':'running'} )
 
     def test_batch_queue_interface(self):
         ""
-        check_batch_queue_interface( 'moab', '123456.ladmin1',
-                                     {'extra_flags':'--fake-flag fakevalue'} )
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            """ )
 
-        cmdL = eval( util.readfile( 'bin/msub.out' ) )
-        i = cmdL.index( '--fake-flag' )
-        self.assertEqual( cmdL[i+1], 'fakevalue' )
+        vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=moab',
+                              '--platopt ppn=4 --platopt submit_flags=--fake-flag',
+                              batch=True )
+        vrun.assertCounts( total=1, npass=1 )
+        assert not vrun.grepLines('*** Batch submission failed')
+        assert not vrun.grepLines('*** vvtest: total timeout expired')
+        assert '--fake-flag' in util.readfile( 'bin/msub.out' )
 
 
-def check_batch_queue_interface( batchsys, jobid, add_attrs={} ):
+########################################################################
+
+def write_mock_helpers():
     ""
-    os.mkdir('work')
-    wrk,out,scr = abspath('work'), abspath('work/out'), abspath('work/scr')
+    util.writefile( 'bin/mockutils.py', """
+        import subprocess
 
-    attrs = {'batchsys':batchsys}
-    attrs.update( add_attrs )
-    bq = BatchQueueInterface( (13,None), attrs )
+        def get_header_option_value( jobscript, option_marker ):
+            ""
+            with open( jobscript, 'rt' ) as fp:
+                for line in fp:
+                    L = line.strip().split( option_marker )
+                    if len(L) > 1:
+                        if L[-1]:
+                           return L[-1]
+                        else:
+                            raise Exception( 'marker value empty: '+repr(option_marker) )
 
-    bq.writeJobScript( (1,1,0), 60, wrk, out, scr, 'fake command' )
-    assert 'fake command' in util.readfile( scr )
+            raise Exception( 'marker not found: '+repr(option_marker) )
 
-    jid = bq.submitJob( wrk, out, scr )
-    assert jid == jobid
+        def run_in_background( jobscript, outputfile ):
+            ""
+            with open( outputfile, 'wt' ) as fp:
+                subprocess.Popen(
+                    'timeout 10 /bin/bash '+jobscript, shell=True,
+                    stdout=fp.fileno(), stderr=subprocess.STDOUT )
+        """ )
 
-    jobD = bq.queryJobs( [jid] )
-    assert jobD == {jobid:'pending'}
 
-    bq.cancelJobs( [123] )
-
-
-def write_mock_script( filename, print_this ):
+def write_mock_script( filename, print_this, execute_this=None ):
     ""
     lines = [ '#!'+sys.executable,
-              'import os, sys' ]
+              'import os, sys, subprocess',
+              'from mockutils import get_header_option_value, run_in_background' ]
+
+    # a file is always written that contains the script arguments
+    lines.extend( [
+            "with open( '"+abspath(filename)+'.out'+"', 'wt' ) as fp:",
+            "    fp.write( str(sys.argv) + os.linesep )" ] )
+
+    if execute_this:
+        lines.extend( [ '', dedent( execute_this ) ] )
+
     if print_this:
         lines.extend( [
             "print ( '''",
             dedent( print_this ).strip(),
             "''' )" ] )
-    # a file is always written that contains the script arguments
-    lines.extend( [
-            "with open( '"+abspath(filename)+'.out'+"', 'wt' ) as fp:",
-            "    fp.write( str(sys.argv) + os.linesep )" ] )
+
     util.writescript( filename, '\n'.join(lines)+'\n' )
+
+
+def prepended_PATH( path ):
+    ""
+    if 'PATH' in os.environ:
+        return abspath(path)+':'+os.environ['PATH']
+    else:
+        return abspath(path)
 
 
 ############################################################################

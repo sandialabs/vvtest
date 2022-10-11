@@ -28,7 +28,7 @@ class UserPluginBridge:
 
     def callPrologue(self, command_line):
         ""
-        if self.prolog != None:
+        if self.prolog is not None:
             try:
                 self.prolog( command_line )
             except Exception:
@@ -37,7 +37,7 @@ class UserPluginBridge:
 
     def callEpilogue(self, rundir, tcaselist):
         ""
-        if self.epilog != None and os.path.isdir(rundir):
+        if self.epilog is not None and os.path.isdir(rundir):
             testD = convert_test_list_to_info_dict( self.rtconfig,
                                                     rundir,
                                                     tcaselist )
@@ -53,7 +53,7 @@ class UserPluginBridge:
         Returns non-empty string (an explanation) if user validation fails.
         """
         rtn = None
-        if self.validate != None:
+        if self.validate is not None:
             specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
             try:
                 rtn = self.validate( specs )
@@ -68,19 +68,13 @@ class UserPluginBridge:
         """
         Returns None for no change or an integer value.
         """
-        rtn = None
-        if self.timeout != None:
-            specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
-            try:
-                rtn = self.timeout( specs )
-                if rtn != None:
-                    rtn = max( 0, int(rtn) )
-            except Exception:
-                xs,tb = outpututils.capture_traceback( sys.exc_info() )
-                self._check_print_exc( xs, tb )
-                rtn = None
+        return self._call_time_function( tcase, self.timeout )
 
-        return rtn
+    def testRuntime(self, tcase):
+        """
+        Returns None for no change or an integer value.
+        """
+        return self._call_time_function( tcase, self.runtime )
 
     def testPreload(self, tcase):
         """
@@ -89,7 +83,7 @@ class UserPluginBridge:
         """
         pyexe = None
 
-        if self.preload != None:
+        if self.preload is not None:
             specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
             try:
                 label = tcase.getSpec().getPreloadLabel()
@@ -102,6 +96,23 @@ class UserPluginBridge:
                 pyexe = None
 
         return pyexe
+
+    def _call_time_function(self, tcase, func):
+        ""
+        rtn = None
+
+        if func is not None:
+            specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
+            try:
+                rtn = func( specs )
+                if rtn is not None:
+                    rtn = max( 0, int(rtn) )
+            except Exception:
+                xs,tb = outpututils.capture_traceback( sys.exc_info() )
+                self._check_print_exc( xs, tb )
+                rtn = None
+
+        return rtn
 
     def _probe_for_functions(self):
         ""
@@ -124,6 +135,10 @@ class UserPluginBridge:
         self.epilog = None
         if self.plugin and hasattr( self.plugin, 'epilogue' ):
             self.epilog = self.plugin.epilogue
+
+        self.runtime = None
+        if self.plugin and hasattr( self.plugin, 'test_runtime' ):
+            self.runtime = self.plugin.test_runtime
 
     def _check_print_exc(self, xs, tb):
         ""

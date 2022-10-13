@@ -8,7 +8,7 @@ import os, sys
 from os.path import basename
 import re
 
-from .helpers import runcmd, format_extra_flags
+from .helpers import runcmd, format_shell_flags
 
 
 jobpat = re.compile( r'Job\s+<\d+>\s+is submitted to' )
@@ -18,7 +18,7 @@ class BatchLSF:
     def __init__(self, **attrs):
         ""
         self.attrs = attrs
-        self.xflags = format_extra_flags( attrs.get("extra_flags",None) )
+        self.xflags = format_shell_flags( attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""
@@ -52,7 +52,6 @@ class BatchLSF:
         # output should contain something like
         #    Job <68628> is submitted to default queue <normal>.
         jobid = None
-        err = ''
         mat = jobpat.search( out )
         if mat is not None:
             try:
@@ -64,7 +63,7 @@ class BatchLSF:
             except Exception:
                 pass
 
-        return jobid,cmd,out+err
+        return jobid,cmd,out
 
     def query(self, jobids):
         """

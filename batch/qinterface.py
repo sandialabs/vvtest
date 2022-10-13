@@ -129,10 +129,14 @@ class BatchQueueInterface:
 
     def queryJobs(self, jobidL):
         """
-        returns a dict mapping jobid to a string, where the string is empty if
-        the jobid is not in the queue (or is done), or "running" or "pending"
+        returns a dict mapping jobid to a string, where
+            <empty>   means the jobid is either not in the queue or is completed
+            "running" means it is currently running
+            "pending" means it is waiting to run
         """
-        jobD,cmd,out = self.batch.query( jobidL )
+        non_None = extract_non_None_job_ids( jobidL )
+
+        jobD,cmd,out = self.batch.query( non_None )
 
         for jobid in jobidL:
             if jobid not in jobD:
@@ -146,6 +150,17 @@ class BatchQueueInterface:
             print3( '\nCancelling jobs:', jobidL )
             for jid in jobidL:
                 self.batch.cancel( jid )
+
+
+def extract_non_None_job_ids( jobidL ):
+    ""
+    non_None = []
+
+    for jobid in jobidL:
+        if jobid is not None:
+            non_None.append( jobid )
+
+    return non_None
 
 
 def print3( *args ):

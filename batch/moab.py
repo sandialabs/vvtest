@@ -11,7 +11,7 @@ This batch handler was written for Trinity, but it may also work for general
 MOAB systems.
 """
 
-from .helpers import runcmd, format_extra_flags
+from .helpers import runcmd, format_shell_flags
 
 
 class BatchMOAB:
@@ -24,7 +24,7 @@ class BatchMOAB:
         """
         self.attrs = attrs
         self.variation = attrs.get( 'variation', '' )
-        self.xflags = format_extra_flags( attrs.get("extra_flags",None) )
+        self.xflags = format_shell_flags( attrs.get("submit_flags",None) )
 
     def header(self, size, qtime, outfile):
         ""

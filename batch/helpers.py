@@ -56,20 +56,20 @@ def runcmd( cmdL, chdir=None, echo=False ):
     return sp.returncode, cmdstr, out
 
 
-def format_extra_flags( extra_flags ):
+def format_shell_flags( flags ):
     ""
-    flags = []
+    flaglist = []
 
-    if extra_flags:
-        if type(extra_flags) == type(''):
-            flags = shlex.split(extra_flags)
+    if flags:
+        if type(flags) == type(''):
+            flaglist = shlex.split(flags)
 
-        elif type(extra_flags) not in [type(()),type([])]:
-            extra_flags_type = type(extra_flags).__name__
+        elif type(flags) not in [type(()),type([])]:
+            extra_flags_type = type(flags).__name__
             errmsg = "Expected extra_flags to be str or list, not {0}"
             raise ValueError(errmsg.format(extra_flags_type))
 
         else:
-            flags = list( extra_flags )
+            flaglist = list( flags )
 
-    return flags
+    return flaglist

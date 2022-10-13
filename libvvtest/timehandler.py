@@ -34,13 +34,16 @@ class TimeHandler:
             tspec = tcase.getSpec()
             tstat = tcase.getStat()
 
-            tlen,tresult = self.cache.getRunTime( tspec )
-
-            if tlen is not None:
-
-                rt = tstat.getRuntime( None )
-                if rt == None:
-                    tstat.setRuntime( int(tlen) )
+            tout = self.plugin.testRuntime( tcase )
+            if tout is not None:
+                # Prefer plugin value
+                tstat.setRuntime( int(tout) )
+            else:
+                tlen, _ = self.cache.getRunTime( tspec )
+                if tlen is not None:
+                    rt = tstat.getRuntime( None )
+                    if rt is None:
+                        tstat.setRuntime( int(tlen) )
 
     def setTimeouts(self, tcaselist):
         """

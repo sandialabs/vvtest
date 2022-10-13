@@ -7,7 +7,6 @@
 import os, sys
 
 from .testexec import TestExec
-from .teststatus import copy_test_results
 from .backlog import TestBacklog
 
 
@@ -22,10 +21,6 @@ class TestExecList:
         self.backlog = TestBacklog()
         self.started = {}  # TestSpec ID -> TestExec object
         self.stopped = {}  # TestSpec ID -> TestExec object
-
-    def getTestCaseFactory(self):
-        ""
-        return self.tlist.getTestCaseFactory()
 
     def createTestExecs(self):
         """
@@ -71,11 +66,6 @@ class TestExecList:
             texec = self._move_to_started( tcase )
             yield texec
 
-    def consumeTest(self, tcase):
-        ""
-        # magic: assert that tcase is in tlist
-        assert False  # magic: WIP
-
     def popRemaining(self):
         """
         All remaining tests are removed from the backlog and returned as a
@@ -112,36 +102,6 @@ class TestExecList:
         """
         return len(self.started)
 
-    def sortBySizeAndTimeout(self):
-        ""
-        # magic: this should be decided by the type of TestBacklog object
-        self.backlog.sort( secondary='timeout' )
-
-    def getNextTest(self):
-        ""
-        # magic: is this function needed??
-        return self.backlog.pop()
-
-    def checkStateChange(self, testid, teststatus):
-        """
-        Finds the test in the TestList and compares its test status to the
-        given argument. If the status is different, the status results are
-        copied into the TestList's copy, the test results are appended to
-        the results file, and non-None is returned. If the status has not
-        changed, returns None.
-        """
-        tcase = self.tlist.getTestMap()[testid]
-
-        old = tcase.getStat().getResultStatus()
-        new = teststatus.getResultStatus()
-
-        if new != old:
-            copy_test_results( tcase.getStat(), teststatus )
-            self.tlist.appendTestResult( tcase )
-            return tcase
-
-        return None  # return None if no state change
-
     def _move_to_started(self, tcase):
         ""
         tid = tcase.getSpec().getID()
@@ -159,7 +119,6 @@ class TestExecList:
         for tcase in self.tlist.getTests():
             if not tcase.getStat().skipTest():
                 assert tcase.getSpec().constructionCompleted()
-                # texec = TestExec( tcase )
                 self.backlog.insert( tcase )
 
         # sort by runtime, descending order so that popNext() will try to avoid

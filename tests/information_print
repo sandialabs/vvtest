@@ -230,9 +230,9 @@ def make_fake_Batcher( tlist ):
     jobhandler = batching.BatchJobHandler( 5, 5, 'clean', namer )
 
     batch = batchutils.Batcher( None,
-                                tlist, None, None,
+                                tlist, None,
                                 None, None,
-                                None, None, jobhandler, None )
+                                None, None, jobhandler )
 
     bjob = jobhandler.createJob()
     bjob.setJobObject( tlist )

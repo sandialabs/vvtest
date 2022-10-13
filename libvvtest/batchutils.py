@@ -12,16 +12,18 @@ import itertools
 from os.path import dirname
 
 from . import TestList
-from . import testlistio
+from .testlistio import TestListReader, file_is_marked_finished
 from . import pathutil
+from .backlog import TestBacklog
+from .teststatus import copy_test_results
 
 
 class Batcher:
 
     def __init__(self, vvtestcmd,
-                       tlist, xlist, perms,
+                       tlist, perms,
                        batchlimit, max_qtime,
-                       grouper, namer, jobhandler, tcasefactory ):
+                       grouper, namer, jobhandler ):
         ""
         self.perms = perms
         self.maxjobs = batchlimit
@@ -29,9 +31,8 @@ class Batcher:
 
         self.namer = namer
         self.jobhandler = jobhandler
-        self.fact = tcasefactory
 
-        self.results = ResultsHandler( tlist, xlist, self.fact )
+        self.results = ResultsHandler( tlist )
 
         self.rundate = tlist.getResultsDate()
         self.vvtestcmd = vvtestcmd
@@ -165,7 +166,6 @@ class Batcher:
         ""
         self._write_job( bjob )
         self.results.addResultsInclude( bjob )
-        self.results.readyTests( bjob )
         self.jobhandler.startJob( bjob )
 
     def _write_job(self, bjob):
@@ -254,7 +254,7 @@ class Batcher:
 
         finished = False
         if self.jobhandler.checkBatchOutputForExit( ofile ):
-            finished = testlistio.file_is_marked_finished( rfile )
+            finished = file_is_marked_finished( rfile )
 
         return finished
 
@@ -283,9 +283,9 @@ class Batcher:
 
 class BatchTestGrouper:
 
-    def __init__(self, xlist, batch_length):
+    def __init__(self, tlist, batch_length):
         ""
-        self.xlist = xlist
+        self.tlist = tlist
 
         if batch_length is None:
             self.tsize = 30*60
@@ -316,10 +316,15 @@ class BatchTestGrouper:
         self.group = None
         self.num_groups = 0
 
-        # magic: use a TestBacklog to form the group (rather than xlist)
-        self.xlist.sortBySizeAndTimeout()
+        back = TestBacklog()
+        for tcase in self.tlist.getTests():
+            if not tcase.getStat().skipTest():
+                assert tcase.getSpec().constructionCompleted()
+                back.insert( tcase )
+        back.sort( secondary='timeout' )
+
         while True:
-            tcase = self.xlist.getNextTest()
+            tcase = back.pop()
             if tcase is None:
                 break
             else:
@@ -365,8 +370,8 @@ class BatchTestGrouper:
 
     def _make_new_group(self):
         ""
-        tlist = TestList.TestList( self.xlist.getTestCaseFactory() )
-        grp = BatchGroup( tlist, self.num_groups )
+        grplist = TestList.TestList( self.tlist.getTestCaseFactory() )
+        grp = BatchGroup( grplist, self.num_groups )
         self.num_groups += 1
         return grp
 
@@ -483,17 +488,9 @@ def apply_queue_timeout_bump_factor( qtime ):
 
 class ResultsHandler:
 
-    def __init__(self, tlist, xlist, tcasefactory):
+    def __init__(self, tlist):
         ""
         self.tlist = tlist
-        self.xlist = xlist
-        self.fact = tcasefactory
-
-    def readyTests(self, bjob):
-        ""
-        pass  # magic: WIP, move all tests in this batch job to "waiting"
-        #for tcase in bjob.getJobObject().getTests():
-        #    self.xlist.consumeTest( tcase )
 
     def addResultsInclude(self, bjob):
         ""
@@ -507,24 +504,23 @@ class ResultsHandler:
 
     def readJobResults(self, bjob, donetests):
         ""
-        # magic: move this activity into TestExecList class ??
-
         rfile = bjob.getJobObject().getTestList().getResultsFilename()
 
         if os.path.isfile( rfile ):
 
             try:
-                tlr = testlistio.TestListReader( self.fact, rfile )
+                tlr = TestListReader( self.tlist.getTestCaseFactory(), rfile )
                 tlr.read()
                 jobtests = tlr.getTests()
             except Exception:
                 # file system race condition can cause corruption, ignore
                 pass
             else:
+                # magic: move this activity into TestExecList class ??
                 for file_tcase in jobtests.values():
                     tid = file_tcase.getSpec().getID()
                     tstat = file_tcase.getStat()
-                    tcase = self.xlist.checkStateChange( tid, tstat )
+                    tcase = check_state_change( self.tlist, tid, tstat )
                     if tcase:
                         if tcase.getStat().isDone():
                             donetests.append( tcase )
@@ -553,6 +549,27 @@ class ResultsHandler:
     def finalize(self):
         ""
         self.tlist.writeFinished()
+
+
+def check_state_change( tlist, testid, teststatus ):
+    """
+    Finds the test in the TestList and compares its test status to the
+    given argument. If the status is different, the status results are
+    copied into the TestList's copy, the test results are appended to
+    the results file, and non-None is returned. If the status has not
+    changed, returns None.
+    """
+    tcase = tlist.getTestMap()[testid]
+
+    old = tcase.getStat().getResultStatus()
+    new = teststatus.getResultStatus()
+
+    if new != old:
+        copy_test_results( tcase.getStat(), teststatus )
+        tlist.appendTestResult( tcase )
+        return tcase
+
+    return None  # return None if no state change
 
 
 def get_relative_results_filename( tlist_from, to_bjob ):

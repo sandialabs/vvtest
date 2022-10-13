@@ -1098,14 +1098,14 @@ def construct_batch_runner( rtdata, tlist, xlist, totaltime, opts, optD ):
     namer = rtdata.tlm.getFileNamer()
     batch = create_Batcher( opts, optD, rtdata, namer,
                             tlist, xlist,
-                            rtdata.plat, rtdata.perms, rtdata.tcasefactory )
+                            rtdata.plat, rtdata.perms )
     brun.setBatcher( batch )
 
     return brun
 
 
 def create_Batcher( opts, optD, rtdata, namer,
-                    tlist, xlist, plat, perms, tcasefactory ):
+                    tlist, xlist, plat, perms ):
     ""
     import libvvtest.batchutils as batchutils
     import batch.batching as batching
@@ -1130,15 +1130,14 @@ def create_Batcher( opts, optD, rtdata, namer,
     jobhandler = batching.BatchJobHandler( check_interval, check_timeout,
                                            batchitf, namer )
 
-    # magic: try sending tlist instead of xlist here
-    grouper = batchutils.BatchTestGrouper( xlist, opts.batch_length )
+    grouper = batchutils.BatchTestGrouper( tlist, opts.batch_length )
 
     maxtmo = get_max_timeout( opts.max_timeout )
 
     batch = batchutils.Batcher( vvtestcmd,
-                                tlist, xlist, perms,
+                                tlist, perms,
                                 batchlimit, maxtmo,
-                                grouper, namer, jobhandler, tcasefactory )
+                                grouper, namer, jobhandler )
 
     return batch
 

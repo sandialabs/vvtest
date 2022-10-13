@@ -23,8 +23,8 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def test_batch_grouping_is_by_np_and_timeout(self):
         ""
-        tlist, xlist = vtu.make_fake_TestExecList( timespec='timeout' )
-        gpr = BatchTestGrouper( xlist, None )
+        tlist = vtu.make_fake_TestList( timespec='timeout' )
+        gpr = BatchTestGrouper( tlist, None )
         gpr.createGroups()
 
         batches = deterministic_order( gpr.getGroups() )
@@ -38,8 +38,8 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def test_limit_batch_size_by_time(self):
         ""
-        tlist, xlist = vtu.make_fake_TestExecList( timespec='timeout' )
-        gpr = BatchTestGrouper( xlist, 5 )
+        tlist = vtu.make_fake_TestList( timespec='timeout' )
+        gpr = BatchTestGrouper( tlist, 5 )
         gpr.createGroups()
 
         batches = deterministic_order( gpr.getGroups() )
@@ -66,13 +66,13 @@ class unit_tests( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        tlist,xlist = vtu.scan_to_make_TestExecList( '.', timeout_attr=5 )
+        tlist = vtu.scan_to_make_TestList( '.', timeout_attr=5 )
 
-        gpr = BatchTestGrouper( xlist, 60 )
+        gpr = BatchTestGrouper( tlist, 60 )
         gpr.createGroups()
 
         batches = deterministic_order( gpr.getGroups() )
-        assert len( batches ) == 4
+        self.assertEqual( len( batches ), 4 )
         assert_batch_group( batches[0], ['testC.np=2', (2,0), 5],
                                         ['testA.foo=baz.np=2', (2,0), 5],
                                         ['testA.foo=bar.np=2', (2,0), 5] )
@@ -88,9 +88,9 @@ class unit_tests( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        tlist,xlist = vtu.scan_to_make_TestExecList( '.', timeout_attr=0 )
+        tlist = vtu.scan_to_make_TestList( '.', timeout_attr=0 )
 
-        gpr = BatchTestGrouper( xlist, 60 )
+        gpr = BatchTestGrouper( tlist, 60 )
         gpr.createGroups()
 
         batches = deterministic_order( gpr.getGroups() )
@@ -109,9 +109,9 @@ class unit_tests( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        tlist,xlist = vtu.scan_to_make_TestExecList( '.', timeout_attr=5 )
+        tlist = vtu.scan_to_make_TestList( '.', timeout_attr=5 )
 
-        gpr = BatchTestGrouper( xlist, 60 )
+        gpr = BatchTestGrouper( tlist, 60 )
         gpr.createGroups()
 
         batches = deterministic_order( gpr.getGroups() )
@@ -130,9 +130,9 @@ class unit_tests( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        tlist,xlist = vtu.scan_to_make_TestExecList( '.', timeout_attr=5 )
+        tlist = vtu.scan_to_make_TestList( '.', timeout_attr=5 )
 
-        gpr = BatchTestGrouper( xlist, 60 )
+        gpr = BatchTestGrouper( tlist, 60 )
         gpr.createGroups()
 
         batches = deterministic_order( gpr.getGroups() )

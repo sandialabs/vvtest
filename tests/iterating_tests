@@ -108,25 +108,6 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         texec3 = xlist.popNext( (1,0) )
         assert texec3.getTestCase().getStat().getRuntime() == 22
 
-    def test_iterate_TestExecList_by_size_and_timeout(self):
-        ""
-        tlist, xlist = vtu.make_fake_TestExecList( timespec='timeout' )
-
-        xlist.sortBySizeAndTimeout()
-
-        tL = []
-        while True:
-            tcase = xlist.getNextTest()
-            if tcase:
-                tL.append( timeout_tuple( tcase ) )
-            else:
-                break
-
-        self.assertEqual( tL, [ [ 'sdir/atest1.np=2', (2,0), 22 ],
-                                [ 'sdir/atest0.np=2', (2,0), 12 ],
-                                [ 'sdir/atest1.np=1', (1,0), 21 ],
-                                [ 'sdir/atest0.np=1', (1,0), 11 ] ] )
-
     def test_iteration_order_is_by_num_procs_even_with_num_devices_present(self):
         ""
         write_np_and_ndevice_tests()

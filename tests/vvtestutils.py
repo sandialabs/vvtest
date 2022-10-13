@@ -895,6 +895,35 @@ def make_TestCase_list( timespec='runtime' ):
     return tests
 
 
+def make_fake_TestList( timespec='runtime' ):
+    ""
+    tests = make_TestCase_list( timespec=timespec )
+
+    tlist = TestList( TestCaseFactory() )
+    for tcase in tests:
+        tlist.addTest( tcase )
+
+    return tlist
+
+
+def scan_to_make_TestList( path, timeout_attr=None ):
+    ""
+    tlist = TestList( TestCaseFactory() )
+
+    tc = testcreator.TestCreator( {}, 'XBox', [] )
+    scan = TestFileScanner( tc, TestCaseFactory() )
+    scan.scanPath( tlist, path )
+
+    if timeout_attr != None:
+        for tcase in tlist.getTests():
+            tcase.getStat().setAttr( 'timeout', timeout_attr )
+
+    tlist.createAnalyzeGroupMap()
+    tlist.connectDependencies()
+
+    return tlist
+
+
 class FakeHandler:
     def initialize_for_execution(self, *args):
         pass
@@ -928,10 +957,10 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
             tcase.getStat().setAttr( 'timeout', timeout_attr )
 
     tlist.createAnalyzeGroupMap()
+    tlist.connectDependencies()
 
     xlist = TestExecList( tlist, FakeHandler() )
     xlist._generate_backlog_from_testlist()
-    tlist.connectDependencies()
 
     return tlist, xlist
 

@@ -143,6 +143,25 @@ class execute_analyze_filtering_behavior( vtu.vvtestTestCase ):
             assert len( testids ) > 0 and len( testids ) < 3
             assert 'foo' not in testids
 
+    def test_if_all_execute_tests_are_filtered_by_parameter_then_analyze_is_skipped(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: analyze: --analyze
+            #VVT: parameterize : x = 1 2 3
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv[1:]:
+                assert len(vvt.DEPDIRS) == 3
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=4, npass=4 )
+
+        vtu.remove_results()
+
+        vrun = vtu.runvvtest( '-vv -p y=1' )
+        vrun.assertCounts( total=4, skip=4 )
+
 
 def get_relative_DEPDIRS( resultsdir, testname ):
     ""

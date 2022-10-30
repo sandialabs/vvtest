@@ -113,6 +113,11 @@ Improvements:
 
 Fixes:
 
+    - An analyze test will be run even if some of its dependencies are skipped
+      due to filters, such as the -p option. However, it would also be run if
+      all dependencies were skipped. A change was made to also skip the analyze
+      test if all dependencies are skipped.
+
     - A previous refactoring broke the use of the 'extra_flags' and 'submit_flags'
       platform options, such as
 

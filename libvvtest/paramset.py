@@ -124,6 +124,12 @@ class ParameterSet:
 
         return filtered_params
 
+    def isEmpty(self):
+        """
+        Returns True if there are no parameter instances left after filtering.
+        """
+        return len( self.instances ) == 0
+
     def _constructInstances(self):
         ""
         if len(self.params) == 0:

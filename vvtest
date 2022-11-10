@@ -29,7 +29,7 @@ import libvvtest.execute as execute
 import libvvtest.TestList as TestList
 
 
-version = '1.4'
+version = '1.5'
 
 search_fnmatch = ['*.inp','*.apr','*.i']
 

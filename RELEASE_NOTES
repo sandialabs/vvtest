@@ -1,6 +1,26 @@
 
 Improvements:
 
+    -
+
+Fixes:
+
+    -
+
+Changes:
+
+    -
+
+
+==============================================================================
+
+Release 1.4
+-----------
+
+Nov 09, 2022
+
+Improvements:
+
     - A new user plugin function was added, test_runtime(), which can be used
       to set the runtime of tests. Test runtimes are used for some command line
       options, such as --tmin, --tmax, and --tsum.

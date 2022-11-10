@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
@@ -269,7 +270,9 @@ class DirectRunner( TestListRunner ):
 def progress_bar(num_test, num_done, duration, width=30):
     completed_char, togo_char = "█", "-"
     frac_complete = int(num_done / num_test * width)
-    bar = f"|{completed_char * frac_complete}{togo_char * (width - frac_complete)}|"
+    completed_chars = completed_char * frac_complete
+    togo_chars = togo_char * (width - frac_complete)
+    bar = "|{0}{1}|".format(completed_chars, togo_chars)
     pct = 100 * float(num_done) / float(num_test)
     ave = duration / num_done
     togo = ave * (num_test - num_done)

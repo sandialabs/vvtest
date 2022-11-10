@@ -17,7 +17,7 @@ class TestListRunner:
 
     def __init__(self, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout):
+                       total_timeout, show_progress_bar=False):
         ""
         self.test_dir = test_dir
         self.tlist = tlist
@@ -27,6 +27,7 @@ class TestListRunner:
         self.results_writer = results_writer
         self.plat = plat
         self.total_timeout = total_timeout
+        self.show_progress_bar = show_progress_bar
 
     def setup(self):
         ""
@@ -159,10 +160,11 @@ class DirectRunner( TestListRunner ):
 
     def __init__(self, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout):
+                       total_timeout, show_progress_bar=False):
         ""
         TestListRunner.__init__( self, test_dir, tlist, xlist, perms,
-                                 rtinfo, results_writer, plat, total_timeout )
+                                 rtinfo, results_writer, plat, total_timeout,
+                                 show_progress_bar=show_progress_bar )
         self.qsub_id = None
         self.handler = xlist.getExecutionHandler()
 
@@ -221,7 +223,8 @@ class DirectRunner( TestListRunner ):
     def start_next(self, texec):
         ""
         tcase = texec.getTestCase()
-        print3( 'Starting:', exec_path( tcase, self.test_dir ) )
+        if not self.show_progress_bar:
+            print3( 'Starting:', exec_path( tcase, self.test_dir ) )
         start_test( self.handler, texec, self.plat )
         self.tlist.appendTestResult( tcase )
 
@@ -235,7 +238,8 @@ class DirectRunner( TestListRunner ):
                 self.handler.finishExecution( texec )
             if texec.isDone():
                 xs = XstatusString( tcase, self.test_dir, self.cwd )
-                print3( "Finished:", xs )
+                if not self.show_progress_bar:
+                    print3( "Finished:", xs )
                 self.xlist.testDone( texec )
                 showprogress = True
 
@@ -248,7 +252,11 @@ class DirectRunner( TestListRunner ):
         pct = 100 * float(ndone) / float(ntot)
         div = str(ndone)+'/'+str(ntot)
         dt = pretty_time( time.time() - self.starttime )
-        print3( "Progress: " + div+" = %%%.1f"%pct + ', time = '+dt )
+        if self.show_progress_bar:
+            line = progress_bar(ntot, ndone, time.time() - self.starttime, width=30)
+            sys.stdout.write(line)
+        else:
+            print3( "Progress: " + div+" = %%%.1f"%pct + ', time = '+dt )
 
     def finishup(self, nrL):
         ""
@@ -256,6 +264,26 @@ class DirectRunner( TestListRunner ):
             print3()
         tcase_with_reason = [ (T[0].getTestCase(),T[1]) for T in nrL ]
         print_notrun_reasons( tcase_with_reason )
+
+
+def progress_bar(num_test, num_done, duration, width=30):
+    completed_char, togo_char = "█", "-"
+    frac_complete = int(num_done / num_test * width)
+    bar = f"|{completed_char * frac_complete}{togo_char * (width - frac_complete)}|"
+    pct = 100 * float(num_done) / float(num_test)
+    ave = duration / num_done
+    togo = ave * (num_test - num_done)
+    line = "\r{0} {1}/{2} {3:.1f}% [elapsed: {4} left: {5}]".format(
+        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo)
+    )
+    return line
+
+
+def hhmmss(arg):
+    seconds = int(arg)
+    minutes = seconds // 60
+    hours = minutes // 60
+    return "%02d:%02d:%02d" % (hours, minutes % 60, seconds % 60)
 
 
 def print_notrun_reasons( notrunlist ):

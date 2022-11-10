@@ -56,6 +56,8 @@ def create_parser( argvlist, vvtest_version ):
     psr.add_argument( '-v', dest='dash_v', action='count',
         help='Add verbosity to console output.  Can be repeated, which gives '
              'even more verbosity.' )
+    psr.add_argument( '-q', dest='show_progress_bar', action='store_true',
+        help='Show progress bar as tests are run' )
 
     grp = psr.add_argument_group( 'Test selection / filters' )
 

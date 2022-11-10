@@ -1059,10 +1059,11 @@ def run_test_exec_list( opts, optD, rtdata ):
 
         if not opts.batch:
             tlrun = construct_direct_runner( rtdata, tlist, xlist,
-                                             opts.qsub_id, totaltime )
+                                             opts.qsub_id, totaltime,
+                                             opts.show_progress_bar )
         else:
             tlrun = construct_batch_runner( rtdata, tlist, xlist, totaltime,
-                                            opts, optD )
+                                            opts, optD, opts.show_progress_bar )
 
         xstat = tlrun.run()
 
@@ -1073,11 +1074,11 @@ def run_test_exec_list( opts, optD, rtdata ):
     return xstat
 
 
-def construct_direct_runner( rtdata, tlist, xlist, qsub_id, totaltime ):
+def construct_direct_runner( rtdata, tlist, xlist, qsub_id, totaltime, show_pogress ):
     ""
     drun = execute.DirectRunner( rtdata.testdir, tlist, xlist, rtdata.perms,
                                  rtdata.rtinfo, rtdata.results_writer,
-                                 rtdata.plat, totaltime )
+                                 rtdata.plat, totaltime, show_pogress )
 
     if qsub_id is not None:
         drun.setQsubID( qsub_id )
@@ -1085,11 +1086,11 @@ def construct_direct_runner( rtdata, tlist, xlist, qsub_id, totaltime ):
     return drun
 
 
-def construct_batch_runner( rtdata, tlist, xlist, totaltime, opts, optD ):
+def construct_batch_runner( rtdata, tlist, xlist, totaltime, opts, optD, show_progress ):
     ""
     brun = execute.BatchRunner( rtdata.testdir, tlist, xlist, rtdata.perms,
                                 rtdata.rtinfo, rtdata.results_writer,
-                                rtdata.plat, totaltime )
+                                rtdata.plat, totaltime, show_progress )
 
     namer = rtdata.tlm.getFileNamer()
     batch = create_Batcher( opts, optD, rtdata, namer,

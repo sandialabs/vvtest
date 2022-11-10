@@ -8,6 +8,7 @@
 import os, sys
 import time
 
+from . import tty
 from . import utesthooks
 from . import pathutil
 from .printinfo import TestInformationPrinter
@@ -29,11 +30,12 @@ class TestListRunner:
         self.plat = plat
         self.total_timeout = total_timeout
         self.show_progress_bar = show_progress_bar
+        self.current_log_level = tty.get_level()
 
     def setup(self):
         ""
         self.starttime = time.time()
-        print3( "Start time:", time.ctime() )
+        tty.info("Start time: {0}".format(time.ctime()))
 
         rfile = self.tlist.initializeResultsFile( **(self.rtinfo.asDict()) )
         self.perms.apply( os.path.abspath( rfile ) )
@@ -44,8 +46,7 @@ class TestListRunner:
         ""
         if self.total_timeout and self.total_timeout > 0:
             if time.time() - self.starttime > self.total_timeout:
-                print3( '\n*** vvtest: total timeout expired:',
-                        self.total_timeout, '\n' )
+                tty.warn('\ntotal timeout expired: {0}'.format(self.total_timeout))
                 return True
         return False
 
@@ -54,10 +55,11 @@ class BatchRunner( TestListRunner ):
 
     def __init__(self, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout):
+                       total_timeout, show_progress_bar=False):
         ""
         TestListRunner.__init__( self, test_dir, tlist, xlist, perms,
-                                 rtinfo, results_writer, plat, total_timeout )
+                                 rtinfo, results_writer, plat, total_timeout,
+                                 show_progress_bar=show_progress_bar)
         self.batch = None
 
     def setBatcher(self, batch):
@@ -77,7 +79,7 @@ class BatchRunner( TestListRunner ):
         self.qsleep = int( os.environ.get( 'VVTEST_BATCH_SLEEP_LENGTH', 15 ) )
         self.info = TestInformationPrinter( sys.stdout, self.tlist, self.batch )
 
-        print3( 'Maximum concurrent batch jobs:', self.batch.getMaxJobs() )
+        tty.info('Maximum concurrent batch jobs: {0}'.format(self.batch.getMaxJobs()))
 
     def run(self):
         ""
@@ -86,6 +88,11 @@ class BatchRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'batch' )
 
         try:
+            save_log_level = tty.get_level()
+            if self.show_progress_bar:
+                # skip any information messages so that only the progress bar is shown
+                tty.set_level(tty.WARN)
+
             while True:
 
                 qid = self.batch.checkstart()
@@ -114,6 +121,7 @@ class BatchRunner( TestListRunner ):
             NS, NF, nrL = self.batch.flush()
 
         finally:
+            tty.set_level(save_log_level)
             self.batch.shutdown()
 
         self.finishup( NS, NF, nrL )
@@ -124,10 +132,10 @@ class BatchRunner( TestListRunner ):
         ""
         if len(qidL) > 0:
             ids = ' '.join( [ str(qid) for qid in qidL ] )
-            print3( 'Finished batch IDS:', ids )
+            tty.info('Finished batch IDS: {0}'.format(ids))
         for tcase in doneL:
             ts = XstatusString( tcase, self.test_dir, self.cwd )
-            print3( "Finished:", ts )
+            tty.info("Finished: {0}".format(ts))
 
     def print_progress(self, doneL):
         ""
@@ -135,7 +143,7 @@ class BatchRunner( TestListRunner ):
             sL = [ get_batch_info( self.batch ),
                    get_test_info( self.tlist, self.xlist ),
                    'time = '+pretty_time( time.time() - self.starttime ) ]
-            print3( "Progress:", ', '.join( sL )  )
+            tty.info("Progress: {0}".format(', '.join( sL )))
 
     def sleep_with_info_check(self):
         ""
@@ -146,13 +154,15 @@ class BatchRunner( TestListRunner ):
     def finishup(self, NS, NF, nrL):
         ""
         if len(NS)+len(NF)+len(nrL) > 0:
-            print3()
+            tty.emit("\n")
         if len(NS) > 0:
-            print3( "*** Warning: these batch numbers did not seem to start:",
-                    ' '.join(NS) )
+            tty.warn(
+                "these batch numbers did not seem to start: {0}".format(' '.join(NS))
+            )
         if len(NF) > 0:
-            print3( "*** Warning: these batch numbers did not seem to finish:",
-                    ' '.join(NF) )
+            tty.warn(
+                "these batch numbers did not seem to finish: {0}".format(' '.join(NF))
+            )
 
         print_notrun_reasons( nrL )
 
@@ -188,6 +198,10 @@ class DirectRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'run', self.qsub_id )
 
         try:
+            save_log_level = tty.get_level()
+            if self.show_progress_bar:
+                # skip any information messages so that only the progress bar is shown
+                tty.set_level(tty.WARN)
             while True:
 
                 tnext = self.xlist.popNext( self.plat.sizeAvailable() )
@@ -215,6 +229,7 @@ class DirectRunner( TestListRunner ):
             nrL = self.xlist.popRemaining()  # these tests cannot be run
 
         finally:
+            tty.set_level(save_log_level)
             self.tlist.writeFinished()
 
         self.finishup( nrL )
@@ -224,8 +239,7 @@ class DirectRunner( TestListRunner ):
     def start_next(self, texec):
         ""
         tcase = texec.getTestCase()
-        if not self.show_progress_bar:
-            print3( 'Starting:', exec_path( tcase, self.test_dir ) )
+        tty.info('Starting: {0}'.format(exec_path( tcase, self.test_dir)))
         start_test( self.handler, texec, self.plat )
         self.tlist.appendTestResult( tcase )
 
@@ -239,8 +253,7 @@ class DirectRunner( TestListRunner ):
                 self.handler.finishExecution( texec )
             if texec.isDone():
                 xs = XstatusString( tcase, self.test_dir, self.cwd )
-                if not self.show_progress_bar:
-                    print3( "Finished:", xs )
+                tty.info("Finished: {0}".format(xs))
                 self.xlist.testDone( texec )
                 showprogress = True
 
@@ -253,16 +266,15 @@ class DirectRunner( TestListRunner ):
         pct = 100 * float(ndone) / float(ntot)
         div = str(ndone)+'/'+str(ntot)
         dt = pretty_time( time.time() - self.starttime )
+        tty.info("Progress: {0} {1:.1f}, time = {2}".format(div, pct, dt))
         if self.show_progress_bar:
             line = progress_bar(ntot, ndone, time.time() - self.starttime, width=30)
-            sys.stdout.write(line)
-        else:
-            print3( "Progress: " + div+" = %%%.1f"%pct + ', time = '+dt )
+            tty.emit(line)
 
     def finishup(self, nrL):
         ""
         if len(nrL) > 0:
-            print3()
+            tty.emit("\n")
         tcase_with_reason = [ (T[0].getTestCase(),T[1]) for T in nrL ]
         print_notrun_reasons( tcase_with_reason )
 
@@ -294,8 +306,7 @@ def print_notrun_reasons( notrunlist ):
     for tcase,reason in notrunlist:
         xdir = tcase.getSpec().getDisplayString()
         # magic: reason = tcase.getBlockedReason()
-        print3( '*** Warning: test "'+xdir+'"',
-                'notrun due to dependency: ' + str(reason) )
+        tty.warn("test {0!r} notrun due to dependency: {1}".format(xdir, reason))
 
 
 def get_batch_info( batch ):
@@ -350,20 +361,20 @@ def run_baseline( xlist, plat ):
 
             if texec.isDone():
                 if tstat.passed():
-                    print3( "done" )
+                    tty.info("done")
                 else:
                     failures = True
-                    print3("FAILED")
+                    tty.info("FAILED")
                 break
 
         if not tstat.isDone():
             if texec.killJob():
                 handler.finishExecution( texec )
             failures = True
-            print3( "TIMED OUT" )
+            tty.info("TIMED OUT")
 
     if failures:
-        print3( "\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n" )
+        tty.emit("\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n")
 
 
 def start_test( handler, texec, platform, is_baseline=False ):
@@ -399,9 +410,3 @@ def encode_integer_warning( tlist ):
             elif result == 'notrun' : ival |= ( 2**5 )
 
     return ival
-
-
-def print3( *args ):
-    ""
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()

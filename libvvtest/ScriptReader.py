@@ -21,16 +21,17 @@ INCLUDE_KEYWORDS = [ 'include', 'insert directive file' ]
 
 class ScriptSpec:
 
-    def __init__(self, lineno, keyword, attrs, value):
+    def __init__(self, lineno, keyword, attrs, attr_names, value):
         ""
         self.keyword = keyword
         self.attrs = attrs
+        self.attr_names = attr_names  # retains order, duplicates possible
         self.value = value
         self.lineno = lineno
 
 
 class ScriptReader:
-    
+
     def __init__(self, filename):
         """
         """
@@ -148,12 +149,13 @@ class ScriptReader:
             key = None
             val = None
             attrs = None
+            attr_names = None
             m = kpat.match( line )
             if m:
                 key = line[:m.end()-1].strip()
                 rest = line[m.end()-1:]
 
-                attrs,val = check_parse_attributes_section( rest, info )
+                attrs,attr_names,val = check_parse_attributes_section( rest, info )
 
             else:
                 key = line.strip()
@@ -168,7 +170,7 @@ class ScriptReader:
                 # replace 'val' with the specs list from the included file
                 val = self._parse_insert_file( info, val )
 
-            specobj = ScriptSpec( info, key, attrs, val )
+            specobj = ScriptSpec( info, key, attrs, attr_names, val )
             self.specL.append( specobj )
 
     def _parse_insert_file(self, info, filename):
@@ -228,9 +230,10 @@ def split_attr_match( matchobj, origstr ):
     return attrs, therest
 
 
-def parse_attr_string_into_dict( attrstr, info ):
+def parse_attr_string( attrstr, info ):
     ""
     D = {}
+    L = []
     for s in attrstr.split(','):
         s = s.strip().strip('"').strip()
         i = s.find( '=' )
@@ -241,15 +244,18 @@ def parse_attr_string_into_dict( attrstr, info ):
             n = s[:i].strip()
             v = s[i+1:].strip().strip('"')
             D[n] = v
+            L.append(n)
         elif s:
             D[s] = ''
+            L.append(s)
 
-    return D
+    return D,L
 
 
 def check_parse_attributes_section( a_string, file_and_lineno ):
     ""
     attrD = None
+    nameL = None
     tail = None
 
     attrs = None
@@ -281,6 +287,6 @@ def check_parse_attributes_section( a_string, file_and_lineno ):
         tail = a_string.strip()
 
     if attrs is not None:
-        attrD = parse_attr_string_into_dict( attrs, file_and_lineno )
+        attrD,nameL = parse_attr_string( attrs, file_and_lineno )
 
-    return attrD, tail
+    return attrD, nameL, tail

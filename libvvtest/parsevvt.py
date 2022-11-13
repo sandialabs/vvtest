@@ -126,6 +126,13 @@ class ScriptTestParser:
             #VVT: parameterize : np,dt,dh = 1, 0.1  , 0.2
             #VVT::                          4, 0.01 , 0.02
             #VVT::                          8, 0.001, 0.002
+
+            #VVT: parameterize (autotype) : np = 1 8
+            #VVT: parameterize (int) : np = 1 8
+            #VVT: parameterize (float) : val = 2 5
+            #VVT: parameterize (int,float) : foo,bar = 1,2 8,5
+            #VVT: parameterize (float) : A,B = 1,2 3,4
+            #VVT: parameterize (str,float,str) : X,Y,Z = 1,2,3 4,5,6
         """
         pset = ParameterSet()
         tmap = {}
@@ -136,39 +143,42 @@ class ScriptTestParser:
 
             check_allowed_attrs( spec.attrs, lnum,
                     'testname platform platforms option options '
-                    'staged autotype' )
+                    'staged autotype str int float generator' )
 
             if not self.attr_filter( spec.attrs, testname, None, lnum ):
                 continue
 
-            L = spec.value.split( '=', 1 )
-            if len(L) < 2:
-                raise TestSpecError( "invalid parameterize specification, " + \
-                                     "line " + str(lnum) )
-
-            namestr,valuestr = L
-
-            if not namestr.strip():
-                raise TestSpecError( "no parameter name given, " + \
-                                     "line " + str(lnum) )
-            if not valuestr.strip():
-                raise TestSpecError( "no parameter value(s) given, " + \
-                                     "line " + str(lnum) )
-
-            nameL = [ n.strip() for n in namestr.strip().split(',') ]
-
-            check_parameter_names( nameL, lnum )
-
-            if len(nameL) == 1:
-                valL = parse_param_values( nameL[0], valuestr, self.force )
-                check_parameter_values( valL, lnum )
-                check_special_parameters( nameL[0], valL, lnum )
+            if spec.attrs and 'generator' in spec.attrs:
+                nameL,valuestr = ['p1','p2'],'foo,bar'
             else:
-                valL = parse_param_group_values( nameL, valuestr, lnum )
-                check_forced_group_parameter( self.force, nameL, lnum )
+                L = spec.value.split( '=', 1 )
+                if len(L) < 2:
+                    raise TestSpecError( "invalid parameterize specification, " + \
+                                         "line " + str(lnum) )
 
-            if spec.attrs and 'autotype' in spec.attrs:
-                auto_determine_param_types( nameL, valL, tmap )
+                namestr,valuestr = L
+
+                if not namestr.strip():
+                    raise TestSpecError( "no parameter name given, " + \
+                                         "line " + str(lnum) )
+                if not valuestr.strip():
+                    raise TestSpecError( "no parameter value(s) given, " + \
+                                         "line " + str(lnum) )
+
+                nameL = [ n.strip() for n in namestr.strip().split(',') ]
+
+                check_parameter_names( nameL, lnum )
+
+                if len(nameL) == 1:
+                    valL = parse_param_values( nameL[0], valuestr, self.force )
+                    check_parameter_values( valL, lnum )
+                    check_special_parameters( nameL[0], valL, lnum )
+                else:
+                    valL = parse_param_group_values( nameL, valuestr, lnum )
+                    check_forced_group_parameter( self.force, nameL, lnum )
+
+                if spec.attrs:
+                    add_to_param_type_map( tmap, spec.attr_names, nameL, valL, lnum )
 
             staged = check_for_staging( spec.attrs, pset, nameL, valL, lnum )
 
@@ -593,7 +603,7 @@ def parse_test_name_value( value, lineno ):
             pass
 
         elif tail[0] == '(':
-            aD,_ = check_parse_attributes_section( tail, str(lineno) )
+            aD,_,_ = check_parse_attributes_section( tail, str(lineno) )
 
         else:
             raise TestSpecError( 'invalid test name: ' + repr(value) + \
@@ -615,18 +625,57 @@ def check_allowed_attrs( attrD, lnum, allowed ):
                         " not allowed here, line " + str(lnum) )
 
 
-def auto_determine_param_types( nameL, valL, tmap ):
+def add_to_param_type_map( tmap, attr_names, nameL, valL, lineno ):
     ""
-    if len( nameL ) == 1:
-        typ = try_cast_to_int_or_float( valL )
-        if typ != None:
-            tmap[ nameL[0] ] = typ
+    if 'autotype' in attr_names:
+
+        if 'int' in attr_names or 'float' in attr_names or 'str' in attr_names:
+            raise TestSpecError( 'cannot mix autotype with int, float or str'+ \
+                    ', line ' + str(lineno) )
+
+        if len( nameL ) == 1:
+            typ = try_cast_to_int_or_float( valL )
+            if typ is not None:
+                tmap[ nameL[0] ] = typ
+
+        else:
+            for i,name in enumerate(nameL):
+                typ = try_cast_to_int_or_float( [ tup[i] for tup in valL ] )
+                if typ is not None:
+                    tmap[ name ] = typ
 
     else:
-        for i,name in enumerate(nameL):
-            typ = try_cast_to_int_or_float( [ tup[i] for tup in valL ] )
-            if typ != None:
-                tmap[ name ] = typ
+        tL = []
+        for n in attr_names:
+            if n in ['str','int','float']:
+                tL.append( eval(n) )
+
+        if len(tL) == 1:
+            typ = tL[0]
+            if len( nameL ) == 1:
+                if values_cast_to_type( typ, valL ):
+                    tmap[ nameL[0] ] = typ
+                else:
+                    raise TestSpecError( 'cannot cast all "'+nameL[0]+'" values '+ \
+                        'to '+str(typ)+', line ' + str(lineno) )
+            else:
+                for i,name in enumerate(nameL):
+                    if values_cast_to_type( typ, [ tup[i] for tup in valL ] ):
+                        tmap[ name ] = typ
+                    else:
+                        raise TestSpecError( 'cannot cast all "'+name+'" '+ \
+                            'values to '+str(typ)+', line ' + str(lineno) )
+        elif len(tL) > 1:
+            if len(tL) != len(nameL):
+                raise TestSpecError( 'the list of types must be length one '+ \
+                    'or match the number of parameter names, line ' + str(lineno) )
+            else:
+                for i,typ in enumerate(tL):
+                    if values_cast_to_type( typ, [ tup[i] for tup in valL ] ):
+                        tmap[ nameL[i] ] = typ
+                    else:
+                        raise TestSpecError( 'cannot cast all "'+nameL[i]+'" '+ \
+                            'values to '+str(typ)+', line ' + str(lineno) )
 
 
 def try_cast_to_int_or_float( valuelist ):

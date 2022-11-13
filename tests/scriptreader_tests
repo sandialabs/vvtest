@@ -157,6 +157,7 @@ class ScriptReader_file_reads( vtu.vvtestTestCase ):
             #VVT: key3 ( foo=bar ) = val3
             #VVT: key4 ( foo = bar ) = val4
             #VVT: key5 ( foo = ) = val5
+            #VVT: key6 (foo,bar=5,foo) = val6
             pass
             """ )
 
@@ -164,20 +165,29 @@ class ScriptReader_file_reads( vtu.vvtestTestCase ):
 
         for spec in rdr.getSpecList():
             if spec.keyword == 'key1':
-                assert spec.attrs == {'foo':''}
-                assert spec.value.strip() == 'val1'
+                self.assertEqual( spec.attrs, {'foo':''} )
+                self.assertEqual( spec.attr_names, ['foo'] )
+                self.assertEqual( spec.value.strip(), 'val1' )
             elif spec.keyword == 'key2':
-                assert spec.attrs == {'foo':'bar'}
-                assert spec.value.strip() == 'val2'
+                self.assertEqual( spec.attrs, {'foo':'bar'} )
+                self.assertEqual( spec.attr_names, ['foo'] )
+                self.assertEqual( spec.value.strip(), 'val2' )
             elif spec.keyword == 'key3':
-                assert spec.attrs == {'foo':'bar'}
-                assert spec.value.strip() == 'val3'
+                self.assertEqual( spec.attrs, {'foo':'bar'} )
+                self.assertEqual( spec.attr_names, ['foo'] )
+                self.assertEqual( spec.value.strip(), 'val3' )
             elif spec.keyword == 'key4':
-                assert spec.attrs == {'foo':'bar'}
-                assert spec.value.strip() == 'val4'
+                self.assertEqual( spec.attrs, {'foo':'bar'} )
+                self.assertEqual( spec.attr_names, ['foo'] )
+                self.assertEqual( spec.value.strip(), 'val4' )
             elif spec.keyword == 'key5':
-                assert spec.attrs == {'foo':''}
-                assert spec.value.strip() == 'val5'
+                self.assertEqual( spec.attrs, {'foo':''} )
+                self.assertEqual( spec.attr_names, ['foo'] )
+                self.assertEqual( spec.value.strip(), 'val5' )
+            elif spec.keyword == 'key6':
+                self.assertEqual( spec.attrs, {'foo':'', 'bar':'5'} )
+                self.assertEqual( spec.attr_names, ['foo','bar','foo'] )
+                self.assertEqual( spec.value.strip(), 'val6' )
             else:
                 assert spec.keyword in ['key1','key2','key3','key4','key5']
 

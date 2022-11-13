@@ -255,7 +255,7 @@ class script_tests( vtu.vvtestTestCase ):
         assert len( pD ) == 1
         assert pD['np'] == 4
 
-    def test_parse_parameter_type_specifications(self):
+    def test_parse_parameter_autotype_specifications(self):
         ""
         util.writefile( 'blue.vvt', """
             #VVT: parameterize (autotype) : np = 1 8
@@ -276,20 +276,25 @@ class script_tests( vtu.vvtestTestCase ):
         tL = TestCreator().fromFile( 'blue.vvt' )
         assert len( tL ) == 2*2*2*2
 
-        tspec = tL[3]
-        pD = tspec.getParameters( typed=True )
-        assert type( pD['foo'] ) == type('')
-        assert type( pD['np'] ) == type(2)
-        assert type( pD['dy'] ) == type(9.9)
+        def checktypes( pD ):
+            assert type( pD['np'] ) == type(2)
+            assert type( pD['nt'] ) == type('')
+            assert type( pD['dx'] ) == type(9.9)
+            assert type( pD['dy'] ) == type(9.9)
+            assert type( pD['foo'] ) == type('')
 
-        sid = tio.test_to_string( TestCase( tspec ) )
-        tcase = reparse_test_string( sid )
-        pD = tcase.getSpec().getParameters( typed=True )
-        assert type( pD['foo'] ) == type('')
-        assert type( pD['np'] ) == type(2)
-        assert type( pD['dy'] ) == type(9.9)
+        for tspec in tL:
 
-    def test_integration_with_typed_parameters(self):
+            pD = tspec.getParameters( typed=True )
+            checktypes( pD )
+
+            # the types must survive writing to file and back
+            sid = tio.test_to_string( TestCase( tspec ) )
+            tcase = reparse_test_string( sid )
+            pD = tcase.getSpec().getParameters( typed=True )
+            checktypes( pD )
+
+    def test_integration_with_autotyped_parameters(self):
         ""
         util.writefile( 'blue.vvt', """
             #VVT: parameterize (autotype) : num = 3 7
@@ -317,6 +322,105 @@ class script_tests( vtu.vvtestTestCase ):
 
             vrun = vtu.runvvtest( '-R', batch=batch, chdir=tdir )
             vrun.assertCounts( total=5, npass=5 )
+
+    def test_parse_specific_parameter_type_specifications(self):
+        ""
+        util.writefile( 'blue.vvt', """
+            #VVT: parameterize (int) : np = 1 8
+            #VVT: parameterize (float) : val = 2 5
+            #VVT: parameterize (int,float) : foo,bar = 1,2 8,5
+            #VVT: parameterize (float) : A,B = 1,2 3,4
+            #VVT: parameterize (str,float,str) : X,Y,Z = 1,2,3 4,5,6
+            #VVT: parameterize (int) : over,board = 42,24 24,42
+            """ )
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt' )
+        pset = parser.parseParameterSet( 'blue' )
+
+        tmap = pset.getParameterTypeMap()
+        assert len( tmap ) == 11
+        assert tmap['np'] == int
+        assert tmap['val'] == float
+        assert tmap['foo'] == int
+        assert tmap['bar'] == float
+        assert tmap['A'] == float
+        assert tmap['B'] == float
+        assert tmap['X'] == type('')
+        assert tmap['Y'] == float
+        assert tmap['Z'] == type('')
+        assert tmap['over'] == int
+        assert tmap['board'] == int
+
+        tL = TestCreator().fromFile( 'blue.vvt' )
+        assert len( tL ) == 2*2*2*2*2*2
+
+        for tspec in tL:
+            pD = tspec.getParameters( typed=True )
+            assert type( pD['np'] ) == int
+            assert type( pD['val'] ) == float
+            assert type( pD['foo'] ) == int
+            assert type( pD['bar'] ) == float
+            assert type( pD['A'] ) == float
+            assert type( pD['B'] ) == float
+            assert type( pD['X'] ) == type('')
+            assert type( pD['Y'] ) == float
+            assert type( pD['Z'] ) == type('')
+            assert type( pD['over'] ) == int
+            assert type( pD['board'] ) == int
+
+    def test_integration_with_specific_typed_parameters(self):
+        ""
+        util.writefile( 'blue.vvt', """
+            #VVT: parameterize (int,float,str) : foo,bar,baz = 1,2,3 4,5,6
+            #VVT: analyze : --analyze
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv:
+                for foo,bar,baz in vvt.PARAM_foo_bar_baz:
+                    assert type( foo ) == type(3)
+                    assert type( bar ) == type(3.3)
+                    assert type( baz ) == type('')
+            else:
+                assert type( vvt.foo ) == type(3)
+                assert type( vvt.bar ) == type(3.3)
+                assert type( vvt.baz ) == type('')
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=3, npass=3 )
+
+    def test_errors_with_typed_parameters(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (autotype) : np = 1 1b
+            """ )
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize (autotype) : nnode = 1 1b
+            """ )
+        util.writefile( 'ctest.vvt', """
+            #VVT: parameterize (int) : foo = 1 1b
+            """ )
+        util.writefile( 'dtest.vvt', """
+            #VVT: parameterize (int,autotype) : foo,bar = 1,2 3,4
+            """ )
+        util.writefile( 'etest.vvt', """
+            #VVT: parameterize (int,float) : foo,bar,baz = 1,2,3 4,5,6
+            """ )
+
+        parser = parsevvt.ScriptTestParser( 'atest.vvt' )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'atest' )
+
+        parser = parsevvt.ScriptTestParser( 'btest.vvt' )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'btest' )
+
+        parser = parsevvt.ScriptTestParser( 'ctest.vvt' )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'ctest' )
+
+        parser = parsevvt.ScriptTestParser( 'dtest.vvt' )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'dtest' )
+
+        parser = parsevvt.ScriptTestParser( 'etest.vvt' )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'etest' )
 
 
 class bad_attrs( vtu.vvtestTestCase ):
@@ -459,6 +563,36 @@ class bad_attrs( vtu.vvtestTestCase ):
 
         psr = parsevvt.ScriptTestParser( 'ltest.vvt' )
         self.assertRaises( TestSpecError, psr.parseTestNames )
+
+    def test_parse_parameterize_generator_file(self):
+        ""
+        return  # magic: not done
+
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (generator) : myscript --foo
+            """ )
+        util.writescript( 'myscript', """
+            #!"""+sys.executable+"""
+            import os, sys
+            assert sys.args[1:] == ['--foo']
+            plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
+            print ( repr( plist ) )
+            """ )
+
+        psr = parsevvt.ScriptTestParser( 'atest.vvt' )
+        pset = psr.parse_parameterize( 'atest' )
+        print ( 'magic: pset '+str(pset.getInstances()) )
+
+    # magic: check that the dictionary is not empty
+    # magic: check parameter names
+    # magic: how to do typing ?? autotype ? must be uniform types ?
+    #           - mixed string and numbers is an error
+    #           - mixed int and float promotes to float
+    #           - only support str, int, float types
+    # magic: test with staging ??
+    # magic: test with forced values and forced values with staging
+    #           - see function parsevvt.py parse_param_values()
+    # magic: it is an error to specify param types when using a generator
 
 
 def reparse_test_string( stringid ):

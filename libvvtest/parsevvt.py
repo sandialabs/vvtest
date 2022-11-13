@@ -625,6 +625,22 @@ def check_allowed_attrs( attrD, lnum, allowed ):
                         " not allowed here, line " + str(lnum) )
 
 
+def iter_name_values( nameL, valL ):
+    """
+    If 'nameL' is length one, then 'valL' is just a list of values.
+    But if 'nameL' is greater than one, then 'valL' is a list of tuples, like
+        [ (a1,a2), (b1,b2), ... ]
+    This function iterates the name and values associated with each name. It
+    returns a sequence of pairs of form
+        name, [ a1, a2, ... ]
+    """
+    if len(nameL) == 1:
+        yield nameL[0],valL
+    else:
+        for i,name in enumerate(nameL):
+            yield name, [ tup[i] for tup in valL ]
+
+
 def add_to_param_type_map( tmap, attr_names, nameL, valL, lineno ):
     ""
     if 'autotype' in attr_names:
@@ -633,49 +649,52 @@ def add_to_param_type_map( tmap, attr_names, nameL, valL, lineno ):
             raise TestSpecError( 'cannot mix autotype with int, float or str'+ \
                     ', line ' + str(lineno) )
 
-        if len( nameL ) == 1:
-            typ = try_cast_to_int_or_float( valL )
+        for name,vals in iter_name_values( nameL, valL ):
+            typ = try_cast_to_int_or_float( vals )
             if typ is not None:
-                tmap[ nameL[0] ] = typ
-
-        else:
-            for i,name in enumerate(nameL):
-                typ = try_cast_to_int_or_float( [ tup[i] for tup in valL ] )
-                if typ is not None:
-                    tmap[ name ] = typ
+                tmap[ name ] = typ
 
     else:
-        tL = []
-        for n in attr_names:
-            if n in ['str','int','float']:
-                tL.append( eval(n) )
+        tL = get_type_array( attr_names, nameL, lineno )
 
-        if len(tL) == 1:
-            typ = tL[0]
-            if len( nameL ) == 1:
-                if values_cast_to_type( typ, valL ):
-                    tmap[ nameL[0] ] = typ
+        if len(tL) > 0:
+            for i,nv in enumerate( iter_name_values( nameL, valL ) ):
+                name,vals = nv
+                typ = tL[i]
+                if values_cast_to_type( typ, vals ):
+                    tmap[ name ] = typ
                 else:
-                    raise TestSpecError( 'cannot cast all "'+nameL[0]+'" values '+ \
-                        'to '+str(typ)+', line ' + str(lineno) )
-            else:
-                for i,name in enumerate(nameL):
-                    if values_cast_to_type( typ, [ tup[i] for tup in valL ] ):
-                        tmap[ name ] = typ
-                    else:
-                        raise TestSpecError( 'cannot cast all "'+name+'" '+ \
-                            'values to '+str(typ)+', line ' + str(lineno) )
-        elif len(tL) > 1:
-            if len(tL) != len(nameL):
-                raise TestSpecError( 'the list of types must be length one '+ \
-                    'or match the number of parameter names, line ' + str(lineno) )
-            else:
-                for i,typ in enumerate(tL):
-                    if values_cast_to_type( typ, [ tup[i] for tup in valL ] ):
-                        tmap[ nameL[i] ] = typ
-                    else:
-                        raise TestSpecError( 'cannot cast all "'+nameL[i]+'" '+ \
-                            'values to '+str(typ)+', line ' + str(lineno) )
+                    raise TestSpecError( 'cannot cast all "'+name+'" '+ \
+                        'values to '+str(typ)+', line ' + str(lineno) )
+
+
+def get_type_array( attr_names, nameL, lineno ):
+    ""
+    tL = extract_types_from_attrs( attr_names )
+
+    if len(tL) > len(nameL):
+        raise TestSpecError( 'more type specifications than parameter ' + \
+                             'names, line ' + str(lineno) )
+
+    if len(tL) == 1:
+        # a single type specifier is applied to all parameters
+        typ = tL[0]
+        tL = [ typ for _ in range(len(nameL)) ]
+
+    elif len(tL) > 0 and len(tL) != len(nameL):
+        raise TestSpecError( 'the list of types must be length one '+ \
+            'or match the number of parameter names, line ' + str(lineno) )
+
+    return tL
+
+
+def extract_types_from_attrs( attr_names ):
+    ""
+    tL = []
+    for n in attr_names:
+        if n in ['str','int','float']:
+            tL.append( eval(n) )
+    return tL
 
 
 def try_cast_to_int_or_float( valuelist ):
@@ -750,7 +769,7 @@ def check_special_parameters( param_name, value_list, lineno ):
             except Exception:
                 ival = None
 
-            if ival == None or ival < 0:
+            if ival is None or ival < 0:
                 raise TestSpecError( 'the parameter "'+param_name+'" '
                                      'must be a non-negative integer: "' + \
                                      val+'", line ' + str(lineno) )
@@ -774,7 +793,7 @@ def parse_param_values( param_name, value_string, force_params ):
     """
     vals = value_string.strip().split()
 
-    if force_params != None and param_name in force_params:
+    if force_params is not None and param_name in force_params:
 
         force_vals = force_params[ param_name ]
         new_len = max( len(vals), len(force_vals) )

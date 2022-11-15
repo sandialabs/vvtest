@@ -10,6 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+from os.path import abspath
 
 import vvtestutils as vtu
 import testutils as util
@@ -22,6 +23,8 @@ from libvvtest.testcase import TestCase
 import libvvtest.testlistio as tio
 import libvvtest.parsevvt as parsevvt
 from libvvtest.tcfactory import TestCaseFactory
+
+from vvtestutils import windows, not_windows
 
 
 class script_tests( vtu.vvtestTestCase ):
@@ -564,35 +567,220 @@ class bad_attrs( vtu.vvtestTestCase ):
         psr = parsevvt.ScriptTestParser( 'ltest.vvt' )
         self.assertRaises( TestSpecError, psr.parseTestNames )
 
+    def test_getting_the_generator_program(self):
+        ""
+        cwd = os.getcwd()
+
+        self.assertTrue( os.path.isabs( sys.executable ) )
+        prog,xcute = parsevvt.get_generator_program( cwd, sys.executable )
+        assert os.path.samefile( prog, sys.executable )
+        self.assertTrue( os.path.isabs( prog ) )
+        if windows: self.assertFalse( xcute )
+        else:       self.assertTrue( xcute )
+
+        if not_windows:
+            util.writescript( 'src/ascript', """
+                #!/bin/bash
+                """ )
+            prog,xcute = parsevvt.get_generator_program( abspath('src'), 'ascript' )
+            assert os.path.samefile( prog, 'src/ascript' )
+            self.assertTrue( os.path.isabs( prog ) )
+            self.assertTrue( xcute )
+
+        util.writefile( 'src/afile', """
+            # nothing
+            """ )
+        prog,xcute = parsevvt.get_generator_program( abspath('src'), 'afile' )
+        assert os.path.samefile( prog, 'src/afile' )
+        self.assertTrue( os.path.isabs( prog ) )
+        self.assertFalse( xcute )
+
+        prog,xcute = parsevvt.get_generator_program( abspath('src'), 'bfile' )
+        self.assertEqual( prog, 'bfile' )
+        self.assertFalse( xcute )
+
+    def test_running_the_generator_program(self):
+        ""
+        pyfile = util.writefile( 'pyfile', """
+            print ( 'hello from pyfile' )
+            """ )
+        pyscr = util.writescript( 'pyscript', """
+            #!"""+sys.executable+"""
+            print ( 'hello from pyscript' )
+            """ )
+        util.writescript( 'src/pyscript', """
+            #!"""+sys.executable+"""
+            print ( 'hello from src/pyscript' )
+            """ )
+        util.writefile( 'pyfail', """
+            raise Exception( 'fake exception' )
+            """ )
+        assert os.path.isabs(pyfile) and os.path.isabs(pyscr)
+
+        out = parsevvt.run_generator_prog( [pyscr,'--version'], 'junk', True )
+        assert 'hello from pyscript' in out
+
+        out = parsevvt.run_generator_prog( [pyfile,'--version'], 'junk', False )
+        assert 'hello from pyfile' in out
+
+        with util.set_environ( PATH=prepended_PATH('src') ):
+            out = parsevvt.run_generator_prog( ['pyscript'], 'pyscript', False )
+        assert 'hello from src/pyscript' in out
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.run_generator_prog,
+                           ['badfilename'], 'badfilename', False )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.run_generator_prog,
+                           [abspath('badfilename')], abspath('badfilename'), False )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.run_generator_prog, ['pyfail'], 'pyfail', False )
+
+    def test_generate_parameters_function(self):
+        ""
+        util.writescript( 'ascript', """
+            #!"""+sys.executable+"""
+            print ( repr( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
+            """ )
+        util.writefile( 'afile', """
+            print ( repr( [ {'p1':11,'p2':3.5}, {'p1':20,'p2':5.6} ] ) )
+            """ )
+        util.writefile( 'a1file', """
+            print ( repr( [ {'p1':11,'p2':3.5} ] ) )
+            """ )
+        util.writefile( 'bfile', """
+            print ( 'any /*&$ expr that will not eval' )
+            """ )
+        util.writefile( 'cfile', """
+            print ( repr( [] ) )
+            """ )
+        util.writefile( 'dfile', """
+            print ( repr( [ {} ] ) )
+            """ )
+        util.writefile( 'efile', """
+            print ( repr( [ {'X-Y':1} ] ) )
+            """ )
+        util.writefile( 'ffile', """
+            print ( repr( [ ('a','b') ] ) )
+            """ )
+        util.writefile( 'gfile', """
+            print ( repr( [ {'p1':11,'p2':3.5}, {'p1':12} ] ) )
+            """ )
+        util.writefile( 'hfile', """
+            print ( repr( [ {'p1':11,'p2':3.5}, {'p1':12,'p3':4.5} ] ) )
+            """ )
+        util.writefile( 'ifile', """
+            print ( repr( [ {'p1':11,'p2':(1,2)} ] ) )
+            """ )
+        util.writefile( 'jfile', """
+            print ( repr( [ {'p1':11},{'p1':1.1} ] ) )
+            """ )
+
+        vvtfile = abspath('fake')
+
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'ascript', 1 )
+        self.assertEqual( nameL, ['p1','p2'] )
+        self.assertEqual( valL, [ (10,3.5), (20,5.5) ] )
+
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'afile', 1 )
+        self.assertEqual( nameL, ['p1','p2'] )
+        self.assertEqual( valL, [ (11,3.5), (20,5.6) ] )
+
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'a1file', 1 )
+        self.assertEqual( nameL, ['p1','p2'] )
+        self.assertEqual( valL, [ (11,3.5) ] )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'bfile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'cfile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'dfile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'efile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'ffile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'gfile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'hfile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'ifile', 1 )
+
+        self.assertRaises( TestSpecError,
+                           parsevvt.generate_parameters, vvtfile, 'jfile', 1 )
+
     def test_parse_parameterize_generator_file(self):
         ""
-        return  # magic: not done
-
         util.writefile( 'atest.vvt', """
             #VVT: parameterize (generator) : myscript --foo
             """ )
         util.writescript( 'myscript', """
             #!"""+sys.executable+"""
             import os, sys
-            assert sys.args[1:] == ['--foo']
+            assert sys.argv[1:] == ['--foo']
             plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
             print ( repr( plist ) )
+            """ )
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize (generator) : 
+            """ )
+        util.writefile( 'ctest.vvt', """
+            #VVT: parameterize (generator,int,float) : myscript --foo
             """ )
 
         psr = parsevvt.ScriptTestParser( 'atest.vvt' )
         pset = psr.parse_parameterize( 'atest' )
-        print ( 'magic: pset '+str(pset.getInstances()) )
 
-    # magic: check that the dictionary is not empty
-    # magic: check parameter names
-    # magic: how to do typing ?? autotype ? must be uniform types ?
-    #           - mixed string and numbers is an error
-    #           - mixed int and float promotes to float
-    #           - only support str, int, float types
+        psr = parsevvt.ScriptTestParser( 'btest.vvt' )
+        self.assertRaises( TestSpecError, psr.parse_parameterize, 'btest' )
+
+        psr = parsevvt.ScriptTestParser( 'ctest.vvt' )
+
+    def test_generator_integration_test(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (generator) : myscript
+            #VVT: analyze : --analyze
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv[1:]:
+                print ( 'PARAM_p1_p2 = '+repr(vvt.PARAM_p1_p2) )
+                assert type(vvt.PARAM_p1_p2[0][0]) == int
+                assert type(vvt.PARAM_p1_p2[1][0]) == int
+                assert type(vvt.PARAM_p1_p2[0][1]) == float
+                assert type(vvt.PARAM_p1_p2[1][1]) == float
+            else:
+                print ( 'PARAM_DICT = '+repr(vvt.PARAM_DICT) )
+                assert type(vvt.PARAM_DICT['p1']) == int
+                assert type(vvt.PARAM_DICT['p2']) == float
+            """ )
+        util.writescript( 'myscript', """
+            #!"""+sys.executable+"""
+            plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
+            print ( repr( plist ) )
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( batch=batch )
+            vrun.assertCounts( total=3, npass=3 )
+
     # magic: test with staging ??
     # magic: test with forced values and forced values with staging
     #           - see function parsevvt.py parse_param_values()
-    # magic: it is an error to specify param types when using a generator
+    # magic: test special parameter values (np, ndevice, nnode)
 
 
 def reparse_test_string( stringid ):
@@ -602,6 +790,14 @@ def reparse_test_string( stringid ):
     TestCreator().reparse( tcase.getSpec() )
 
     return tcase
+
+
+def prepended_PATH( path ):
+    ""
+    if 'PATH' in os.environ:
+        return abspath(path)+':'+os.environ['PATH']
+    else:
+        return abspath(path)
 
 
 ########################################################################

@@ -5,8 +5,11 @@
 # Government retains certain rights in this software.
 
 import os, sys
+from os.path import dirname, normpath, join as pjoin
 import platform
 import re
+import shlex
+import subprocess
 
 from .errors import TestSpecError
 from . import timehandler
@@ -30,6 +33,8 @@ from .parseutil import (
         evaluate_option_expr,
         evaluate_parameter_expr,
     )
+
+platform_windows = platform.uname()[0].lower().startswith('win')
 
 
 class ScriptTestParser:
@@ -149,7 +154,19 @@ class ScriptTestParser:
                 continue
 
             if spec.attrs and 'generator' in spec.attrs:
-                nameL,valuestr = ['p1','p2'],'foo,bar'
+
+                if 'int' in spec.attrs or 'float' in spec.attrs or \
+                   'str' in spec.attrs or 'autotype' in spec.attrs:
+                    raise TestSpecError( 'cannot specify type specifiers ' + \
+                            'with a generator attribute, line '+str(lnum) )
+
+                fname = os.path.join( self.root, self.fpath )
+                nameL,valL = generate_parameters( fname, spec.value, lnum )
+                valL,typmap = convert_value_types( nameL, valL )
+                tmap.update( typmap )
+
+                check_parameter_names( nameL, lnum )
+
             else:
                 L = spec.value.split( '=', 1 )
                 if len(L) < 2:
@@ -625,13 +642,232 @@ def check_allowed_attrs( attrD, lnum, allowed ):
                         " not allowed here, line " + str(lnum) )
 
 
+def generate_parameters( testfile, gencmd, lineno ):
+    ""
+    lineinfo = ', line '+str(lineno)
+    if not gencmd.strip():
+        raise TestSpecError( 'generator specification is missing' + lineinfo )
+
+    cmdL = shlex.split( gencmd.strip() )
+
+    if len(cmdL) == 0:
+        raise TestSpecError( 'invalid generator specification'+lineinfo )
+
+    prog,xcute = get_generator_program( dirname(testfile), cmdL[0] )
+    cmdL[0] = prog
+
+    out = run_generator_prog( cmdL, gencmd, xcute )
+
+    errmsg = None
+    try:
+        pdict = eval( out.strip() )
+    except Exception:
+        errmsg = 'could not Python eval() generator output (expected a ' + \
+                 'single line repr() of a list of dictionaries): '+repr(out.strip() )
+    if errmsg:
+        raise TestSpecError( errmsg )
+
+    check_for_rectangular_matrix( pdict, lineinfo )
+
+    namevals = make_name_to_values_map( pdict, lineinfo )
+
+    nameL,valL = make_name_list_and_value_tuples( namevals )
+
+    return nameL,valL
+
+
+def convert_value_types( nameL, valL ):
+    ""
+    typmap = {}
+    for i,n in enumerate(nameL):
+        typ = type( valL[0][i] )  # representative value
+        if typ == int:
+            typmap[n] = int
+        elif typ == float:
+            typmap[n] = float
+        else:
+            typmap[n] = str
+
+    new_valL = []
+    for tup in valL:
+        new_valL.append( tuple( [ repr(v) for v in tup ] ) )
+
+    return new_valL,typmap
+
+
+def check_for_rectangular_matrix( pdict, lineinfo ):
+    ""
+    errmsg = None
+
+    if len(pdict) == 0:
+        errmsg = 'generator output cannot be an empty list'
+    elif any( [ type(D) != type({}) for D in pdict ] ):
+        errmsg = 'generator output must be a list of dictionaries'
+    elif any( [ len(D) == 0 for D in pdict ] ):
+        errmsg = 'the dictionaries in the generator list cannot be empty'
+    elif min([len(D) for D in pdict]) != max([len(D) for D in pdict]):
+        errmsg = 'the dictionaries in the generator list must ' + \
+                 'all be the same size'
+
+    if errmsg:
+        raise TestSpecError( errmsg+lineinfo )
+
+
+def make_name_to_values_map( pdict, lineinfo ):
+    """
+    creates and returns a dict
+        { name1 : [ a1, a2, ... ],
+          name2 : [ b1, b2, ... ],
+          ...
+        }
+    """
+    namevals = {}
+
+    check_generator_instance_names( pdict, lineinfo )
+
+    for D in pdict:
+        if len(namevals) == 0:
+            for n,v in D.items():
+                namevals[n] = [v]
+        else:
+            if sorted(namevals.keys()) != sorted(D.keys()):
+                raise TestSpecError( 'all the dictionaries in the ' + \
+                    'generator list must have the same keys'+lineinfo )
+            for n,v in D.items():
+                namevals[n].append( v )
+
+    for name,vals in namevals.items():
+        check_generator_value_types( name, vals, lineinfo )
+
+    return namevals
+
+
+def check_generator_instance_names( pdict, lineinfo ):
+    ""
+    for D in pdict:
+        for n,_ in D.items():
+            if not allowable_variable(n):
+                raise TestSpecError( 'invalid parameter name found in ' + \
+                                     'generator list: '+repr(n)+lineinfo )
+
+
+def check_generator_value_types( name, vals, lineinfo ):
+    ""
+    ns = ni = nf = 0
+    for v in vals:
+        if type(v) == type(''):
+            ns += 1
+        elif type(v) == int:
+            ni += 1
+        elif type(v) == float:
+            nf += 1
+        else:
+            raise TestSpecError( "unsupported generator value type for " + \
+                   repr(name)+": "+str(type(v))+lineinfo )
+
+    if ns > 0:
+        if ni > 0 or nf > 0:
+            raise TestSpecError( 'not all generator value types are ' + \
+                                 'the same for '+repr(name)+lineinfo )
+    elif ni > 0:
+        if nf > 0:
+            raise TestSpecError( 'not all generator value types are the ' + \
+                                 'same for '+repr(name)+lineinfo )
+
+
+def make_name_list_and_value_tuples( namevals ):
+    """
+    creates and returns the name list and the list of value tuples
+
+        nameL = [ name1, name2, ... ]
+
+        valL = [ (a1,b1,...),
+                 (a2,b2,...),
+                 ...
+               ]
+    """
+    nameL = list( namevals.keys() )
+    nameL.sort()
+
+    # by construction, all value lists have the same length, so sample one
+    numvalues = len( list( namevals.items() )[0][1] )
+
+    valL = []
+    for i in range(numvalues):
+        vL = []
+        for n in nameL:
+            vL.append( namevals[n][i] )
+        valL.append( tuple(vL) )
+
+    return nameL,valL
+
+
+def run_generator_prog( cmdL, cmdstr, executable ):
+    ""
+    if os.path.isabs( cmdL[0] ):
+        if executable:
+            pop = subprocess.Popen( cmdL, stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE )
+        else:
+            pycmdL = [sys.executable]+cmdL
+            pop = subprocess.Popen( pycmdL, stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE )
+    else:
+        pop = subprocess.Popen( cmdstr, shell=True,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE )
+
+    mjr,mnr = sys.version_info[0],sys.version_info[1]
+
+    if mjr < 3 or ( mjr == 3 and mnr < 3 ):
+        out,err = pop.communicate( None )
+        x = pop.returncode
+    else:
+        try:
+            out,err = pop.communicate( None, 10 )  # fail after 10 seconds
+            x = pop.returncode
+        except subprocess.TimeoutExpired:
+            pop.kill()
+            x = 1
+
+    if mjr > 2:
+        out = out.decode() if out else ''
+        err = err.decode() if err else ''
+
+    if x != 0:
+        raise TestSpecError( 'parameter generator command failed: ' + \
+                             repr(cmdstr) + '\n' + out + '\n' + err )
+
+    return out
+
+
+def get_generator_program( srcdir, prog ):
+    ""
+    if os.path.isabs(prog):
+        exists = os.path.exists( prog )
+    else:
+        fn = normpath( pjoin( srcdir, prog ) )
+        if os.path.exists(fn):
+            prog = fn
+            exists = True
+        else:
+            exists = False
+
+    if platform_windows:
+        xcute = False
+    else:
+        xcute = ( exists and os.access( prog, os.R_OK | os.X_OK ) )
+
+    return prog,xcute
+
+
 def iter_name_values( nameL, valL ):
     """
     If 'nameL' is length one, then 'valL' is just a list of values.
     But if 'nameL' is greater than one, then 'valL' is a list of tuples, like
         [ (a1,a2), (b1,b2), ... ]
-    This function iterates the name and values associated with each name. It
-    returns a sequence of pairs of form
+    This function iterates the name and the values associated with the name.
+    It returns a sequence of pairs of form
         name, [ a1, a2, ... ]
     """
     if len(nameL) == 1:

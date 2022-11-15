@@ -219,6 +219,8 @@ def writescript( fname, content ):
     except Exception:
         pass
 
+    return abspath( fname )
+
 
 def runcmd( cmd, chdir=None, raise_on_error=True, verbose=1 ):
     """

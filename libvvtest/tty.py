@@ -1,4 +1,8 @@
 import sys
+try:
+    uchr = unichr
+except NameError:
+    uchr = chr
 
 
 TRACE = 50
@@ -78,3 +82,11 @@ def critical(*args, **kwargs):
 def die(*args, **kwargs):
     critical(*args, **kwargs)
     sys.exit(1)
+
+
+def unicode_chars_supported(*uchars):
+    try:
+        [_.encode(sys.stdout.encoding) for _ in uchars]
+        return True
+    except UnicodeEncodeError:
+        return False

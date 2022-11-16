@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
+from __future__ import division
 
 import os, sys
 import time
@@ -288,17 +288,28 @@ class DirectRunner( TestListRunner ):
         print_notrun_reasons( tcase_with_reason )
 
 
+def _bar(total, complete, width):
+    # charset = [_chr(0x2523), _chr(0x2501), _chr(0x2578), _chr(0x252B)]
+    charset = [" ", tty.uchr(0x2588), tty.uchr(0x2591), ""]
+    if not tty.unicode_chars_supported(*charset):
+        charset = ["|", "-", ".", "|"]
+    lbar, bar, xbar, rbar = charset
+    frac = complete / total
+    nbar = int(frac * width)
+    bars = bar * nbar
+    if nbar < width:
+        bars += xbar * (width - nbar)
+    return "{0}{1}{2}".format(lbar, bars, rbar)
+
+
 def progress_bar(num_test, num_done, duration, width=30):
-    completed_char, togo_char = "█", "-"
-    frac_complete = int(num_done / num_test * width)
-    completed_chars = completed_char * frac_complete
-    togo_chars = togo_char * (width - frac_complete)
-    bar = "|{0}{1}|".format(completed_chars, togo_chars)
-    pct = 100 * float(num_done) / float(num_test)
+    bar = _bar(num_test, num_done, width)
+    pct = 100 * num_done / float(num_test)
     ave = duration / num_done
     togo = ave * (num_test - num_done)
-    line = "\r{0} {1}/{2} {3:.1f}% [elapsed: {4} left: {5}]".format(
-        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo)
+    w = len(str(num_test))
+    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6:.2f}]".format(
+        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), ave, w
     )
     return line
 

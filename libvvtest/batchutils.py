@@ -11,6 +11,7 @@ import glob
 import itertools
 from os.path import dirname
 
+from . import tty
 from . import TestList
 from . import testlistio
 from . import pathutil
@@ -272,7 +273,7 @@ class Batcher:
     def _remove_batch_directories(self):
         ""
         for d in self.namer.globBatchDirectories():
-            print3( 'rm -rf '+d )
+            tty.emit('rm -rf {0}'.format(d), end="\n")
             pathutil.fault_tolerant_remove( d )
 
 
@@ -544,8 +545,3 @@ def check_set_outfile_permissions( bjob, perms, curtime ):
     if not bjob.outfileSeen() and os.path.exists( ofile ):
         perms.apply( ofile )
         bjob.setOutfileSeen( curtime )
-
-
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()

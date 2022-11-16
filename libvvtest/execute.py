@@ -96,7 +96,7 @@ class BatchRunner( TestListRunner ):
             while True:
 
                 qid = self.batch.checkstart()
-                if qid != None:
+                if qid is not None:
                     # nothing to print here because the qsubmit prints
                     pass
                 elif self.batch.numInProgress() == 0:
@@ -139,11 +139,20 @@ class BatchRunner( TestListRunner ):
 
     def print_progress(self, doneL):
         ""
-        if len(doneL) > 0:
-            sL = [ get_batch_info( self.batch ),
-                   get_test_info( self.tlist, self.xlist ),
-                   'time = '+pretty_time( time.time() - self.starttime ) ]
-            tty.info("Progress: {0}".format(', '.join( sL )))
+        if len(doneL) <= 0:
+            return
+        ndone_batch = self.batch.getNumDone()
+        nprog_batch = self.batch.numInProgress()
+        ndone_test = self.xlist.numDone()
+        ntot_test = self.tlist.numActive()
+        pct = 100 * float(ndone_test) / float(ntot_test)
+        dt = time.time() - self.starttime
+        fmt = "jobs running={0} completed={1}, tests {2}/{3} = {4:.1f}%, time = {5}"
+        args = [nprog_batch, ndone_batch, ndone_test, ntot_test, pct, pretty_time(dt)]
+        tty.info("Progress: " + fmt.format(*args))
+        if self.show_progress_bar:
+            line = progress_bar(ntot_test, ndone_test, dt, width=30)
+            tty.emit(line)
 
     def sleep_with_info_check(self):
         ""
@@ -206,7 +215,7 @@ class DirectRunner( TestListRunner ):
 
                 tnext = self.xlist.popNext( self.plat.sizeAvailable() )
 
-                if tnext != None:
+                if tnext is not None:
                     self.start_next( tnext )
                 elif self.xlist.numRunning() == 0:
                     break
@@ -307,24 +316,6 @@ def print_notrun_reasons( notrunlist ):
         xdir = tcase.getSpec().getDisplayString()
         # magic: reason = tcase.getBlockedReason()
         tty.warn("test {0!r} notrun due to dependency: {1}".format(xdir, reason))
-
-
-def get_batch_info( batch ):
-    ""
-    ndone = batch.getNumDone()
-    nrun = batch.numInProgress()
-
-    return 'jobs running='+str(nrun)+' completed='+str(ndone)
-
-
-def get_test_info( tlist, xlist ):
-    ""
-    ndone = xlist.numDone()
-    ntot = tlist.numActive()
-    tpct = 100 * float(ndone) / float(ntot)
-    tdiv = 'tests '+str(ndone)+'/'+str(ntot)
-
-    return tdiv+" = %%%.1f"%tpct
 
 
 def exec_path( tcase, test_dir ):

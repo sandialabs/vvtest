@@ -153,6 +153,10 @@ class ScriptTestParser:
             if not self.attr_filter( spec.attrs, testname, None, lnum ):
                 continue
 
+            # magic: refactor to make nameL and valL the same regardless of
+            #        if len(nameL)==1 or not (the valL in this case are tuples
+            #        of length one
+
             if spec.attrs and 'generator' in spec.attrs:
 
                 if 'int' in spec.attrs or 'float' in spec.attrs or \
@@ -680,7 +684,10 @@ def convert_value_types( nameL, valL ):
     ""
     typmap = {}
     for i,n in enumerate(nameL):
-        typ = type( valL[0][i] )  # representative value
+        if len(nameL) == 1:
+            typ = type( valL[0] )
+        else:
+            typ = type( valL[0][i] )  # representative value
         if typ == int:
             typmap[n] = int
         elif typ == float:
@@ -690,7 +697,10 @@ def convert_value_types( nameL, valL ):
 
     new_valL = []
     for tup in valL:
-        new_valL.append( tuple( [ repr(v) for v in tup ] ) )
+        if len(nameL) == 1:
+            new_valL.append( repr(tup) )
+        else:
+            new_valL.append( tuple( [ repr(v) for v in tup ] ) )
 
     return new_valL,typmap
 
@@ -794,10 +804,14 @@ def make_name_list_and_value_tuples( namevals ):
 
     valL = []
     for i in range(numvalues):
-        vL = []
-        for n in nameL:
-            vL.append( namevals[n][i] )
-        valL.append( tuple(vL) )
+        if len(nameL) == 1:
+            n = nameL[0]
+            valL.append( namevals[n][i] )
+        else:
+            vL = []
+            for n in nameL:
+                vL.append( namevals[n][i] )
+            valL.append( tuple(vL) )
 
     return nameL,valL
 

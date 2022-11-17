@@ -650,6 +650,9 @@ class bad_attrs( vtu.vvtestTestCase ):
         util.writefile( 'a1file', """
             print ( repr( [ {'p1':11,'p2':3.5} ] ) )
             """ )
+        util.writefile( 'a2file', """
+            print ( repr( [ {'A':5}, {'A':6} ] ) )
+            """ )
         util.writefile( 'bfile', """
             print ( 'any /*&$ expr that will not eval' )
             """ )
@@ -692,6 +695,10 @@ class bad_attrs( vtu.vvtestTestCase ):
         self.assertEqual( nameL, ['p1','p2'] )
         self.assertEqual( valL, [ (11,3.5) ] )
 
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'a2file', 1 )
+        self.assertEqual( nameL, ['A'] )
+        self.assertEqual( valL, [ 5, 6 ] )
+
         self.assertRaises( TestSpecError,
                            parsevvt.generate_parameters, vvtfile, 'bfile', 1 )
 
@@ -721,15 +728,20 @@ class bad_attrs( vtu.vvtestTestCase ):
 
     def test_parse_parameterize_generator_file(self):
         ""
-        util.writefile( 'atest.vvt', """
-            #VVT: parameterize (generator) : myscript --foo
+        util.writefile( 'a1test.vvt', """
+            #VVT: parameterize (generator) : myscript
             """ )
         util.writescript( 'myscript', """
             #!"""+sys.executable+"""
             import os, sys
-            assert sys.argv[1:] == ['--foo']
-            plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
+            if sys.argv[1:] == ['--foo']:
+                plist = [ {'A':92}, {'A':93} ]
+            else:
+                plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
             print ( repr( plist ) )
+            """ )
+        util.writefile( 'a2test.vvt', """
+            #VVT: parameterize (generator) : myscript --foo
             """ )
         util.writefile( 'btest.vvt', """
             #VVT: parameterize (generator) : 
@@ -738,8 +750,16 @@ class bad_attrs( vtu.vvtestTestCase ):
             #VVT: parameterize (generator,int,float) : myscript --foo
             """ )
 
-        psr = parsevvt.ScriptTestParser( 'atest.vvt' )
-        pset = psr.parse_parameterize( 'atest' )
+        psr = parsevvt.ScriptTestParser( 'a1test.vvt' )
+        pset = psr.parse_parameterize( 'a1test' )
+        self.assertEqual( pset.getInstances(),
+                [{'p1': '10', 'p2': '3.5'}, {'p1': '20', 'p2': '5.5'}] )
+        self.assertEqual( pset.getParameterTypeMap(), {'p1':int, 'p2':float} )
+
+        psr = parsevvt.ScriptTestParser( 'a2test.vvt' )
+        pset = psr.parse_parameterize( 'a2test' )
+        self.assertEqual( pset.getInstances(), [{'A': '92'}, {'A': '93'}] )
+        self.assertEqual( pset.getParameterTypeMap(), {'A':int} )
 
         psr = parsevvt.ScriptTestParser( 'btest.vvt' )
         self.assertRaises( TestSpecError, psr.parse_parameterize, 'btest' )
@@ -749,7 +769,7 @@ class bad_attrs( vtu.vvtestTestCase ):
     def test_generator_integration_test(self):
         ""
         util.writefile( 'atest.vvt', """
-            #VVT: parameterize (generator) : myscript
+            #VVT: parameterize (generator) : myscript 2
             #VVT: analyze : --analyze
             import sys
             import vvtest_util as vvt
@@ -764,10 +784,18 @@ class bad_attrs( vtu.vvtestTestCase ):
                 assert type(vvt.PARAM_DICT['p1']) == int
                 assert type(vvt.PARAM_DICT['p2']) == float
             """ )
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize (generator) : myscript 1
+            import vvtest_util as vvt
+            assert type(vvt.PARAM_DICT['A']) == int
+            """ )
         util.writescript( 'myscript', """
             #!"""+sys.executable+"""
-            plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
-            print ( repr( plist ) )
+            import sys
+            if int(sys.argv[-1]) == 1:
+                print ( repr( [ {'A':10}, {'A':20} ] ) )
+            else:
+                print ( repr( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
             """ )
 
         for batch in [False,True]:
@@ -775,7 +803,7 @@ class bad_attrs( vtu.vvtestTestCase ):
             vtu.remove_results()
 
             vrun = vtu.runvvtest( batch=batch )
-            vrun.assertCounts( total=3, npass=3 )
+            vrun.assertCounts( total=5, npass=5 )
 
     # magic: test with staging ??
     # magic: test with forced values and forced values with staging

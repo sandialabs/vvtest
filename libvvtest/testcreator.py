@@ -134,12 +134,8 @@ class TestMaker:
         tname = tspec.getName()
 
         old_pset = tspec.getParameterSet()
-        # print ( 'magic: old pset '+str(old_pset.getInstances()) )
-        # print ( 'magic: old pset '+str(old_pset.getParameterTypeMap()) )
         new_pset = self.parser.parseParameterSet( tname )
         new_pset.intersectionFilter( old_pset.getInstances() )
-        # print ( 'magic: new pset '+str(new_pset.getInstances()) )
-        # print ( 'magic: new pset '+str(new_pset.getParameterTypeMap()) )
         tspec.setParameterSet( new_pset )
 
         if new_pset.getStagedGroup():

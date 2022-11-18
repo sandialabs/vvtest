@@ -685,19 +685,19 @@ class bad_attrs( vtu.vvtestTestCase ):
 
         nameL,valL = parsevvt.generate_parameters( vvtfile, 'ascript', 1 )
         self.assertEqual( nameL, ['p1','p2'] )
-        self.assertEqual( valL, [ (10,3.5), (20,5.5) ] )
+        self.assertEqual( valL, [ [10,3.5], [20,5.5] ] )
 
         nameL,valL = parsevvt.generate_parameters( vvtfile, 'afile', 1 )
         self.assertEqual( nameL, ['p1','p2'] )
-        self.assertEqual( valL, [ (11,3.5), (20,5.6) ] )
+        self.assertEqual( valL, [ [11,3.5], [20,5.6] ] )
 
         nameL,valL = parsevvt.generate_parameters( vvtfile, 'a1file', 1 )
         self.assertEqual( nameL, ['p1','p2'] )
-        self.assertEqual( valL, [ (11,3.5) ] )
+        self.assertEqual( valL, [ [11,3.5] ] )
 
         nameL,valL = parsevvt.generate_parameters( vvtfile, 'a2file', 1 )
         self.assertEqual( nameL, ['A'] )
-        self.assertEqual( valL, [ 5, 6 ] )
+        self.assertEqual( valL, [ [5], [6] ] )
 
         self.assertRaises( TestSpecError,
                            parsevvt.generate_parameters, vvtfile, 'bfile', 1 )
@@ -805,10 +805,11 @@ class bad_attrs( vtu.vvtestTestCase ):
             vrun = vtu.runvvtest( batch=batch )
             vrun.assertCounts( total=5, npass=5 )
 
+    # magic: add a test with a bad parameter name
     # magic: test with staging ??
     # magic: test with forced values and forced values with staging
     #           - see function parsevvt.py parse_param_values()
-    # magic: test special parameter values (np, ndevice, nnode)
+    # magic: check special parameter values (np, ndevice, nnode)
 
 
 def reparse_test_string( stringid ):

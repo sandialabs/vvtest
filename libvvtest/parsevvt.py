@@ -157,6 +157,8 @@ class ScriptTestParser:
             #        if len(nameL)==1 or not (the valL in this case are tuples
             #        of length one
 
+            # magic: unify how the line number is put on the end
+
             if spec.attrs and 'generator' in spec.attrs:
 
                 if 'int' in spec.attrs or 'float' in spec.attrs or \
@@ -168,8 +170,6 @@ class ScriptTestParser:
                 nameL,valL = generate_parameters( fname, spec.value, lnum )
                 valL,typmap = convert_value_types( nameL, valL )
                 tmap.update( typmap )
-
-                check_parameter_names( nameL, lnum )
 
             else:
                 L = spec.value.split( '=', 1 )
@@ -188,12 +188,12 @@ class ScriptTestParser:
 
                 nameL = [ n.strip() for n in namestr.strip().split(',') ]
 
-                check_parameter_names( nameL, lnum )
+                check_parameter_names( nameL, ', line '+str(lnum) )
 
                 if len(nameL) == 1:
                     valL = parse_param_values( nameL[0], valuestr, self.force )
-                    check_parameter_values( valL, lnum )
-                    check_special_parameters( nameL[0], valL, lnum )
+                    check_parameter_values( nameL, valL, lnum )
+                    check_special_parameters( nameL, valL, lnum )
                 else:
                     valL = parse_param_group_values( nameL, valuestr, lnum )
                     check_forced_group_parameter( self.force, nameL, lnum )
@@ -206,7 +206,8 @@ class ScriptTestParser:
             valL = remove_duplicate_parameter_values( valL )
 
             if len(nameL) == 1:
-                pset.addParameter( nameL[0], valL )
+                # magic: can the ParameterSet interface be simplified a little ??
+                pset.addParameter( nameL[0], [ tup[0] for tup in valL ] )
             else:
                 pset.addParameterGroup( nameL, valL, staged )
 
@@ -684,10 +685,7 @@ def convert_value_types( nameL, valL ):
     ""
     typmap = {}
     for i,n in enumerate(nameL):
-        if len(nameL) == 1:
-            typ = type( valL[0] )
-        else:
-            typ = type( valL[0][i] )  # representative value
+        typ = type( valL[0][i] )  # representative value
         if typ == int:
             typmap[n] = int
         elif typ == float:
@@ -697,10 +695,7 @@ def convert_value_types( nameL, valL ):
 
     new_valL = []
     for tup in valL:
-        if len(nameL) == 1:
-            new_valL.append( repr(tup) )
-        else:
-            new_valL.append( tuple( [ repr(v) for v in tup ] ) )
+        new_valL.append( [ repr(v) for v in tup ] )
 
     return new_valL,typmap
 
@@ -735,6 +730,8 @@ def make_name_to_values_map( pdict, lineinfo ):
 
     check_generator_instance_names( pdict, lineinfo )
 
+    # magic: this intermediate form (names to lists) seems unnecessary
+
     for D in pdict:
         if len(namevals) == 0:
             for n,v in D.items():
@@ -745,6 +742,8 @@ def make_name_to_values_map( pdict, lineinfo ):
                     'generator list must have the same keys'+lineinfo )
             for n,v in D.items():
                 namevals[n].append( v )
+
+    check_parameter_names( namevals.keys(), lineinfo )
 
     for name,vals in namevals.items():
         check_generator_value_types( name, vals, lineinfo )
@@ -804,14 +803,10 @@ def make_name_list_and_value_tuples( namevals ):
 
     valL = []
     for i in range(numvalues):
-        if len(nameL) == 1:
-            n = nameL[0]
-            valL.append( namevals[n][i] )
-        else:
-            vL = []
-            for n in nameL:
-                vL.append( namevals[n][i] )
-            valL.append( tuple(vL) )
+        vL = []
+        for n in nameL:
+            vL.append( namevals[n][i] )
+        valL.append( vL )
 
     return nameL,valL
 
@@ -884,11 +879,8 @@ def iter_name_values( nameL, valL ):
     It returns a sequence of pairs of form
         name, [ a1, a2, ... ]
     """
-    if len(nameL) == 1:
-        yield nameL[0],valL
-    else:
-        for i,name in enumerate(nameL):
-            yield name, [ tup[i] for tup in valL ]
+    for i,name in enumerate(nameL):
+        yield name, [ tup[i] for tup in valL ]
 
 
 def add_to_param_type_map( tmap, attr_names, nameL, valL, lineno ):
@@ -986,43 +978,41 @@ def check_for_staging( spec_attrs, pset, nameL, valL, lineno ):
 
 def insert_staging_into_names_and_values( names, values ):
     ""
-    if len( names ) == 1:
-        values[:] = [ [str(i),v] for i,v in enumerate(values, start=1) ]
-    else:
-        values[:] = [ [str(i)]+vL for i,vL in enumerate(values, start=1) ]
-
     names[:] = [ 'stage' ] + names
+    values[:] = [ [str(i)]+vL for i,vL in enumerate(values, start=1) ]
 
 
-def check_parameter_names( name_list, lineno ):
+def check_parameter_names( name_list, lineinfo ):
     ""
     for v in name_list:
         if not allowable_variable(v):
-            raise TestSpecError( 'invalid parameter name: "' + \
-                                 v+'", line ' + str(lineno) )
+            raise TestSpecError( 'invalid parameter name: '+repr(v)+lineinfo )
 
 
-def check_parameter_values( value_list, lineno ):
+def check_parameter_values( name_list, values, lineno ):
     ""
-    for v in value_list:
-        if not allowable_word(v):
-            raise TestSpecError( 'invalid parameter value: "' + \
-                                 v+'", line ' + str(lineno) )
+    for name,vals in iter_name_values( name_list, values ):
+        for v in vals:
+            if not allowable_word(v):
+                raise TestSpecError( 'invalid parameter value ' + \
+                            'for name '+repr(name)+': ' + \
+                            repr(v)+', line ' + str(lineno) )
 
 
-def check_special_parameters( param_name, value_list, lineno ):
+def check_special_parameters( names, values, lineno ):
     ""
-    if param_name in [ 'np', 'ndevice', 'nnode' ]:
-        for val in value_list:
-            try:
-                ival = int(val)
-            except Exception:
-                ival = None
+    for name, vals in iter_name_values( names, values ):
+        if name in [ 'np', 'ndevice', 'nnode' ]:
+            for val in vals:
+                try:
+                    ival = int(val)
+                except Exception:
+                    ival = None
 
-            if ival is None or ival < 0:
-                raise TestSpecError( 'the parameter "'+param_name+'" '
-                                     'must be a non-negative integer: "' + \
-                                     val+'", line ' + str(lineno) )
+                if ival is None or ival < 0:
+                    raise TestSpecError( 'the parameter "'+name+'" '
+                                         'must be a non-negative integer: ' + \
+                                         repr(val)+', line ' + str(lineno) )
 
 
 def parse_param_values( param_name, value_string, force_params ):
@@ -1054,7 +1044,7 @@ def parse_param_values( param_name, value_string, force_params ):
             vals.append( force_vals[j] )
             j = (j+1)%len(force_vals)
 
-    return vals
+    return [ [v] for v in vals ]
 
 
 spaced_comma_pattern = re.compile( '[\t ]*,[\t ]*' )
@@ -1071,11 +1061,11 @@ def parse_param_group_values( name_list, value_string, lineno ):
             raise TestSpecError( 'malformed parameter list: "' + \
                                   s+'", line ' + str(lineno) )
 
-        check_parameter_values( gL, lineno )
-        for name,val in zip( name_list, gL ):
-            check_special_parameters( name, [val], lineno )
 
         vL.append( gL )
+
+    check_parameter_values( name_list, vL, lineno )
+    check_special_parameters( name_list, vL, lineno )
 
     return vL
 

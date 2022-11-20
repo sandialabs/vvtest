@@ -103,12 +103,11 @@ def variable_expansion( tname, platname, paramD, fL ):
 
 def check_forced_group_parameter( force_params, name_list, lineno ):
     ""
-    if force_params != None:
+    if force_params is not None and len(name_list) > 1:
         for n in name_list:
             if n in force_params:
-                raise TestSpecError( 'cannot force a grouped ' + \
-                                     'parameter name: "' + \
-                                     n+'", line ' + str(lineno) )
+                raiseError( 'cannot force a grouped parameter name:',
+                            repr(n), line=lineno )
 
 
 def check_for_duplicate_parameter( paramlist, lineno ):
@@ -121,8 +120,7 @@ def check_for_duplicate_parameter( paramlist, lineno ):
             else:
                 dup = str(val)
 
-            raise TestSpecError( 'duplicate parameter value: "'+dup + \
-                                 '", line ' + str(lineno) )
+            raiseError( 'duplicate parameter value:', repr(dup), line=lineno )
 
 
 def remove_duplicate_parameter_values( paramlist ):
@@ -171,7 +169,7 @@ def create_dependency_result_expression( attrs, lineno=None ):
                 msg = 'invalid results expression: '+repr(result)+' : '+err
                 if lineno:
                     msg += ', line '+str(lineno)
-                raise TestSpecError( msg )
+                raiseError( msg )
 
     return wx
 
@@ -193,6 +191,15 @@ def parse_to_word_expression( string_or_list, lineno=None ):
         if lineno:
             msg += ' at line '+str(lineno)
         msg += ': '+repr(string_or_list)+', '+str(e)
-        raise TestSpecError( msg )
+        raiseError( msg )
 
     return wx
+
+
+def raiseError( arg0, *args, **kwargs ):
+    ""
+    err = ' '.join( [str(arg0)] + [str(arg) for arg in args] )
+    if 'line' in kwargs:
+        err += ', line '+str(kwargs['line'])
+
+    raise TestSpecError( err )

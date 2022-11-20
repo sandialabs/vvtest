@@ -10,6 +10,7 @@ import platform
 import re
 import shlex
 import subprocess
+import json
 
 from .errors import TestSpecError
 from . import timehandler
@@ -617,14 +618,14 @@ def generate_parameters( testfile, gencmd, lineno ):
 
     out = run_generator_prog( cmdL, gencmd, xcute )
 
-    errmsg = None
     try:
-        plist = eval( out.strip() )
-    except Exception:
-        errmsg = 'could not Python eval() generator output (expected a ' + \
-                 'single line repr() of a list of dictionaries): '+repr(out.strip() )
-    if errmsg:
-        raiseError( errmsg, line=lineno )
+        plist = json.loads( out.strip() )
+    except Exception as e:
+        raiseError( 'from line '+str(lineno)+',',
+                    'could not load generator output (expected a ' + \
+                    'JSON encoded list of dictionaries):',
+                    '\n    output = '+repr(out.strip()),
+                    '\n    error  = '+str(e) )
 
     check_for_rectangular_matrix( plist, lineno )
 

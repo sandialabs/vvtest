@@ -642,43 +642,55 @@ class bad_attrs( vtu.vvtestTestCase ):
         ""
         util.writescript( 'ascript', """
             #!"""+sys.executable+"""
-            print ( repr( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
             """ )
         util.writefile( 'afile', """
-            print ( repr( [ {'p1':11,'p2':3.5}, {'p1':20,'p2':5.6} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':11,'p2':3.5}, {'p1':20,'p2':5.6} ] ) )
             """ )
         util.writefile( 'a1file', """
-            print ( repr( [ {'p1':11,'p2':3.5} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':11,'p2':3.5} ] ) )
             """ )
         util.writefile( 'a2file', """
-            print ( repr( [ {'A':5}, {'A':6} ] ) )
+            from json import dumps
+            print ( dumps( [ {'A':5}, {'A':6} ] ) )
             """ )
         util.writefile( 'bfile', """
-            print ( 'any /*&$ expr that will not eval' )
+            print ( 'any /*&$ expr that will not read correctly' )
             """ )
         util.writefile( 'cfile', """
-            print ( repr( [] ) )
+            from json import dumps
+            print ( dumps( [] ) )
             """ )
         util.writefile( 'dfile', """
-            print ( repr( [ {} ] ) )
+            from json import dumps
+            print ( dumps( [ {} ] ) )
             """ )
         util.writefile( 'efile', """
-            print ( repr( [ {'X-Y':1} ] ) )
+            from json import dumps
+            print ( dumps( [ {'X-Y':1} ] ) )
             """ )
         util.writefile( 'ffile', """
-            print ( repr( [ ('a','b') ] ) )
+            from json import dumps
+            print ( dumps( [ ('a','b') ] ) )
             """ )
         util.writefile( 'gfile', """
-            print ( repr( [ {'p1':11,'p2':3.5}, {'p1':12} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':11,'p2':3.5}, {'p1':12} ] ) )
             """ )
         util.writefile( 'hfile', """
-            print ( repr( [ {'p1':11,'p2':3.5}, {'p1':12,'p3':4.5} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':11,'p2':3.5}, {'p1':12,'p3':4.5} ] ) )
             """ )
         util.writefile( 'ifile', """
-            print ( repr( [ {'p1':11,'p2':(1,2)} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':11,'p2':(1,2)} ] ) )
             """ )
         util.writefile( 'jfile', """
-            print ( repr( [ {'p1':11},{'p1':1.1} ] ) )
+            from json import dumps
+            print ( dumps( [ {'p1':11},{'p1':1.1} ] ) )
             """ )
 
         vvtfile = abspath('fake')
@@ -734,11 +746,12 @@ class bad_attrs( vtu.vvtestTestCase ):
         util.writescript( 'myscript', """
             #!"""+sys.executable+"""
             import os, sys
+            from json import dumps
             if sys.argv[1:] == ['--foo']:
                 plist = [ {'A':92}, {'A':93} ]
             else:
                 plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
-            print ( repr( plist ) )
+            print ( dumps( plist ) )
             """ )
         util.writefile( 'a2test.vvt', """
             #VVT: parameterize (generator) : myscript --foo
@@ -792,10 +805,11 @@ class bad_attrs( vtu.vvtestTestCase ):
         util.writescript( 'myscript', """
             #!"""+sys.executable+"""
             import sys
+            from json import dumps
             if int(sys.argv[-1]) == 1:
-                print ( repr( [ {'A':10}, {'A':20} ] ) )
+                print ( dumps( [ {'A':10}, {'A':20} ] ) )
             else:
-                print ( repr( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
+                print ( dumps( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
             """ )
 
         for batch in [False,True]:

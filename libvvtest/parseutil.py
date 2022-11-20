@@ -53,52 +53,51 @@ def variable_expansion( tname, platname, paramD, fL ):
     backslash are not expanded and the backslash is removed.
     """
     if platname == None: platname = ''
-    
+
     if len(fL) > 0:
-      
-      # substitute parameter values for $PARAM, ${PARAM}, and {$PARAM} patterns;
-      # also replace the special NAME variable with the name of the test and
-      # PLATFORM with the name of the current platform
-      for n,v in list(paramD.items()) + [('NAME',tname)] + [('PLATFORM',platname)]:
-        pat1 = re.compile( '[{](?<![\\\\])[$]' + n + '[}]' )
-        pat2 = re.compile( '(?<![\\\\])[$][{]' + n + '[}]' )
-        pat3 = re.compile( '(?<![\\\\])[$]' + n + '(?![_a-zA-Z0-9])' )
+
+        # substitute parameter values for $PARAM, ${PARAM}, and {$PARAM} patterns;
+        # also replace the special NAME variable with the name of the test and
+        # PLATFORM with the name of the current platform
+        for n,v in list(paramD.items()) + [('NAME',tname)] + [('PLATFORM',platname)]:
+            pat1 = re.compile( '[{](?<![\\\\])[$]' + n + '[}]' )
+            pat2 = re.compile( '(?<![\\\\])[$][{]' + n + '[}]' )
+            pat3 = re.compile( '(?<![\\\\])[$]' + n + '(?![_a-zA-Z0-9])' )
+            if type(fL[0]) == type([]):
+                for fpair in fL:
+                    f,t = fpair
+                    f,n = pat1.subn( v, f )
+                    f,n = pat2.subn( v, f )
+                    f,n = pat3.subn( v, f )
+                    if t != None:
+                        t,n = pat1.subn( v, t )
+                        t,n = pat2.subn( v, t )
+                        t,n = pat3.subn( v, t )
+                    fpair[0] = f
+                    fpair[1] = t
+            else:
+                for i in range(len(fL)):
+                    f = fL[i]
+                    f,n = pat1.subn( v, f )
+                    f,n = pat2.subn( v, f )
+                    f,n = pat3.subn( v, f )
+                    fL[i] = f
+
+        # replace escaped dollar with just a dollar
+        patD = re.compile( '[\\\\][$]' )
         if type(fL[0]) == type([]):
-          for fpair in fL:
-            f,t = fpair
-            f,n = pat1.subn( v, f )
-            f,n = pat2.subn( v, f )
-            f,n = pat3.subn( v, f )
-            if t != None:
-              t,n = pat1.subn( v, t )
-              t,n = pat2.subn( v, t )
-              t,n = pat3.subn( v, t )
-            fpair[0] = f
-            fpair[1] = t
-            # TODO: replace escaped $ with a dollar
+            for fpair in fL:
+                f,t = fpair
+                f,n = patD.subn( '$', f )
+                if t != None:
+                    t,n = patD.subn( '$', t )
+                fpair[0] = f
+                fpair[1] = t
         else:
-          for i in range(len(fL)):
-            f = fL[i]
-            f,n = pat1.subn( v, f )
-            f,n = pat2.subn( v, f )
-            f,n = pat3.subn( v, f )
-            fL[i] = f
-      
-      # replace escaped dollar with just a dollar
-      patD = re.compile( '[\\\\][$]' )
-      if type(fL[0]) == type([]):
-        for fpair in fL:
-          f,t = fpair
-          f,n = patD.subn( '$', f )
-          if t != None:
-            t,n = patD.subn( '$', t )
-          fpair[0] = f
-          fpair[1] = t
-      else:
-        for i in range(len(fL)):
-          f = fL[i]
-          f,n = patD.subn( '$', f )
-          fL[i] = f
+            for i in range(len(fL)):
+                f = fL[i]
+                f,n = patD.subn( '$', f )
+                fL[i] = f
 
 
 def check_forced_group_parameter( force_params, name_list, lineno ):

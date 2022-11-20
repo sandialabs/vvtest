@@ -162,7 +162,9 @@ class ScriptTestParser:
                                 'generator attribute', line=spec.lineno )
 
                 fname = os.path.join( self.root, self.fpath )
-                nameL,valL = generate_parameters( fname, spec.value, spec.lineno )
+                nameL,valL = generate_parameters( fname, spec.value,
+                                                  testname, self.platname,
+                                                  spec.lineno )
                 valL,typmap = convert_value_types( nameL, valL )
 
             else:
@@ -603,10 +605,15 @@ def check_allowed_attrs( attrD, lineno, allowed ):
                             line=lineno )
 
 
-def generate_parameters( testfile, gencmd, lineno ):
+def generate_parameters( testfile, gencmd, testname, platname, lineno ):
     ""
     if not gencmd.strip():
         raiseError( 'generator specification is missing', line=lineno )
+
+    # NAME and PLATFORM variable expansion reuses a function for file names
+    tmpL = [gencmd]
+    variable_expansion( testname, platname, {}, tmpL )
+    gencmd = tmpL[0]
 
     cmdL = shlex.split( gencmd.strip() )
 
@@ -629,9 +636,34 @@ def generate_parameters( testfile, gencmd, lineno ):
 
     check_for_rectangular_matrix( plist, lineno )
 
+    if sys.version_info[0] < 3:
+        plist = remove_unicode( plist )
+
     nameL, valL = make_names_and_value_lists( plist, lineno )
 
     return nameL,valL
+
+
+def remove_unicode( plist ):
+    """
+    This function assumes a list of dictionaries.
+    """
+    new_plist = []
+    try:
+        for D in plist:
+            newD = {}
+            for k,v in D.items():
+                if type(k) == unicode:
+                    k = str(k)
+                if type(v) == unicode:
+                    v = str(v)
+                newD[k] = v
+            new_plist.append( newD )
+
+    except Exception as e:
+        raiseError( 'not done' )
+
+    return new_plist
 
 
 def convert_value_types( nameL, valL ):

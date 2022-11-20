@@ -694,49 +694,66 @@ class bad_attrs( vtu.vvtestTestCase ):
             """ )
 
         vvtfile = abspath('fake')
+        T = 'testname'
+        P = 'platname'
 
-        nameL,valL = parsevvt.generate_parameters( vvtfile, 'ascript', 1 )
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'ascript', T,P,1 )
         self.assertEqual( nameL, ['p1','p2'] )
         self.assertEqual( valL, [ [10,3.5], [20,5.5] ] )
 
-        nameL,valL = parsevvt.generate_parameters( vvtfile, 'afile', 1 )
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'afile', T,P,1 )
         self.assertEqual( nameL, ['p1','p2'] )
         self.assertEqual( valL, [ [11,3.5], [20,5.6] ] )
 
-        nameL,valL = parsevvt.generate_parameters( vvtfile, 'a1file', 1 )
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'a1file', T,P,1 )
         self.assertEqual( nameL, ['p1','p2'] )
         self.assertEqual( valL, [ [11,3.5] ] )
 
-        nameL,valL = parsevvt.generate_parameters( vvtfile, 'a2file', 1 )
+        nameL,valL = parsevvt.generate_parameters( vvtfile, 'a2file', T,P,1 )
         self.assertEqual( nameL, ['A'] )
         self.assertEqual( valL, [ [5], [6] ] )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'bfile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'bfile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'cfile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'cfile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'dfile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'dfile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'efile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'efile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'ffile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'ffile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'gfile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'gfile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'hfile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'hfile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'ifile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'ifile', T,P,1 )
 
         self.assertRaises( TestSpecError,
-                           parsevvt.generate_parameters, vvtfile, 'jfile', 1 )
+                           parsevvt.generate_parameters, vvtfile, 'jfile', T,P,1 )
+
+    def test_generator_command_line_substitution(self):
+        ""
+        util.writefile( 'afile', """
+            import sys
+            from json import dumps
+            print ( dumps( [ {'tname':sys.argv[1], 'plat':sys.argv[2]} ] ) )
+            """ )
+        vvtfile = abspath('fake')
+
+        cmd = 'afile ${NAME} ${PLATFORM}'
+        nameL,valL = parsevvt.generate_parameters( vvtfile, cmd, 'myname', 'XBox', 1 )
+
+        self.assertEqual( nameL, ['plat','tname'] )
+        self.assertEqual( valL, [ ['XBox','myname'] ] )
 
     def test_parse_parameterize_generator_file(self):
         ""

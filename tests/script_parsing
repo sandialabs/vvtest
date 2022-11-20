@@ -227,7 +227,7 @@ class script_tests( vtu.vvtestTestCase ):
         ""
         pset = ParameterSet()
         pset.addParameter( 'A', ['1','2'] )
-        pset.addParameterGroup( ('B','C'), [ ('1.1','ab'), ('1.2','ac') ] )
+        pset.addParameters( ('B','C'), [ ('1.1','ab'), ('1.2','ac') ] )
 
         assert pset.getParameterTypeMap() == {}
 

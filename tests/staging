@@ -39,7 +39,7 @@ class staged_parameters( vtu.vvtestTestCase ):
     def test_marking_parameters_as_staged(self):
         ""
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ('stage','np'), [ ('1','1'), ('2','4') ] )
+        pset.addParameters( ('stage','np'), [ ('1','1'), ('2','4') ] )
 
         tmap = {}
         for pdict in pset.getInstances():

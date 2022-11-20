@@ -180,7 +180,7 @@ class XMLTestParser:
                   else:
                       L = [ list(T) for T in zip( *pL ) ]
                       check_for_duplicate_parameter( L[1:], nd.getLineNumber() )
-                      pset.addParameterGroup( L[0], L[1:] )
+                      pset.addParameters( L[0], L[1:] )
 
         return pset
 

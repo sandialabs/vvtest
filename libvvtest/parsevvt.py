@@ -174,11 +174,7 @@ class ScriptTestParser:
 
             valL = remove_duplicate_parameter_values( valL )
 
-            if len(nameL) == 1:
-                # magic: can the ParameterSet interface be simplified a little ??
-                pset.addParameter( nameL[0], [ tup[0] for tup in valL ] )
-            else:
-                pset.addParameterGroup( nameL, valL, staged )
+            pset.addParameters( nameL, valL, staged )
 
         pset.setParameterTypeMap( tmap )
 

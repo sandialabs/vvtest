@@ -164,7 +164,7 @@ class ScriptTestParser:
                 fname = os.path.join( self.root, self.fpath )
                 nameL,valL = generate_parameters( fname, spec.value,
                                                   testname, self.platname,
-                                                  spec.lineno )
+                                                  self.force, spec.lineno )
                 valL,typmap = convert_value_types( nameL, valL )
 
             else:
@@ -605,7 +605,7 @@ def check_allowed_attrs( attrD, lineno, allowed ):
                             line=lineno )
 
 
-def generate_parameters( testfile, gencmd, testname, platname, lineno ):
+def generate_parameters( testfile, gencmd, testname, platname, force_params, lineno ):
     ""
     if not gencmd.strip():
         raiseError( 'generator specification is missing', line=lineno )
@@ -639,7 +639,9 @@ def generate_parameters( testfile, gencmd, testname, platname, lineno ):
     if sys.version_info[0] < 3:
         plist = remove_unicode( plist )
 
-    nameL, valL = make_names_and_value_lists( plist, lineno )
+    nameL, valL = make_names_and_value_lists( plist, force_params, lineno )
+
+    check_special_parameters( nameL, valL, lineno )
 
     return nameL,valL
 
@@ -708,7 +710,7 @@ def check_for_rectangular_matrix( plist, lineno ):
         raiseError( errmsg, line=lineno )
 
 
-def make_names_and_value_lists( plist, lineno ):
+def make_names_and_value_lists( plist, force_params, lineno ):
     """
     creates and returns
 
@@ -720,6 +722,13 @@ def make_names_and_value_lists( plist, lineno ):
                    ...
                  ]
     """
+    # this check may not be necessary, since JSON keys are always strings
+    for D in plist:
+        for n in D.keys():
+            if type(n) != str:
+                raiseError( 'the keys in the generator dictionaries must'
+                            'be strings', line=lineno )
+
     check_generator_instance_names( plist, lineno )
 
     nameL = None
@@ -733,6 +742,14 @@ def make_names_and_value_lists( plist, lineno ):
                 raiseError( 'all the dictionaries in the generator list'
                             'must have the same keys', line=lineno )
             valL.append( [ D[n] for n in nameL ] )
+
+    if len(nameL) == 1:
+        # vals = [ tup[0] for tup in valL ]
+        # vals = apply_forced_param_values( nameL[0], vals, force_params )
+        # valL = [ [v] for v in vals ]
+        pass
+    else:
+        check_forced_group_parameter( force_params, nameL, lineno )
 
     check_parameter_names( nameL, lineno )
 
@@ -1012,19 +1029,19 @@ def parse_param_names_and_values( spec_value, force_params, lineno ):
     check_parameter_names( nameL, lineno )
 
     if len(nameL) == 1:
-        valL = parse_param_values( nameL[0], valuestr, force_params )
+        vals = valuestr.strip().split()
+        valL = apply_forced_param_values( nameL[0], vals, force_params )
     else:
+        check_forced_group_parameter( force_params, nameL, lineno )
         valL = parse_param_group_values( nameL, valuestr, lineno )
 
     check_parameter_values( nameL, valL, lineno )
     check_special_parameters( nameL, valL, lineno )
 
-    check_forced_group_parameter( force_params, nameL, lineno )
-
     return nameL, valL
 
 
-def parse_param_values( param_name, value_string, force_params ):
+def apply_forced_param_values( param_name, values, force_params ):
     """
     The 'force_params' argument is a dictionary mapping parameter names
     to a list of values (multiple values can be forced onto a parameter).
@@ -1034,18 +1051,18 @@ def parse_param_values( param_name, value_string, force_params ):
         - np=1 2 3  force=5 6    ->  np=5 6 5 (dups get removed if not staged)
         - np=1 2    force=5 6 7  ->  np=5 6 7
 
-    Keep same number of values as 'value_string' if less than or equal to
+    Keep same number of values as 'values' if less than or equal to
     the list in 'force_params'. May need to repeat the forced values.
 
-    Increase the number of values to equal the list in 'force_params' if the
-    'value_string' values has smaller length.
+    Increase the number of values to equal the list in 'force_params' if
+    'values' has smaller length.
     """
-    vals = value_string.strip().split()
+    vals = values
 
     if force_params is not None and param_name in force_params:
 
         force_vals = force_params[ param_name ]
-        new_len = max( len(vals), len(force_vals) )
+        new_len = max( len(values), len(force_vals) )
 
         vals = []
         j = 0

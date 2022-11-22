@@ -64,7 +64,7 @@ class BatchSLURM:
             job id -> "running" or "pending" (waiting to run)
         Exclude job ids that are not running or pending.
         """
-        cmdL = ['squeue', '--noheader', '-o', '%i %t']
+        cmdL = ['squeue', '--noheader', '-o', '%i %t', '--clusters=all']
         x,cmd,out = runcmd( cmdL )
 
         jobs = {}
@@ -88,7 +88,7 @@ class BatchSLURM:
 
     def cancel(self, jobid):
         ""
-        x,cmd,out = runcmd( ['scancel',str(jobid)], echo=True )
+        x,cmd,out = runcmd( ['scancel',str(jobid),'--clusters=all'], echo=True )
 
 
 def HMSformat( nseconds ):

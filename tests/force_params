@@ -15,18 +15,19 @@ import time
 import vvtestutils as vtu
 import testutils as util
 
+import libvvtest.parsevvt as parsevvt
+from libvvtest.errors import TestSpecError
+
 
 class force_params( vtu.vvtestTestCase ):
 
     def test_forcing_parameterize_values_on_command_line(self):
         ""
-        util.writefile( "param.xml", """
-            <rtest name="param">
-              <parameterize hello="world mars"/>
-              <execute>
-                echo "parm=$hello"
-              </execute>
-            </rtest>""" )
+        util.writefile( "pink.vvt", """
+            #VVT: parameterize : hello = world mars
+            import vvtest_util as vvt
+            print ( 'parm='+vvt.hello )
+            """ )
         util.writefile( "blue.vvt", """
             #VVT: parameterize : hello = foo bar
             import vvtest_util as vvt
@@ -139,6 +140,55 @@ class force_params( vtu.vvtestTestCase ):
                             'blue.hello stage=2(hello=jupiter)',
                             'red.hello stage=1(hello=jupiter)',
                             'red.hello stage=2(hello=jupiter)' ] )
+
+    def test_force_param_with_type_specifications(self):
+        ""
+        util.writefile( 'blue.vvt', """
+            #VVT: parameterize (int) : foo = 1 8
+            """ )
+        util.writefile( 'pink.vvt', """
+            #VVT: parameterize (autotype) : foo = 1 8
+            """ )
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt' )
+        pset = parser.parseParameterSet( 'blue' )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == int
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt',
+                                            force_params={'foo':['2','9']} )
+        pset = parser.parseParameterSet( 'blue' )
+        assert_equal_params( pset, [{'foo': '2'}, {'foo': '9'}] )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == int
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt',
+                                            force_params={'foo':['2','oops']} )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'blue' )
+
+        parser = parsevvt.ScriptTestParser( 'pink.vvt' )
+        pset = parser.parseParameterSet( 'pink' )
+        assert_equal_params( pset, [{'foo': '1'}, {'foo': '8'}] )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == int
+
+        # for good or bad, the autotype uses the forced parameters to determine type
+        parser = parsevvt.ScriptTestParser( 'pink.vvt',
+                                            force_params={'foo':['2','8.5']} )
+        pset = parser.parseParameterSet( 'pink' )
+        assert_equal_params( pset, [{'foo': '2'}, {'foo': '8.5'}] )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == float
+
+
+def assert_equal_params( pset, ilist ):
+    ""
+    plist = pset.getInstances()
+    assert len(plist) == len(ilist)
+    for d1 in plist:
+        assert d1 in ilist
+    for d2 in ilist:
+        assert d2 in plist
 
 
 ############################################################################

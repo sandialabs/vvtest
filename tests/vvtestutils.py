@@ -859,7 +859,7 @@ def make_fake_staged_TestCase( stage_index=0 ):
     tspec = tcase.getSpec()
 
     pset = paramset.ParameterSet()
-    pset.addParameterGroup( ('stage','np'), [ ('1','1'), ('2','4'), ('3','1') ] )
+    pset.addParameters( ('stage','np'), [ ('1','1'), ('2','4'), ('3','1') ] )
 
     if stage_index == 0:
         tspec.setParameters( { 'stage':'1', 'np':'1' } )

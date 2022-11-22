@@ -62,25 +62,25 @@ class unit_tests( unittest.TestCase ):
         assert sorted(pL) == ['A','B']
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ['B','C'], [ ['b1','c1'], ['b2','c2'] ] )
+        pset.addParameters( ['B','C'], [ ['b1','c1'], ['b2','c2'] ] )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         assert not get_suppressed_parameters( pset, minxdirs )
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ['B','C'], [ ['b1','c1'] ] )
+        pset.addParameters( ['B','C'], [ ['b1','c1'] ] )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         pL = get_suppressed_parameters( pset, minxdirs )
         assert sorted(pL) == ['B','C']
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ['B','C'], [ ['b1','c1'] ] )
+        pset.addParameters( ['B','C'], [ ['b1','c1'] ] )
         pset.addParameter( 'A', ['a1','a2'] )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         pL = get_suppressed_parameters( pset, minxdirs )
         assert sorted(pL) == ['B','C']
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ['B','C'], [ ['b1','c1'] ] )
+        pset.addParameters( ['B','C'], [ ['b1','c1'] ] )
         pset.addParameter( 'A', ['c1'] )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         pL = get_suppressed_parameters( pset, minxdirs )
@@ -89,23 +89,23 @@ class unit_tests( unittest.TestCase ):
         # staged parameter names are not suppressed
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ('stage','np'), [ ['1','1'], ['2','4'] ], minxdirs )
+        pset.addParameters( ('stage','np'), [ ['1','1'], ['2','4'] ], minxdirs )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         assert not get_suppressed_parameters( pset, minxdirs )
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ('stage','np'), [ ['1','16'] ], minxdirs )
+        pset.addParameters( ('stage','np'), [ ['1','16'] ], minxdirs )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         assert not get_suppressed_parameters( pset, minxdirs )
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ('stage','np'), [ ['1','16'] ], minxdirs )
+        pset.addParameters( ('stage','np'), [ ['1','16'] ], minxdirs )
         pset.addParameter( 'A', ['a1','a2'] )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         assert not get_suppressed_parameters( pset, minxdirs )
 
         pset = paramset.ParameterSet()
-        pset.addParameterGroup( ('stage','np'), [ ['1','16'] ], minxdirs )
+        pset.addParameters( ('stage','np'), [ ['1','16'] ], minxdirs )
         pset.addParameter( 'A', ['a2'] )
         assert not get_suppressed_parameters( pset, no_minxdirs )
         assert get_suppressed_parameters( pset, minxdirs ) == ['A']

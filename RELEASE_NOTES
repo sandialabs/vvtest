@@ -1,7 +1,18 @@
 
 Improvements:
 
-    -
+    - The parameterize directive can now use an external script to generate
+      the parameter names and associated values. For example,
+
+          #VVT: parameterize (generator) : myscript.py --my-args
+
+      will call myscript.py for a JSON encoded list of dictionaries that
+      contains the sets of parameter name=value.
+
+    - To complement the parameterize autotype directive attribute, specific
+      types can be specified. Valid types are int, float, and str. For example,
+
+          #VVT: parameterize (int,float) : N,val = 4,4.1  8,4.2
 
 Fixes:
 
@@ -9,7 +20,8 @@ Fixes:
 
 Changes:
 
-    -
+    - Python 2.6 is no longer supported. Now vvtest supports Python 2.7 and
+      3.2 or newer.
 
 
 ==============================================================================

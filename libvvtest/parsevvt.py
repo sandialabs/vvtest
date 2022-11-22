@@ -680,7 +680,12 @@ def convert_value_types( nameL, valL ):
 
     new_valL = []
     for tup in valL:
-        new_valL.append( [ repr(v) for v in tup ] )
+        new_tup = []
+        for v in tup:
+            if type(v) != str:
+                v = repr(v)
+            new_tup.append(v)
+        new_valL.append( new_tup )
 
     return new_valL,typmap
 

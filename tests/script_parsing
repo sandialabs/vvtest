@@ -766,6 +766,8 @@ class bad_attrs( vtu.vvtestTestCase ):
             from json import dumps
             if sys.argv[1:] == ['--foo']:
                 plist = [ {'A':92}, {'A':93} ]
+            elif sys.argv[1:] == ['--bar']:
+                plist = [ {'X':'92'}, {'X':'93'} ]
             else:
                 plist = [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ]
             print ( dumps( plist ) )
@@ -778,6 +780,9 @@ class bad_attrs( vtu.vvtestTestCase ):
             """ )
         util.writefile( 'ctest.vvt', """
             #VVT: parameterize (generator,int,float) : myscript --foo
+            """ )
+        util.writefile( 'dtest.vvt', """
+            #VVT: parameterize (generator) : myscript --bar
             """ )
 
         psr = parsevvt.ScriptTestParser( 'a1test.vvt' )
@@ -795,6 +800,13 @@ class bad_attrs( vtu.vvtestTestCase ):
         self.assertRaises( TestSpecError, psr.parse_parameterize, 'btest' )
 
         psr = parsevvt.ScriptTestParser( 'ctest.vvt' )
+        self.assertRaises( TestSpecError, psr.parse_parameterize, 'ctest' )
+
+        psr = parsevvt.ScriptTestParser( 'dtest.vvt' )
+        pset = psr.parse_parameterize( 'dtest' )
+        self.assertEqual( pset.getInstances(), [{'X': '92'}, {'X': '93'}] )
+        typmap = pset.getParameterTypeMap()
+        assert typmap.get('X',str) == type('')
 
     def test_generator_integration_test(self):
         ""

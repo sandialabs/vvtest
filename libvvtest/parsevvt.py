@@ -164,8 +164,9 @@ class ScriptTestParser:
                 fname = os.path.join( self.root, self.fpath )
                 nameL,valL = generate_parameters( fname, spec.value,
                                                   testname, self.platname,
-                                                  self.force, spec.lineno )
-                valL,typmap = convert_value_types( nameL, valL )
+                                                  spec.lineno )
+                valL,typmap = types_and_forced_values( nameL, valL,
+                                                       self.force, spec.lineno )
 
             else:
                 nameL,valL = parse_param_names_and_values( spec.value, self.force, spec.lineno )
@@ -605,7 +606,7 @@ def check_allowed_attrs( attrD, lineno, allowed ):
                             line=lineno )
 
 
-def generate_parameters( testfile, gencmd, testname, platname, force_params, lineno ):
+def generate_parameters( testfile, gencmd, testname, platname, lineno ):
     ""
     if not gencmd.strip():
         raiseError( 'generator specification is missing', line=lineno )
@@ -639,7 +640,7 @@ def generate_parameters( testfile, gencmd, testname, platname, force_params, lin
     if sys.version_info[0] < 3:
         plist = remove_unicode( plist )
 
-    nameL, valL = make_names_and_value_lists( plist, force_params, lineno )
+    nameL, valL = make_names_and_value_lists( plist, lineno )
 
     check_special_parameters( nameL, valL, lineno )
 
@@ -668,7 +669,7 @@ def remove_unicode( plist ):
     return new_plist
 
 
-def convert_value_types( nameL, valL ):
+def types_and_forced_values( nameL, valL, force_params, lineno ):
     ""
     typmap = {}
     for i,n in enumerate(nameL):
@@ -680,6 +681,8 @@ def convert_value_types( nameL, valL ):
         else:
             typmap[n] = str
 
+    valL = check_for_forced_values( nameL, valL, typmap, force_params, lineno )
+
     new_valL = []
     for tup in valL:
         new_tup = []
@@ -690,6 +693,34 @@ def convert_value_types( nameL, valL ):
         new_valL.append( new_tup )
 
     return new_valL,typmap
+
+
+def check_for_forced_values( nameL, valL, typmap, force_params, lineno ):
+    """
+    The 'force_params' argument is a dictionary mapping parameter names
+    to a list of strings (multiple values can be forced onto a parameter).
+    """
+    if force_params:
+        if len(nameL) == 1:
+            force_vals = force_params.get( nameL[0], None )
+            if force_vals:
+                oldvals = [ tup[0] for tup in valL ]
+                newvals = replace_param_values( oldvals, force_vals )
+
+                typ = typmap.get( nameL[0], str )
+                if typ != str:
+                    try:
+                        newvals = [ typ(v) for v in newvals ]
+                    except Exception as e:
+                        raiseError( '-S value(s) for', repr(nameL[0]),
+                            'failed to parse to generator type',
+                            str(typ)+':', newvals, line=lineno )
+
+                valL = [ [v] for v in newvals ]
+        else:
+            check_forced_group_parameter( force_params, nameL, lineno )
+
+    return valL
 
 
 def check_for_rectangular_matrix( plist, lineno ):
@@ -710,7 +741,7 @@ def check_for_rectangular_matrix( plist, lineno ):
         raiseError( errmsg, line=lineno )
 
 
-def make_names_and_value_lists( plist, force_params, lineno ):
+def make_names_and_value_lists( plist, lineno ):
     """
     creates and returns
 
@@ -742,14 +773,6 @@ def make_names_and_value_lists( plist, force_params, lineno ):
                 raiseError( 'all the dictionaries in the generator list'
                             'must have the same keys', line=lineno )
             valL.append( [ D[n] for n in nameL ] )
-
-    if len(nameL) == 1:
-        # vals = [ tup[0] for tup in valL ]
-        # vals = apply_forced_param_values( nameL[0], vals, force_params )
-        # valL = [ [v] for v in vals ]
-        pass
-    else:
-        check_forced_group_parameter( force_params, nameL, lineno )
 
     check_parameter_names( nameL, lineno )
 
@@ -1029,8 +1052,7 @@ def parse_param_names_and_values( spec_value, force_params, lineno ):
     check_parameter_names( nameL, lineno )
 
     if len(nameL) == 1:
-        vals = valuestr.strip().split()
-        valL = apply_forced_param_values( nameL[0], vals, force_params )
+        valL = parse_single_param_values( nameL[0], valuestr, force_params )
     else:
         check_forced_group_parameter( force_params, nameL, lineno )
         valL = parse_param_group_values( nameL, valuestr, lineno )
@@ -1041,7 +1063,7 @@ def parse_param_names_and_values( spec_value, force_params, lineno ):
     return nameL, valL
 
 
-def apply_forced_param_values( param_name, values, force_params ):
+def parse_single_param_values( param_name, valuestr, force_params ):
     """
     The 'force_params' argument is a dictionary mapping parameter names
     to a list of values (multiple values can be forced onto a parameter).
@@ -1057,20 +1079,27 @@ def apply_forced_param_values( param_name, values, force_params ):
     Increase the number of values to equal the list in 'force_params' if
     'values' has smaller length.
     """
-    vals = values
+    vals = valuestr.strip().split()
 
     if force_params is not None and param_name in force_params:
 
         force_vals = force_params[ param_name ]
-        new_len = max( len(values), len(force_vals) )
-
-        vals = []
-        j = 0
-        for i in range(new_len):
-            vals.append( force_vals[j] )
-            j = (j+1)%len(force_vals)
+        vals = replace_param_values( vals, force_vals )
 
     return [ [v] for v in vals ]
+
+
+def replace_param_values( orig_vals, new_vals ):
+    ""
+    new_len = max( len(orig_vals), len(new_vals) )
+
+    vals = []
+    j = 0
+    for i in range(new_len):
+        vals.append( new_vals[j] )
+        j = (j+1)%len(new_vals)
+
+    return vals
 
 
 spaced_comma_pattern = re.compile( '[\t ]*,[\t ]*' )

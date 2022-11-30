@@ -17,7 +17,7 @@ from .batchfactory import construct_batch_system
 
 class BatchQueueInterface:
 
-    def __init__(self, node_size, attrs={}, envD={}):
+    def __init__(self, node_size, attrs={}, envD={}, logger=None):
         """
         The 'attrs' must have a "batchsys" key with one of these values:
 
@@ -28,6 +28,7 @@ class BatchQueueInterface:
             pbs      : standard PBS system
             subprocs : simulate batch processing with subprocesses
         """
+        self.logger = logger or default_logger
         self.batch = None
         self.attrs = dict( attrs )
         self.envD = dict( envD )
@@ -119,11 +120,14 @@ class BatchQueueInterface:
             os.chdir( cwd )
 
         if jobid is None:
-            print3( cmd+'\n'+out )
-            print3( '*** Batch submission failed or could not parse '
-                    'output to get job id' )
+            self.logger.error("{0}\n{1}".format(cmd, out))
+            self.logger.error(
+                "Batch submission failed or could not parse output to get job id"
+            )
         else:
-            print3( "Job script", scriptname, "submitted with id", jobid )
+            self.logger.info(
+                "Job script {0} submitted with id {1}".format(scriptname, jobid)
+            )
 
         return jobid
 
@@ -147,7 +151,9 @@ class BatchQueueInterface:
     def cancelJobs(self, jobidL):
         ""
         if hasattr( self.batch, 'cancel' ):
-            print3( '\nCancelling jobs:', jobidL )
+            self.logger.emit(
+                "\nCancelling jobs: {0}".format(" ".join(str(_) for _ in jobidL))
+            )
             for jid in jobidL:
                 self.batch.cancel( jid )
 
@@ -163,6 +169,16 @@ def extract_non_None_job_ids( jobidL ):
     return non_None
 
 
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()
+class default_logger:
+    @staticmethod
+    def emit(message, stream=None, end="\n"):
+        stream = stream or sys.stdout
+        stream.write("{0}{1}".format(message, end))
+
+    @staticmethod
+    def error(message):
+        default_logger.emit("*** Error: {0}".format(message), stream=sys.stderr)
+
+    @staticmethod
+    def info(message):
+        default_logger.emit(message)

@@ -308,8 +308,8 @@ def progress_bar(num_test, num_done, duration, width=30):
     ave = duration / num_done
     togo = ave * (num_test - num_done)
     w = len(str(num_test))
-    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6:.2f}]".format(
-        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), ave, w
+    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6}]".format(
+        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), hhmmss(ave), w
     )
     return line
 

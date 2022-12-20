@@ -288,27 +288,13 @@ class DirectRunner( TestListRunner ):
         print_notrun_reasons( tcase_with_reason )
 
 
-def _bar(total, complete, width):
-    # charset = [_chr(0x2523), _chr(0x2501), _chr(0x2578), _chr(0x252B)]
-    charset = [" ", tty.uchr(0x2588), tty.uchr(0x2591), ""]
-    if not tty.unicode_chars_supported(*charset):
-        charset = ["|", "-", ".", "|"]
-    lbar, bar, xbar, rbar = charset
-    frac = complete / total
-    nbar = int(frac * width)
-    bars = bar * nbar
-    if nbar < width:
-        bars += xbar * (width - nbar)
-    return "{0}{1}{2}".format(lbar, bars, rbar)
-
-
 def progress_bar(num_test, num_done, duration, width=30):
-    bar = _bar(num_test, num_done, width)
+    bar = tty.progress_bar(num_test, num_done, width)
     pct = 100 * num_done / float(num_test)
     ave = duration / num_done
     togo = ave * (num_test - num_done)
     w = len(str(num_test))
-    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6}]".format(
+    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6}]   ".format(
         bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), hhmmss(ave), w
     )
     return line

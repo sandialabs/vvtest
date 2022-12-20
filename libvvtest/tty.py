@@ -90,3 +90,17 @@ def unicode_chars_supported(*uchars):
         return True
     except UnicodeEncodeError:
         return False
+
+
+def progress_bar(total, complete, width):
+    # charset = [_chr(0x2523), _chr(0x2501), _chr(0x2578), _chr(0x252B)]
+    charset = [" ", uchr(0x2588), uchr(0x2591), ""]
+    if not unicode_chars_supported(*charset):
+        charset = ["|", "-", ".", "|"]
+    lbar, bar, xbar, rbar = charset
+    frac = complete / total
+    nbar = int(frac * width)
+    bars = bar * nbar
+    if nbar < width:
+        bars += xbar * (width - nbar)
+    return "{0}{1}{2}".format(lbar, bars, rbar)

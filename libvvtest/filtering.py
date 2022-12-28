@@ -200,6 +200,11 @@ class TestFilter:
             pset = analyze_tcase.getSpec().getParameterSet()
             pset.intersectionFilter( paramsets )
 
+            # skip the analyze test if all dependencies are skipped
+            if pset.isEmpty():
+                analyze_tcase.getStat().markSkipByAnalyzeDependency()
+                self._record_skipped_tests( False, analyze_tcase )
+
     def applyBaselineSkips(self, tcase_map):
         ""
         for xdir,tcase in tcase_map.items():

@@ -21,26 +21,27 @@ INCLUDE_KEYWORDS = [ 'include', 'insert directive file' ]
 
 class ScriptSpec:
 
-    def __init__(self, lineno, keyword, attrs, value):
+    def __init__(self, lineno, keyword, attrs, attr_names, value):
         ""
         self.keyword = keyword
         self.attrs = attrs
+        self.attr_names = attr_names  # retains order, duplicates possible
         self.value = value
-        self.lineno = lineno
+        self.lineno = lineno  # a string; line_num or include_filename:line_num
 
 
 class ScriptReader:
-    
-    def __init__(self, filename):
-        """
-        """
+
+    def __init__(self, filename, nested_depth=0):
+        ""
         self.filename = filename
+        self.nested_depth = nested_depth
 
         self.speclineL = []  # list of [line number, raw spec string]
         self.specL = []  # list of ScriptSpec objects
         self.shbang = None  # None or a string
 
-        self.readfile( filename )
+        self.readfile()
 
     def basename(self):
         """
@@ -57,24 +58,22 @@ class ScriptReader:
 
     vvtpat = re.compile( '[ \t]*#[ \t]*VVT[ \t]*:' )
 
-    def readfile(self, filename):
+    def readfile(self):
         ""
-        lines = read_directive_lines( filename )
+        lines = read_directive_lines( self.filename )
 
         self.spec = None
         for line,lineno in lines:
-            info = filename+':'+repr(lineno)
+            info = self._get_file_line_info( lineno )
             if lineno == 1 and line[:2] == '#!':
                 self.shbang = line[2:].strip()
             else:
                 self.parse_line( line, info )
 
-        if self.spec != None:
+        if self.spec is not None:
             self.speclineL.append( self.spec )
 
         self.process_specs()
-
-        self.filename = filename
 
     def parse_line(self, line, info):
         ""
@@ -86,7 +85,7 @@ class ScriptReader:
                 if m is not None:
                     self.parse_spec( line[m.end():], info )
 
-        elif self.spec != None:
+        elif self.spec is not None:
             # an empty line stops any continuation
             self.speclineL.append( self.spec )
             self.spec = None
@@ -99,19 +98,19 @@ class ScriptReader:
         if line:
             if line[0] == ':':
                 # continuation of previous spec
-                if self.spec == None:
+                if self.spec is None:
                     raise TestSpecError( "A #VVT:: continuation was found" + \
-                            " but there is nothing to continue, " + info )
+                            " but there is nothing to continue, line " + info )
                 elif len(line) > 1:
                     self.spec[1] += ' ' + line[1:]
-            elif self.spec == None:
+            elif self.spec is None:
                 # no existing spec and new spec found
                 self.spec = [ info, line ]
             else:
                 # spec exists and new spec found
                 self.speclineL.append( self.spec )
                 self.spec = [ info, line ]
-        elif self.spec != None:
+        elif self.spec is not None:
             # an empty line stops any continuation
             self.speclineL.append( self.spec )
             self.spec = None
@@ -148,19 +147,20 @@ class ScriptReader:
             key = None
             val = None
             attrs = None
+            attr_names = None
             m = kpat.match( line )
             if m:
                 key = line[:m.end()-1].strip()
                 rest = line[m.end()-1:]
 
-                attrs,val = check_parse_attributes_section( rest, info )
+                attrs,attr_names,val = check_parse_attributes_section( rest, info )
 
             else:
                 key = line.strip()
 
             if not key:
                 raise TestSpecError(
-                        'missing or invalid specification keyword, ' + info )
+                        'missing or invalid specification keyword, line ' + info )
 
             if key in INCLUDE_KEYWORDS:
                 # an alias is replaced with the primary name
@@ -168,27 +168,34 @@ class ScriptReader:
                 # replace 'val' with the specs list from the included file
                 val = self._parse_insert_file( info, val )
 
-            specobj = ScriptSpec( info, key, attrs, val )
+            specobj = ScriptSpec( info, key, attrs, attr_names, val )
             self.specL.append( specobj )
 
     def _parse_insert_file(self, info, filename):
         ""
-        if filename == None or not filename.strip():
-            raise TestSpecError(  'missing include file name, ' + info )
+        if filename is None or not filename.strip():
+            raise TestSpecError(  'missing include file name, line ' + info )
 
         if not os.path.isabs( filename ):
             d = os.path.dirname( os.path.abspath( self.filename ) )
             filename = os.path.normpath( os.path.join( d, filename ) )
 
         try:
-            inclreader = ScriptReader( filename )
+            inclreader = ScriptReader( filename, self.nested_depth+1 )
         except TestSpecError:
             raise
         except Exception:
-            raise TestSpecError( 'at ' + info + ' the include '
+            raise TestSpecError( 'at line ' + info + ' the include '
                                  'failed: ' + str( sys.exc_info()[1] ) )
 
         return inclreader.getSpecList()
+
+    def _get_file_line_info(self, lineno):
+        ""
+        if self.nested_depth == 0:
+            return str(lineno)
+        else:
+            return os.path.basename(self.filename)+':'+str(lineno)
 
 
 def read_directive_lines( filename ):
@@ -228,28 +235,32 @@ def split_attr_match( matchobj, origstr ):
     return attrs, therest
 
 
-def parse_attr_string_into_dict( attrstr, info ):
+def parse_attr_string( attrstr, info ):
     ""
     D = {}
+    L = []
     for s in attrstr.split(','):
         s = s.strip().strip('"').strip()
         i = s.find( '=' )
         if i == 0:
             raise TestSpecError( \
-                    'invalid attribute specification, ' + info )
+                    'invalid attribute specification, line ' + info )
         elif i > 0:
             n = s[:i].strip()
             v = s[i+1:].strip().strip('"')
             D[n] = v
+            L.append(n)
         elif s:
             D[s] = ''
+            L.append(s)
 
-    return D
+    return D,L
 
 
-def check_parse_attributes_section( a_string, file_and_lineno ):
+def check_parse_attributes_section( a_string, info ):
     ""
     attrD = None
+    nameL = None
     tail = None
 
     attrs = None
@@ -267,13 +278,13 @@ def check_parse_attributes_section( a_string, file_and_lineno ):
                 elif rest[0] == '#':
                     tail = ''
                 else:
-                    raise TestSpecError( \
-                        'extra text following attributes, ' + file_and_lineno )
+                    raise TestSpecError( 'extra text following attributes, ' + \
+                                         'line '+info )
             else:
                 tail = ''
         else:
             raise TestSpecError( \
-                  'malformed attribute specification, ' + file_and_lineno )
+                  'malformed attribute specification, line ' + info )
 
     elif a_string and a_string[0] in ':=':
         tail = a_string[1:].strip()
@@ -281,6 +292,6 @@ def check_parse_attributes_section( a_string, file_and_lineno ):
         tail = a_string.strip()
 
     if attrs is not None:
-        attrD = parse_attr_string_into_dict( attrs, file_and_lineno )
+        attrD,nameL = parse_attr_string( attrs, info )
 
-    return attrD, tail
+    return attrD, nameL, tail

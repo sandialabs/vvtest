@@ -37,22 +37,23 @@ class ParameterSet:
         self.staged = None
         self.instances = []
 
-    def addParameter(self, name, value_list):
+    def addParameters(self, names, values_list, staged=False):
         """
-        Such as 'myparam', ['value1', 'value2'].
-        """
-        names = (name,)
-        values_list = [ [val] for val in value_list ]
-        self.addParameterGroup( names, values_list )
-
-    def addParameterGroup(self, names, values_list, staged=False):
-        """
-        Such as ('paramA','paramB'), [ ['A1','B1'], ['A2','B2'] ].
+        Such as
+            ['param_name'], [ ['value1'], ['value2'] ]
+        or
+            ('paramA','paramB'), [ ['A1','B1'], ['A2','B2'] ]
         """
         self.params[ tuple(names) ] = list(values_list)
         if staged:
             self.staged = ( list( names ), list( values_list ) )
         self._constructInstances()
+
+    def addParameter(self, name, values):
+        """
+        Convenience function for the case of a single parameter name.
+        """
+        self.addParameters( [name], [ [v] for v in values ] )
 
     def setParameterTypeMap(self, type_map):
         """
@@ -123,6 +124,12 @@ class ParameterSet:
             filtered_params[ nameT ] = L
 
         return filtered_params
+
+    def isEmpty(self):
+        """
+        Returns True if there are no parameter instances left after filtering.
+        """
+        return len( self.instances ) == 0
 
     def _constructInstances(self):
         ""

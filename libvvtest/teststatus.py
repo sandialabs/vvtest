@@ -190,7 +190,7 @@ class TestStatus:
         skipit = False
 
         skp = self.attrs.get( 'skip', None )
-        if skp != None:
+        if skp is not None:
             if skp.startswith( PARAM_SKIP ) or \
                skp.startswith( RESTART_PARAM_SKIP ) or \
                skp.startswith( RESULTS_KEYWORD_SKIP ) or \

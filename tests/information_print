@@ -215,7 +215,7 @@ def make_fake_TestExecList():
 
     # mark the tests as running by consuming the backlog
     for texec in xlist.consumeBacklog():
-        pass
+        texec.getTestCase().getStat().markStarted( time.time() )
 
     return tlist, xlist
 

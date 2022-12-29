@@ -21,7 +21,7 @@ class TestExecList:
         self.started = {}  # TestSpec ID -> TestExec object
         self.stopped = {}  # TestSpec ID -> TestExec object
 
-        self._generate_backlog_from_testlist()
+        self._prepare_test_backlog()
 
     def createExecutionDirectories(self):
         """
@@ -109,12 +109,16 @@ class TestExecList:
 
         return texec
 
-    def _generate_backlog_from_testlist(self):
+    def _prepare_test_backlog(self):
         ""
-        for tcase in self.tlist.getActiveTests():
+        tL = self.tlist.getActiveTests()
+        for tcase in tL:
             assert tcase.getSpec().constructionCompleted()
             self.backlog.insert( tcase )
 
         # sort by runtime, descending order so that popNext() will try to avoid
         # launching long running tests at the end of the testing sequence
         self.backlog.sort()
+
+        for tcase in tL:
+            tcase.getStat().resetResults()

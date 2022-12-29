@@ -892,6 +892,7 @@ def make_TestCase_list( timespec='runtime' ):
 
             if timespec == 'runtime':
                 tstat.setRuntime( (i+1)*10+j+1 )
+                # print( 'tcase', tcase.getSpec().getDisplayString(), tstat.getRuntime() )
             else:
                 assert timespec == 'timeout'
                 tstat.setAttr( 'timeout', (i+1)*10+j+1 )

@@ -56,16 +56,11 @@ class ExecutionHandler:
             os.makedirs( wdir )
             self.perms.apply( xdir )
 
-        # magic: why does this have to go here rather than below?
-        tcase.getStat().resetResults()
-
     def initialize_for_execution(self, texec):
         ""
         tcase = texec.getTestCase()
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
-
-        # tstat.resetResults()  # magic
 
         if tspec.getSpecificationForm() == 'xml':
             self.loadCommonXMLDB()

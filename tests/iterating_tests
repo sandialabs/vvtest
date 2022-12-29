@@ -72,18 +72,25 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
                                 [ 'sdir/atest0.np=1', (1,0), 11 ] ] )
 
     def test_iterate_TestExecList_by_size_and_constraint(self):
-        ""
-        # by default, tests are sorted by size and runtime
+        """
+        fake test list produces these tests with runtimes:
+            sdir/atest0.np=1 11
+            sdir/atest0.np=2 12
+            sdir/atest1.np=1 21
+            sdir/atest1.np=2 22
+
+        by default, tests are sorted by size and runtime
+        """
 
         tlist, xlist = vtu.make_fake_TestExecList( timespec='runtime' )
         tlist.setResultsDate()
         tlist.initializeResultsFile()
 
         texec1 = xlist.popNext( (1,0) )
-        assert texec1.getTestCase().getStat().getRuntime() == 21
+        assert texec1.getTestCase().getSpec().getDisplayString() == 'sdir/atest1.np=1'
 
         texec2 = xlist.popNext( (1,0) )
-        assert texec2.getTestCase().getStat().getRuntime() == 11
+        assert texec2.getTestCase().getSpec().getDisplayString() == 'sdir/atest0.np=1'
 
         assert xlist.popNext( (1,0) ) == None
 
@@ -92,7 +99,7 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         xlist.testDone( texec2 )
 
         texec3 = xlist.popNext( (1,0) )
-        assert texec3.getTestCase().getStat().getRuntime() == 22
+        assert texec3.getTestCase().getSpec().getDisplayString() == 'sdir/atest1.np=2'
 
     def test_iteration_order_is_by_num_procs_even_with_num_devices_present(self):
         ""

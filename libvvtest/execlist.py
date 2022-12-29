@@ -17,20 +17,16 @@ class TestExecList:
         self.tlist = tlist
         self.handler = handler
 
-        # magic: have the backlog passed in as an argument
         self.backlog = TestBacklog()
         self.started = {}  # TestSpec ID -> TestExec object
         self.stopped = {}  # TestSpec ID -> TestExec object
 
-    def createTestExecs(self):
-        """
-        Creates the set of TestExec objects from the active test list.
-        """
-        # magic: change this function to only call the create_execution_directory,
-        #        change its name, and move the backlog population elsewhere
-
         self._generate_backlog_from_testlist()
 
+    def createExecutionDirectories(self):
+        """
+        Creates the execution directory for each test to be run.
+        """
         for tcase in self.backlog.iterate():
             self.handler.create_execution_directory( tcase )
 
@@ -98,7 +94,7 @@ class TestExecList:
 
     def numRunning(self):
         """
-        Return the number of tests are currently running.
+        Return the number of tests currently running.
         """
         return len(self.started)
 
@@ -115,11 +111,9 @@ class TestExecList:
 
     def _generate_backlog_from_testlist(self):
         ""
-        # magic: move this function into TestBacklog ?? somewhere else?
-        for tcase in self.tlist.getTests():
-            if not tcase.getStat().skipTest():
-                assert tcase.getSpec().constructionCompleted()
-                self.backlog.insert( tcase )
+        for tcase in self.tlist.getActiveTests():
+            assert tcase.getSpec().constructionCompleted()
+            self.backlog.insert( tcase )
 
         # sort by runtime, descending order so that popNext() will try to avoid
         # launching long running tests at the end of the testing sequence

@@ -945,8 +945,6 @@ def make_fake_TestExecList( timespec='runtime' ):
 
     xlist = TestExecList( tlist, FakeHandler() )
 
-    xlist._generate_backlog_from_testlist()
-
     return tlist, xlist
 
 
@@ -966,7 +964,6 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
     tlist.connectDependencies()
 
     xlist = TestExecList( tlist, FakeHandler() )
-    xlist._generate_backlog_from_testlist()
 
     return tlist, xlist
 

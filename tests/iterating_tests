@@ -71,20 +71,6 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         self.assertEqual( tL, [ [ 'sdir/atest0.np=2', (2,0), 12 ],
                                 [ 'sdir/atest0.np=1', (1,0), 11 ] ] )
 
-    def test_iterate_backlog_by_size_and_timeout(self):
-        ""
-        back = make_test_backlog_object( timespec='timeout' )
-
-        tL = []
-        for tcase in back.consume():
-            tL.append( timeout_tuple(tcase) )
-            print3( tL[-1] )
-
-        assert tL == [ [ 'sdir/atest1.np=2', (2,0), 22 ],
-                       [ 'sdir/atest0.np=2', (2,0), 12 ],
-                       [ 'sdir/atest1.np=1', (1,0), 21 ],
-                       [ 'sdir/atest0.np=1', (1,0), 11 ] ]
-
     def test_iterate_TestExecList_by_size_and_constraint(self):
         ""
         # by default, tests are sorted by size and runtime
@@ -179,7 +165,6 @@ def prepare_TestExecList():
     ""
     tlist,xlist = vtu.scan_to_make_TestExecList( '.' )
     xlist = TestExecList( tlist, vtu.FakeHandler() )
-    xlist._generate_backlog_from_testlist()
 
     return tlist, xlist
 
@@ -203,7 +188,7 @@ def make_test_backlog_object( timespec='runtime' ):
     for tcase in vtu.make_TestCase_list( timespec=timespec ):
         back.insert( tcase )
 
-    back.sort( secondary=timespec )
+    back.sort()
 
     return back
 

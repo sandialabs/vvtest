@@ -314,6 +314,48 @@ class TestList:
 
                 depend.check_connect_dependencies( tcase, tmap, check_dependencies )
 
+    def copyResultsIfStateChange(self, tests):
+        """
+        For each test in the given list of tests, if the test status is
+        different from the test in this TestList object, then the test
+        results are copied from the given test to the corresponding test in
+        this TestList.
+
+        A list of tests whose state changed to "done" is returned.
+        """
+        donetests = []
+
+        for src_tcase in tests:
+            tid = src_tcase.getSpec().getID()
+            tstat = src_tcase.getStat()
+            tcase = self._check_state_change( tid, tstat )
+
+            if tcase and tcase.getStat().isDone():
+                donetests.append( tcase )
+
+        return donetests
+
+    def _check_state_change(self, testid, teststatus):
+        """
+        Finds the corresponding test in this TestList and if the result status
+        is different, then the test results are copied into this object's
+        test and the test list file is appended.
+
+        Returns None if the test's result status did not change, or the test
+        itself if the status did change.
+        """
+        tcase = self.tcasemap[testid]
+
+        old = tcase.getStat().getResultStatus()
+        new = teststatus.getResultStatus()
+
+        if new != old:
+            copy_test_results( tcase.getStat(), teststatus )
+            self.appendTestResult( tcase )
+            return tcase
+
+        return None  # return None if no state change
+
 
 def glob_results_files( basename ):
     ""

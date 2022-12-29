@@ -65,6 +65,8 @@ class ExecutionHandler:
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
 
+        # tstat.resetResults()  # magic
+
         if tspec.getSpecificationForm() == 'xml':
             self.loadCommonXMLDB()
 

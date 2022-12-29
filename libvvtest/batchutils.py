@@ -14,7 +14,6 @@ from os.path import dirname
 from . import TestList
 from .testlistio import TestListReader, file_is_marked_finished
 from . import pathutil
-from .backlog import TestBacklog
 from .teststatus import copy_test_results
 
 
@@ -177,7 +176,6 @@ class Batcher:
         check_make_directory( bdir, self.perms )
 
         tname = tl.stringFileWrite( extended=True )
-        # print ( 'magic: just wrote '+repr(tname) )
 
         cmd = self.vvtestcmd + ' --batch-id='+str( bjob.getBatchID() )
 
@@ -316,19 +314,14 @@ class BatchTestGrouper:
         self.group = None
         self.num_groups = 0
 
-        back = TestBacklog()
-        for tcase in self.tlist.getTests():
-            if not tcase.getStat().skipTest():
-                assert tcase.getSpec().constructionCompleted()
-                back.insert( tcase )
-        back.sort( secondary='timeout' )
+        back = self.tlist.getActiveTests()
+        back.sort(
+            key=lambda tc: [ tc.getSize()[0], tc.getStat().getAttr('timeout') ],
+            reverse=True )
 
-        while True:
-            tcase = back.pop()
-            if tcase is None:
-                break
-            else:
-                self._add_test_case( tcase )
+        for tcase in back:
+            assert tcase.getSpec().constructionCompleted()
+            self._add_test_case( tcase )
 
         if self.group != None and not self.group.empty():
             self.batches.append( self.group )
@@ -516,14 +509,8 @@ class ResultsHandler:
                 # file system race condition can cause corruption, ignore
                 pass
             else:
-                # magic: move this activity into TestExecList class ??
-                for file_tcase in jobtests.values():
-                    tid = file_tcase.getSpec().getID()
-                    tstat = file_tcase.getStat()
-                    tcase = check_state_change( self.tlist, tid, tstat )
-                    if tcase:
-                        if tcase.getStat().isDone():
-                            donetests.append( tcase )
+                tL = self.tlist.copyResultsIfStateChange( jobtests.values() )
+                donetests.extend( tL )
 
     def getReasonForNotRun(self, bjob):
         ""
@@ -549,27 +536,6 @@ class ResultsHandler:
     def finalize(self):
         ""
         self.tlist.writeFinished()
-
-
-def check_state_change( tlist, testid, teststatus ):
-    """
-    Finds the test in the TestList and compares its test status to the
-    given argument. If the status is different, the status results are
-    copied into the TestList's copy, the test results are appended to
-    the results file, and non-None is returned. If the status has not
-    changed, returns None.
-    """
-    tcase = tlist.getTestMap()[testid]
-
-    old = tcase.getStat().getResultStatus()
-    new = teststatus.getResultStatus()
-
-    if new != old:
-        copy_test_results( tcase.getStat(), teststatus )
-        tlist.appendTestResult( tcase )
-        return tcase
-
-    return None  # return None if no state change
 
 
 def get_relative_results_filename( tlist_from, to_bjob ):

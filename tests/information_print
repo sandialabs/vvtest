@@ -213,8 +213,6 @@ def make_fake_TestExecList():
 
     xlist = TestExecList( tlist, vtu.FakeHandler() )
 
-    xlist._generate_backlog_from_testlist()
-
     # mark the tests as running by consuming the backlog
     for texec in xlist.consumeBacklog():
         pass

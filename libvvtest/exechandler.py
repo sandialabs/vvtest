@@ -24,20 +24,18 @@ from .makecmd import MakeScriptCommand
 
 class ExecutionHandler:
 
-    def __init__(self, perms, rtconfig, platform, usrplugin, test_dir,
+    def __init__(self, perms, rtconfig, platform, usrplugin, loc,
                        symlinks_supported=True,
                        fork_supported=True,
                        shbang_supported=True):
         """
-        The platform is a Platform object.  The test_dir is the top level
-        testing directory, which is either an absolute path or relative to
-        the current working directory.
+        The 'platform' is a Platform object.  The 'loc' is a Locator object.
         """
         self.perms = perms
         self.rtconfig = rtconfig
         self.platform = platform
         self.plugin = usrplugin
-        self.test_dir = test_dir
+        self.loc = loc
 
         self.symlinks = symlinks_supported
         self.forkok = fork_supported
@@ -50,11 +48,11 @@ class ExecutionHandler:
         tspec = tcase.getSpec()
 
         xdir = tspec.getExecuteDirectory()
-        wdir = pjoin( self.test_dir, xdir )
+        wdir = pjoin( self.loc.getTestingDirectory(), xdir )
 
         if not os.path.exists( wdir ):
             os.makedirs( wdir )
-            self.perms.apply( xdir )
+            self.perms.apply( xdir )  # magic: examine (it looks wrong)
 
     def initialize_for_execution(self, texec):
         ""
@@ -68,7 +66,7 @@ class ExecutionHandler:
         texec.setTimeout( tstat.getAttr( 'timeout', 0 ) )
 
         xdir = tspec.getExecuteDirectory()
-        wdir = pjoin( self.test_dir, xdir )
+        wdir = pjoin( self.loc.getTestingDirectory(), xdir )
         texec.setRunDirectory( wdir )
 
     def loadCommonXMLDB(self):
@@ -115,8 +113,7 @@ class ExecutionHandler:
 
         tspec = tcase.getSpec()
 
-        srcdir = normpath( pjoin( tspec.getRootpath(),
-                                  dirname( tspec.getFilepath() ) ) )
+        srcdir = self.loc.path_to_source( tspec.getDirectory(), tspec.getRootpath() )
 
         if self.symlinks:
             cpL = tspec.getCopyFiles()
@@ -170,9 +167,7 @@ class ExecutionHandler:
         ""
         tspec = tcase.getSpec()
 
-        troot = tspec.getRootpath()
-        tdir = os.path.dirname( tspec.getFilepath() )
-        srcdir = normpath( pjoin( troot, tdir ) )
+        srcdir = self.loc.path_to_source( tspec.getDirectory(), tspec.getRootpath() )
 
         # TODO: add file globbing for baseline files
         for fromfile,tofile in tspec.getBaselineFiles():
@@ -278,7 +273,7 @@ class ExecutionHandler:
         if self.rtconfig.getAttr('preclean') or \
            not os.path.exists( script_file ):
 
-            troot = tspec.getRootpath()
+            troot = self.loc.makeAbsPath( tspec.getRootpath() )
             assert os.path.isabs( troot )
             tdir = os.path.dirname( tspec.getFilepath() )
             srcdir = normpath( pjoin( troot, tdir ) )
@@ -312,7 +307,7 @@ class ExecutionHandler:
                                           lang,
                                           self.rtconfig,
                                           self.platform,
-                                          self.test_dir )
+                                          self.loc )
 
                 self.perms.apply( os.path.abspath( script_file ) )
 

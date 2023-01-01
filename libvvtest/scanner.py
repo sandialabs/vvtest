@@ -43,15 +43,16 @@ class TestFileScanner:
         """
         Recursively scans for test XML or VVT files starting at 'path'.
         """
-        bpath = os.path.normpath( os.path.abspath(path) )
+        path = os.path.normpath( os.path.abspath(path) )  # magic
+        # print( 'magic: scan, path', path )
 
-        if os.path.isfile( bpath ):
-            basedir,fname = os.path.split( bpath )
+        if os.path.isfile( path ):
+            basedir,fname = os.path.split( path )
             self.readTestFile( testlist, basedir, fname )
 
         else:
-            for root,dirs,files in os.walk( bpath ):
-                self._scan_recurse( testlist, bpath, root, dirs, files )
+            for root,dirs,files in os.walk( path ):
+                self._scan_recurse( testlist, path, root, dirs, files )
 
     def completeTestParsing(self, testlist):
         ""
@@ -68,11 +69,7 @@ class TestFileScanner:
         """
         d = os.path.normpath(d)
 
-        if basedir == d:
-            reldir = '.'
-        else:
-            assert basedir+os.sep == d[:len(basedir)+1]
-            reldir = d[len(basedir)+1:]
+        reldir = os.path.relpath( d, basedir )
 
         # scan files with extension specific extensions; soft links to
         # directories are skipped by os.walk so special handling is performed
@@ -115,12 +112,10 @@ class TestFileScanner:
         skipped if they don't appear to be a test file.  Attributes from
         existing tests will be absorbed.
         """
-        assert basepath
-        assert relfile
-        assert os.path.isabs( basepath )
-        assert not os.path.isabs( relfile )
+        # assert basepath and os.path.isabs( basepath )
+        assert relfile and not os.path.isabs( relfile )
 
-        basepath = os.path.normpath( basepath )
+        basepath = os.path.normpath( basepath or '.' )
         relfile  = os.path.normpath( relfile )
 
         assert relfile

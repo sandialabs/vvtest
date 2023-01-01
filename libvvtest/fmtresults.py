@@ -659,28 +659,31 @@ def _svn_rootrel(tdir):
     try: os.chdir( tdir )
     except Exception: return None
 
-    # run svn info to get the relative URL and the repository URL
-    import subprocess
+    try:
+        # run svn info to get the relative URL and the repository URL
+        import subprocess
 
-    p = subprocess.Popen( 'svn info', shell=True,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, close_fds=True )
-    ip,fp = (p.stdin, p.stdout)
+        p = subprocess.Popen( 'svn info', shell=True,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, close_fds=True )
+        ip,fp = (p.stdin, p.stdout)
 
-    url = None
-    relurl = None
-    repo = None
-    line = fp.readline()
-    while line:
-      if line[:4] == 'URL:':
-        url = line.split()[-1]
-      elif line[:13] == 'Relative URL:':
-        relurl = line.split()[-1]
-      elif line[:16] == 'Repository Root:':
-        repo = line.split()[-1]
-      line = fp.readline()
-    ip.close() ; fp.close()
-    os.chdir(cdir)
+        url = None
+        relurl = None
+        repo = None
+        line = fp.readline()
+        while line:
+          if line[:4] == 'URL:':
+            url = line.split()[-1]
+          elif line[:13] == 'Relative URL:':
+            relurl = line.split()[-1]
+          elif line[:16] == 'Repository Root:':
+            repo = line.split()[-1]
+          line = fp.readline()
+        ip.close() ; fp.close()
+    finally:
+        os.chdir(cdir)
+
     if relurl == None:
       if url == None or repo == None:
         return None

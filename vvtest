@@ -181,7 +181,9 @@ def construct_and_process_cache_file( rtdata, opts, optD ):
     rtdata.cash = CacheFileHandler( opts, optD, rtdata.rtconfig )
 
     # non-None only if the CWD is in a TestResults.* directory
-    cache_file = rtdata.loc.findCacheFile()
+    # cache_file = rtdata.loc.findCacheFile()
+    cache_file = location.find_cache_file( rtdata.curdir )
+    rtdata.loc.cashfile = cache_file  # magic: temporary
 
     if cache_file:
         is_restart = True
@@ -349,7 +351,8 @@ def construct_test_scanner( rtdata, scandirs, opts ):
 
     if len( scandirs ) == 0:
         # scan current working directory by default
-        scandirs.append( rtdata.curdir )
+        scandirs.append( rtdata.curdir )  # magic:
+        # scandirs.append( '.' )
 
     scanner = TestFileScanner( rtdata.creator, rtdata.tcasefactory,
                                scandirs, specform=opts.scan_type )
@@ -688,7 +691,7 @@ def generate_test_list( opts, optD, rtdata ):
 
     handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
                                 rtdata.plat, rtdata.plugin,
-                                rtdata.testdir,
+                                rtdata.loc,
                                 symlinks_supported=not windows_platform,
                                 fork_supported=not windows_platform,
                                 shbang_supported=not windows_platform )
@@ -805,7 +808,7 @@ def baseline_tests( opts, optD, rtdata ):
 
         handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
                                     rtdata.plat, rtdata.plugin,
-                                    rtdata.testdir,
+                                    rtdata.loc,
                                     symlinks_supported=not windows_platform,
                                     fork_supported=not windows_platform,
                                     shbang_supported=not windows_platform )
@@ -1051,7 +1054,7 @@ def run_test_exec_list( opts, optD, rtdata ):
 
         handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
                                     rtdata.plat, rtdata.plugin,
-                                    rtdata.testdir,
+                                    rtdata.loc,
                                     symlinks_supported=not windows_platform,
                                     fork_supported=not windows_platform,
                                     shbang_supported=not windows_platform )

@@ -8,6 +8,8 @@ import os, sys
 import shutil
 import glob
 
+from .pathutil import change_directory
+
 
 def copy_out_test_files( target_dir, testcase_list ):
     ""
@@ -60,13 +62,8 @@ def copy_out_test_files( target_dir, testcase_list ):
             if os.path.exists( os.path.join( from_dir, srcf ) ):
                 fL = [ srcf ]
             else:
-                cwd = os.getcwd()
-                try:
-                    os.chdir( from_dir )
+                with change_directory( from_dir ):
                     fL = glob.glob( srcf )
-                except Exception:
-                    fL = []
-                os.chdir( cwd )
 
             for f in fL:
                 fromf = os.path.join( from_dir, f )
@@ -78,12 +75,9 @@ def copy_out_test_files( target_dir, testcase_list ):
                         os.makedirs(tod)
                     
                     if os.path.isdir(fromf):
-                        cwd = os.getcwd()
-                        os.chdir(fromf)
-                        for root,dirs,files in os.walk( '.' ):
-                            wvisit( (fromf, tof), root, dirs, files )
-                        os.chdir(cwd)
-                      
+                        with change_directory( fromf ):
+                            for root,dirs,files in os.walk( '.' ):
+                                wvisit( (fromf, tof), root, dirs, files )
                     else:
                         try: shutil.copy2( fromf, tof )
                         except IOError: pass

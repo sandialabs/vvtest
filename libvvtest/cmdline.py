@@ -137,7 +137,7 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '--run-dir',
         help='The name of the directory to contain the test execution results. '
              'Defaults to TestResults.*, where * is the platform name plus '
-             'any -o options.' )
+             '-o options.' )
     grp.add_argument( '-L', dest='dash_L', action='store_true',
         help='Do not redirect test output to log files.' )
     grp.add_argument( '-a', '--analyze', dest='analyze', action='store_true',

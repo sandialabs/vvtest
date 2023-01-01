@@ -16,7 +16,7 @@ except Exception:
 from .teststatus import DIFF_EXIT_STATUS, SKIP_EXIT_STATUS
 
 
-def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir ):
+def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
     """
     Writes a helper script for the test.  The script language is based on
     the 'lang' argument.
@@ -25,18 +25,20 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
     tname = testobj.getName()
 
     troot = testobj.getRootpath()
-    assert os.path.isabs( troot )
+    # assert os.path.isabs( troot )
     trel = dirname( testobj.getFilepath() )
-    srcdir = normpath( pjoin( troot, trel ) )
-    
-    configdirs = rtconfig.getAttr('configdir')
+    srcdir = normpath( pjoin( troot, trel ) )  # magic: adjust if relative troot
 
-    tdir = rtconfig.getAttr('vvtestdir')
+    test_dir = loc.getTestingDirectory()
+
+    configdirs = rtconfig.getAttr('configdir')  # magic: examine
+
+    tdir = rtconfig.getAttr('vvtestdir')  # magic: ensure absolute ??
     assert tdir
 
-    trigdir = pjoin( tdir, 'trig' )
+    trigdir = pjoin( tdir, 'trig' )  # magic: must be absolute
 
-    projdir = rtconfig.getAttr('exepath')
+    projdir = rtconfig.getAttr('exepath')  # magic: examine
     if not projdir: projdir = ''
 
     onopts = rtconfig.getAttr('onopts')
@@ -47,7 +49,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
 
     timeout = testcase.getStat().getAttr( 'timeout', -1 )
 
-    dep_list = testcase.getDepDirectories()
+    dep_list = testcase.getDepDirectories()  # magic: examine
 
     w = LineWriter()
 
@@ -60,7 +62,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                'PLATFORM = '+repr(platname),
                'COMPILER = '+repr(cplrname),
                'VVTESTSRC = '+repr(tdir),
-               'TESTROOT = '+repr(test_dir),
+               'TESTROOT = '+repr(test_dir),  # magic: can test_dir be relative??
                'PROJECT = '+repr(projdir),
                'OPTIONS = '+repr( onopts ),
                'OPTIONS_OFF = '+repr( offopts ),
@@ -75,6 +77,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                'sys.path.insert( 0, '+repr(trigdir)+' )',
                'sys.path.insert( 0, VVTESTSRC )' )
         for d in configdirs[::-1]:
+            # magic: config dirs must be abs by this point
             w.add( 'sys.path.insert( 0, '+repr(d)+' )' )
 
         w.add( '',
@@ -115,10 +118,10 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                     n2 = '_'.join( n )
                     w.add( 'PARAM_'+n2+' = ' + repr(L) )
 
-        L = generate_dependency_list( dep_list, test_dir )
+        L = generate_dependency_list( dep_list, test_dir )  # magic: examine
         w.add( '', 'DEPDIRS = '+repr(L) )
 
-        D = generate_dependency_map( dep_list, test_dir )
+        D = generate_dependency_map( dep_list, test_dir )  # magic: examine
         w.add( '', 'DEPDIRMAP = '+repr(D) )
 
         w.add( '',

@@ -41,15 +41,18 @@ def find_sys_directory_with_file( cwd, exepath, filename ):
 
 class Locator:
 
-    def __init__(self, curdir, mirror=None, wipe=False):
-        ""
-        self.curdir = curdir
+    def __init__(self, idir, mirror=None, wipe=False):
+        """
+        'idir' is the current working directory when vvtest is initially launched
+        """
+        self.idir = idir
 
         self.mirror = mirror
         self.wipe = ( wipe == True )
 
-        self.cashfile = None
+        self.cashfile = None  # magic: remove
         self.testdir = None
+        self.ipath = None  # relative path from testdir to idir, or None
 
     def getConfigDirs(self, cmdline_configdir=None, environ_configdir=None):
         """
@@ -59,41 +62,37 @@ class Locator:
         """
         return collect_config_dirs( cmdline_configdir, environ_configdir )
 
-    def findCacheFile(self):
-        """
-        returns None if the CWD is not inside a TestResults directory
-        """
-        # an environment variable is used to identify vvtest run recursion
-        troot = os.environ.get( 'VVTEST_TEST_ROOT', None )
-
-        self.cashfile = find_vvtest_test_root_file( self.curdir,
-                                                    troot,
-                                                    'vvtest.cache' )
-        if not self.cashfile:
-            # June 2022: name changed from test.cache to vvtest.cache, but look
-            #            for the old name for a while (a year?)
-            # this note is also in vvtest and scanner.py
-            self.cashfile = find_vvtest_test_root_file( self.curdir,
-                                                        troot,
-                                                        'test.cache' )
-
-        return self.cashfile
-
     def setTestingDirectory(self, rundir, onopts, offopts, platname):
         ""
-        sd = test_results_subdir_name( rundir, onopts, offopts, platname )
+        self.ipath = None  # None means relative path to idir is not available
 
         if self.cashfile:
             assert os.path.isabs( self.cashfile )
             self.testdir = normpath( dirname( self.cashfile ) )
+            # magic: cache file has to store ipath
         else:
-            self.testdir = self.makeAbsPath( sd )
+            sd = test_results_subdir_name( rundir, onopts, offopts, platname )
 
+            if not os.path.isabs( sd ):
+                tdir = self.makeAbsPath( sd )
+                self.ipath = os.path.relpath( self.idir, tdir )
+
+            self.testdir = self.makeAbsPath( sd )  # magic: don't make abs here ??
+
+        return self.testdir
+
+    def resetTestingDirectory(self, testdir, ipath):  # magic: need this??
+        ""
+        self.testdir = testdir
+        self.ipath = ipath
+
+    def getTestingDirectory(self):
+        ""
         return self.testdir
 
     def createTestingDirectory(self, perms):
         ""
-        create_test_directory( self.testdir, self.mirror, self.curdir, perms )
+        create_test_directory( self.testdir, self.mirror, self.idir, perms )
 
         if self.wipe:
             pathutil.remove_directory_contents( self.testdir )
@@ -101,9 +100,54 @@ class Locator:
     def makeAbsPath(self, path):
         ""
         if os.path.isabs( path ):
-            return path
+            return normpath( path )
         else:
-            return pjoin( self.curdir, path )
+            return normpath( pjoin( self.idir, path ) )
+
+    def path_to_source(self, subdir, srcroot):
+        """
+        Returns the path to the test source directory. May be an absolute
+        path (if both the rundir and 'srcroot' are relative paths), or a
+        relative directory. The 'subdir' is a relative path from the source
+        to the directory containing the test vvt file.
+        """
+        if os.path.isabs( srcroot ):
+            return normpath( pjoin( srcroot, subdir ) )
+        elif self.ipath:
+            # Note: The extra '..' is the final xdir segment for the test.
+            #       Unfortunately, this means yet another place where the
+            #       execution directory structure is encoded.
+            upd = pjoin( '..', reverse_path_direction( subdir ) )
+            return normpath( pjoin( upd, self.ipath, srcroot, subdir ) )
+        else:
+            return normpath( pjoin( self.idir, srcroot, subdir ) )
+
+
+def reverse_path_direction( subdir ):
+    """
+    for example, if subdir is 'foo/bar' then return is '../..'
+    """
+    assert '..' not in subdir.split( os.path.sep )
+    return os.path.relpath( '/', pjoin('/',subdir) )
+
+
+def find_cache_file( cwd ):
+    """
+    returns path to cache file if the CWD is inside a TestResults directory,
+    otherwise returns None
+    """
+    # an environment variable is used to identify vvtest run recursion
+    troot = os.environ.get( 'VVTEST_TEST_ROOT', None )
+
+    cashfile = find_vvtest_test_root_file( cwd, troot, 'vvtest.cache' )
+
+    if not cashfile:
+        # June 2022: name changed from test.cache to vvtest.cache, but look
+        #            for the old name for a while (a year?)
+        # this note is also in vvtest and scanner.py
+        cashfile = find_vvtest_test_root_file( cwd, troot, 'test.cache' )
+
+    return cashfile
 
 
 def find_vvtest_test_root_file( start_directory,
@@ -216,7 +260,7 @@ def test_results_subdir_name( rundir, onopts, offopts, platform_name ):
     unique up to the platform and on/off options.
     """
     if rundir:
-        testdirname = rundir
+        testdirname = normpath( rundir )
 
     else:
         testdirname = 'TestResults.' + platform_name

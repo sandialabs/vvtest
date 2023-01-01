@@ -52,9 +52,6 @@ class TestCreator:
         """
         assert not os.path.isabs( relpath )
 
-        if not rootpath:
-            rootpath = os.getcwd()
-
         maker = self.create_test_maker( relpath, rootpath, False )
 
         tests = maker.createTests()

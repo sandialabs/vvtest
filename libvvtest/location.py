@@ -50,7 +50,7 @@ class Locator:
         self.mirror = mirror
         self.wipe = ( wipe == True )
 
-        self.cashfile = None  # magic: remove
+        self.cashfile = None
         self.testdir = None
         self.ipath = None  # relative path from testdir to idir, or None
 
@@ -62,32 +62,41 @@ class Locator:
         """
         return collect_config_dirs( cmdline_configdir, environ_configdir )
 
-    def setTestingDirectory(self, rundir, onopts, offopts, platname):
+    def searchForCacheFile(self):
         ""
-        self.ipath = None  # None means relative path to idir is not available
+        self.cashfile = find_cache_file( self.idir )
+        return self.cashfile
 
-        if self.cashfile:
-            assert os.path.isabs( self.cashfile )
-            self.testdir = normpath( dirname( self.cashfile ) )
-            # magic: cache file has to store ipath
-        else:
-            sd = test_results_subdir_name( rundir, onopts, offopts, platname )
-
-            if not os.path.isabs( sd ):
-                tdir = self.makeAbsPath( sd )
-                self.ipath = os.path.relpath( self.idir, tdir )
-
-            self.testdir = self.makeAbsPath( sd )  # magic: don't make abs here ??
-
-        return self.testdir
-
-    def resetTestingDirectory(self, testdir, ipath):  # magic: need this??
+    def foundCacheFile(self):
         ""
-        self.testdir = testdir
-        self.ipath = ipath
+        return self.cashfile is not None
 
     def getTestingDirectory(self):
         ""
+        return self.testdir
+
+    def setLocation(self, locdirs):
+        ""
+        self.testdir = normpath( dirname( self.cashfile ) )
+
+        if locdirs:
+            idir,ipath = locdirs
+            if ipath is None:
+                self.idir = idir
+            else:
+                self.idir = normpath( pjoin( self.testdir, ipath ) )
+                self.ipath = ipath
+
+    def computeLocation(self, rundir, onopts, offopts, platname):
+        ""
+        sd = test_results_subdir_name( rundir, onopts, offopts, platname )
+
+        if not os.path.isabs( sd ):
+            tdir = self.makeAbsPath( sd )
+            self.ipath = os.path.relpath( self.idir, tdir )
+
+        self.testdir = self.makeAbsPath( sd )
+
         return self.testdir
 
     def createTestingDirectory(self, perms):
@@ -121,6 +130,10 @@ class Locator:
             return normpath( pjoin( upd, self.ipath, srcroot, subdir ) )
         else:
             return normpath( pjoin( self.idir, srcroot, subdir ) )
+
+    def getLocation(self):
+        ""
+        return self.idir, self.ipath
 
 
 def reverse_path_direction( subdir ):

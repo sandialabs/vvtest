@@ -407,7 +407,7 @@ class locator( vtu.vvtestTestCase ):
     def test_the_test_execution_directory(self):
         ""
         loc = location.Locator( os.getcwd() )
-        loc.setTestingDirectory( None, [], [], 'foo' )
+        loc.computeLocation( None, [], [], 'foo' )
         dn,bn = os.path.split( loc.getTestingDirectory() )
         assert os.path.samefile( dn, '.' ) and os.path.isabs(dn)
         assert bn == 'TestResults.foo'
@@ -415,7 +415,7 @@ class locator( vtu.vvtestTestCase ):
     def test_path_from_test_xdir_to_test_source_directory(self):
         ""
         loc = location.Locator( os.getcwd() )
-        loc.setTestingDirectory( None, [], [], 'foo' )
+        loc.computeLocation( None, [], [], 'foo' )
         self.assertEqual( loc.path_to_source( 'sub', 'src' ), '../../../src/sub' )
         self.assertEqual( loc.path_to_source( '.', 'src' ), '../../src' )
         self.assertEqual( loc.path_to_source( '', 'src' ), '../../src' )
@@ -425,12 +425,12 @@ class locator( vtu.vvtestTestCase ):
         self.assertEqual( loc.path_to_source( 'sub', '' ), '../../../sub' )
 
         loc = location.Locator( os.getcwd() )
-        loc.setTestingDirectory( 'my/rundir', [], [], 'foo' )
+        loc.computeLocation( 'my/rundir', [], [], 'foo' )
         self.assertEqual( loc.path_to_source( 'sub', 'src' ), '../../../../src/sub' )
         self.assertEqual( loc.path_to_source( 'sub', '.' ), '../../../../sub' )
 
         loc = location.Locator( os.getcwd() )
-        loc.setTestingDirectory( '/my/abs/rundir', [], [], 'foo' )
+        loc.computeLocation( '/my/abs/rundir', [], [], 'foo' )
         self.assertEqual( loc.path_to_source( 'sub', 'src' ), abspath('src/sub') )
 
 

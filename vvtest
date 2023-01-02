@@ -79,10 +79,10 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     opts, optD, scandirs = \
         cmdline.parse_command_line( argv[1:], version )
 
-    configdirs = construct_locator( rtdata, opts, vvtestdir )
+    configdirs = construct_locator_and_cache_handler( rtdata, opts, optD, vvtestdir )
     insert_configdirs_into_sys_path( configdirs )
     construct_runtime_config( rtdata, opts, optD )
-    construct_and_process_cache_file( rtdata, opts, optD )
+    process_cache_file( rtdata, opts, optD )
     construct_runtime_info( rtdata, argv, vvtestdir, start_epoch )
     create_configuration( rtdata.rtconfig, opts, optD, vvtestdir, configdirs )
 
@@ -139,9 +139,16 @@ def run_vvtest( rtdata, opts, optD ):
         return exitstat
 
 
-def construct_locator( rtdata, opts, vvtestdir ):
+def construct_locator_and_cache_handler( rtdata, opts, optD, vvtestdir ):
     ""
     rtdata.loc = location.Locator( rtdata.curdir, opts.dash_M, opts.dash_w )
+    rtdata.cash = CacheFileHandler( opts, optD )
+
+    cfile = rtdata.loc.searchForCacheFile()
+    if cfile:
+        rtdata.cash.readCache( cfile )
+        locdirs = rtdata.cash.get( 'LOCATION', None )
+        rtdata.loc.setLocation( locdirs )
 
     envconfig = os.getenv('VVTEST_CONFIGDIR', None )
     rtdata.userconfig = rtdata.loc.getConfigDirs( opts.config, envconfig )
@@ -176,20 +183,12 @@ def construct_runtime_config( rtdata, opts, optD ):
     rtdata.rtconfig = rtconfig
 
 
-def construct_and_process_cache_file( rtdata, opts, optD ):
+def process_cache_file( rtdata, opts, optD ):
     ""
-    rtdata.cash = CacheFileHandler( opts, optD, rtdata.rtconfig )
-
-    # non-None only if the CWD is in a TestResults.* directory
-    # cache_file = rtdata.loc.findCacheFile()
-    cache_file = location.find_cache_file( rtdata.curdir )
-    rtdata.loc.cashfile = cache_file  # magic: temporary
-
-    if cache_file:
+    if rtdata.loc.foundCacheFile():
         is_restart = True
-        rtdata.cash.setCacheDirectory( dirname( cache_file ) )
         check_options_not_allowed_for_restart( opts, optD )
-        rtdata.cash.readCache()
+        rtdata.cash.processCache( rtdata.rtconfig )
     else:
         is_restart = False
 
@@ -288,12 +287,14 @@ def construct_platform( rtdata, opts, optD ):
 
 def compute_testing_directory( rtdata, opts, optD ):
     ""
-    td = rtdata.loc.setTestingDirectory( opts.run_dir,
+    if rtdata.loc.foundCacheFile():
+        td = rtdata.loc.getTestingDirectory()
+    else:
+        td = rtdata.loc.computeLocation( opts.run_dir,
                                          optD['onopts'],
                                          optD['offopts'],
                                          rtdata.plat.getName() )
 
-    rtdata.cash.setCacheDirectory( td )
     rtdata.rtinfo.setInfo( rundir=td )
     rtdata.testdir = td
 
@@ -679,7 +680,7 @@ def generate_test_list( opts, optD, rtdata ):
     tlist = rtdata.tlm.makeTestList()
 
     rtdata.loc.createTestingDirectory( rtdata.perms )
-    rtdata.cash.writeCache( rtdata.perms )
+    rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )
     rtdata.scanner.scanPaths( tlist )
     rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
     rtdata.selector.applyPermanentFilters( tlist )
@@ -729,7 +730,7 @@ def run_tests( opts, optD, rtdata ):
     check_for_currently_running_vvtest( tlist, opts.force )
 
     rtdata.loc.createTestingDirectory( rtdata.perms )
-    rtdata.cash.writeCache( rtdata.perms )
+    rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )
 
     rtdata.scanner.scanPaths( tlist )
     rtdata.tlm.readAndMergePreviouslyRunTests()
@@ -906,29 +907,24 @@ def adjust_filter_settings_for_restart( opts, rtconfig ):
 
 class CacheFileHandler:
 
-    def __init__(self, opts, optD, rtconfig):
+    def __init__(self, opts, optD):
         ""
         self.opts = opts
         self.optD = optD
-        self.rtconfig = rtconfig
 
-        self.cachedir = None
+        self.content = {}
 
-    def setCacheDirectory(self, test_dir):
+    def writeCache(self, loc, rtconfig, perms):
         ""
-        self.cachedir = test_dir
-
-    def writeCache(self, perms):
-        ""
-        fname = pjoin( self.cachedir, 'vvtest.cache' )
+        fname = pjoin( loc.getTestingDirectory(), 'vvtest.cache' )
 
         with open( fname, "w" ) as fp:
             fp.write( 'VERSION=' + str(version) + '\n' )
             if self.opts.plat:
                   fp.write( 'PLATFORM=' + self.opts.plat.strip() + '\n' )
-            if self.rtconfig.getAttr('exepath'):
+            if rtconfig.getAttr('exepath'):
                 fp.write( \
-                    'PROJECT=' + abspath( self.rtconfig.getAttr('exepath') ) + '\n' )
+                    'PROJECT=' + abspath( rtconfig.getAttr('exepath') ) + '\n' )
             if self.optD['onopts']:
                 fp.write( 'ONOPTS=' + '+'.join( self.optD['onopts'] ) + '\n' )
             if self.optD['offopts']:
@@ -940,50 +936,59 @@ class CacheFileHandler:
                                 str(self.opts.timeout_multiplier).strip() + '\n' )
             if self.opts.short_xdirs:
                 fp.write( 'SHORT_XDIRS='+self.opts.short_xdirs + '\n' )
+            fp.write( 'LOCATION='+repr(loc.getLocation()) )
 
         perms.apply( abspath(fname) )
 
-    def readCache(self):
+    def readCache(self, cache_file_name):
         ""
-        fname = pjoin( self.cachedir, 'vvtest.cache' )
-
-        # June 2022: name changed from test.cache to vvtest.cache, but look
-        #            for the old name for a while (a year?)
-        # this note is also in location.py and scanner.py
-        if not os.path.exists(fname):
-            fname = pjoin( self.cachedir, 'test.cache' )
-
-        with open( fname, "r" ) as fp:
-            write_version = 0
+        with open( cache_file_name, "r" ) as fp:
             for line in fp.readlines():
                 line = line.strip()
                 kvpair = line.split( '=', 1 )
-                if kvpair[0] == 'VERSION':
-                    write_version = kvpair[1]
-                elif kvpair[0] == 'PLATFORM':
-                    if not self.opts.plat:
-                        self.opts.plat = kvpair[1]
-                elif kvpair[0] == 'PROJECT':
-                    # do not replace if the command line contains -j
-                    if not self.opts.bin_dir:
-                        self.opts.bin_dir = kvpair[1]
-                        self.rtconfig.setAttr( 'exepath', kvpair[1] )
-                elif kvpair[0] == 'ONOPTS':
-                    self.optD['onopts'] = kvpair[1].split( '+' )
-                    self.rtconfig.setAttr( 'onopts', self.optD['onopts'] )
-                elif kvpair[0] == 'OFFOPTS':
-                    self.optD['offopts'] = kvpair[1].split( '+' )
-                    self.rtconfig.setAttr( 'offopts', self.optD['offopts'] )
-                elif kvpair[0] == 'TIMEOUT':
-                    # do not replace if the command line contains -T
-                    if self.opts.dash_T == None:
-                        self.opts.dash_T = kvpair[1]
-                elif kvpair[0] == 'TIMEOUT_MULTIPLIER':
-                    if not self.opts.timeout_multiplier:
-                        self.opts.timeout_multiplier = kvpair[1]
-                elif kvpair[0] == 'SHORT_XDIRS':
-                    if not self.opts.short_xdirs:
-                        self.opts.short_xdirs = kvpair[1]
+                if len(kvpair) == 2 and kvpair[0].strip() and kvpair[1].strip():
+                    self.content[ kvpair[0].strip() ] = kvpair[1].strip()
+
+    def get(self, varname, *default):
+        ""
+        if len(default) > 0:
+            if varname in self.content:
+                return eval( self.content[varname] )
+            else:
+                return default[0]
+        else:
+            return self.content[varname]
+
+    def processCache(self, rtconfig):
+        ""
+        write_version = 0
+        for name,value in self.content.items():
+            if name == 'VERSION':
+                write_version = value
+            elif name == 'PLATFORM':
+                if not self.opts.plat:
+                    self.opts.plat = value
+            elif name == 'PROJECT':
+                # do not replace if the command line contains -j
+                if not self.opts.bin_dir:
+                    self.opts.bin_dir = value
+                    rtconfig.setAttr( 'exepath', value )
+            elif name == 'ONOPTS':
+                self.optD['onopts'] = value.split( '+' )
+                rtconfig.setAttr( 'onopts', self.optD['onopts'] )
+            elif name == 'OFFOPTS':
+                self.optD['offopts'] = value.split( '+' )
+                rtconfig.setAttr( 'offopts', self.optD['offopts'] )
+            elif name == 'TIMEOUT':
+                # do not replace if the command line contains -T
+                if self.opts.dash_T == None:
+                    self.opts.dash_T = value
+            elif name == 'TIMEOUT_MULTIPLIER':
+                if not self.opts.timeout_multiplier:
+                    self.opts.timeout_multiplier = value
+            elif name == 'SHORT_XDIRS':
+                if not self.opts.short_xdirs:
+                    self.opts.short_xdirs = value
 
 
 def check_for_currently_running_vvtest( tlist, optforce ):

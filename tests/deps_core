@@ -16,7 +16,6 @@ import vvtestutils as vtu
 import testutils as util
 from testutils import print3
 
-import libvvtest.testcreator as testcreator
 from libvvtest.errors import TestSpecError
 
 from libvvtest.testcase import TestCase
@@ -760,7 +759,7 @@ def make_TestSpec_test_case( name, subdir=None ):
 
 def create_tests( relpath, platname=None ):
     ""
-    creator = testcreator.TestCreator( {}, platname )
+    creator = vtu.creator( {}, platname )
     tL = creator.fromFile( relpath )
 
     return tL

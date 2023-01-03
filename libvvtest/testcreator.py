@@ -11,19 +11,22 @@ from .errors import TestSpecError
 from .staging import mark_staged_tests
 from .parsevvt import ScriptTestParser
 from .parsexml import XMLTestParser
+from .pathutil import change_directory
 
 
 class TestCreator:
 
-    def __init__(self, idflags={},
-                       platname=None,
-                       optionlist=[],
-                       force_params=None ):
+    def __init__(self, loc, idflags={},
+                            platname=None,
+                            optionlist=[],
+                            force_params=None ):
         """
+        The 'loc' is a Locator object.
         If 'force_params' is not None, then any parameters in a test that
         are in the 'force_params' dictionary will have their values replaced
         for that parameter name.
         """
+        self.loc = loc
         self.idflags = idflags
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist
@@ -71,7 +74,8 @@ class TestCreator:
                                         tspec.getRootpath(),
                                         strict=True )
 
-        maker.reparseTest( tspec )
+        with change_directory( self.loc.makeAbsPath('.') ):
+            maker.reparseTest( tspec )
 
     def create_test_maker(self, relpath, rootpath, strict):
         ""

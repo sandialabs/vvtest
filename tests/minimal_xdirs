@@ -228,7 +228,7 @@ class integration_tests( vtu.vvtestTestCase ):
             """ )
 
         idflags = {}
-        tc = testcreator.TestCreator( idflags )
+        tc = vtu.creator( idflags )
         tL = check_sort( tc.fromFile( 'atest.vvt' ) )
 
         assert tL[0].getExecuteDirectory() == 'atest.bar=x.foo=a'
@@ -237,7 +237,7 @@ class integration_tests( vtu.vvtestTestCase ):
         assert tL[1].getDisplayString()    == 'atest.bar=x.foo=b'
 
         idflags = { 'minxdirs':True }
-        tc = testcreator.TestCreator( idflags )
+        tc = vtu.creator( idflags )
         tL = check_sort( tc.fromFile( 'atest.vvt' ) )
 
         assert tL[0].getExecuteDirectory() == 'atest.foo=a'

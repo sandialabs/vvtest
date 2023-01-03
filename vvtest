@@ -312,7 +312,8 @@ def construct_testcase_creator( rtdata, opts, optD ):
     ""
     from libvvtest.testcreator import TestCreator
 
-    creator = TestCreator( make_idflags( opts ),
+    creator = TestCreator( rtdata.loc,
+                           make_idflags( opts ),
                            rtdata.rtconfig.getPlatformName(),
                            rtdata.rtconfig.getOptionList(),
                            optD['param_dict'] )

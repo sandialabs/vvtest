@@ -54,6 +54,7 @@ from libvvtest.scanner import TestFileScanner
 from libvvtest.wordexpr import WordExpression
 from libvvtest.depend import connect_dependency
 from libvvtest.tcfactory import TestCaseFactory
+from libvvtest.location import Locator
 
 
 ##########################################################################
@@ -725,10 +726,16 @@ def parse_time( colon_time_string ):
     return tval
 
 
+def creator( idflags={}, platname=None, opts=[] ):
+    ""
+    loc = Locator( os.getcwd() )
+    return testcreator.TestCreator( loc, idflags, platname, opts )
+
+
 def create_tests_from_file( filename, platname=core_platform_name(),
                                       optionlist=[] ):
     ""
-    creator = testcreator.TestCreator( {}, platname, optionlist )
+    tc = creator( {}, platname, optionlist )
 
     assert not os.path.isabs( filename )
     assert not os.path.normpath(filename).startswith('..')
@@ -736,7 +743,7 @@ def create_tests_from_file( filename, platname=core_platform_name(),
     dname,fname = os.path.split( filename )
 
     tL = []
-    for tspec in creator.fromFile( fname, dname ):
+    for tspec in tc.fromFile( fname, dname ):
         tL.append( testcase.TestCase( tspec ) )
 
     return tL
@@ -917,7 +924,7 @@ def scan_to_make_TestList( path, timeout_attr=None ):
     ""
     tlist = TestList( TestCaseFactory() )
 
-    tc = testcreator.TestCreator( {}, 'XBox', [] )
+    tc = creator( platname='XBox' )
     scan = TestFileScanner( tc, TestCaseFactory() )
     scan.scanPath( tlist, path )
 
@@ -953,7 +960,7 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
     ""
     tlist = TestList( TestCaseFactory() )
 
-    tc = testcreator.TestCreator( {}, 'XBox', [] )
+    tc = creator( platname='XBox' )
     scan = TestFileScanner( tc, TestCaseFactory() )
     scan.scanPath( tlist, path )
 

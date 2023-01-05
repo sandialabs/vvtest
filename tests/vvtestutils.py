@@ -728,8 +728,7 @@ def parse_time( colon_time_string ):
 
 def creator( idflags={}, platname=None, opts=[] ):
     ""
-    loc = Locator( os.getcwd() )
-    return testcreator.TestCreator( loc, idflags, platname, opts )
+    return testcreator.TestCreator( idflags, platname, opts )
 
 
 def create_tests_from_file( filename, platname=core_platform_name(),
@@ -925,7 +924,7 @@ def scan_to_make_TestList( path, timeout_attr=None ):
     tlist = TestList( TestCaseFactory() )
 
     tc = creator( platname='XBox' )
-    scan = TestFileScanner( tc, TestCaseFactory() )
+    scan = TestFileScanner( Locator(os.getcwd()), tc, TestCaseFactory() )
     scan.scanPath( tlist, path )
 
     if timeout_attr != None:
@@ -961,7 +960,7 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
     tlist = TestList( TestCaseFactory() )
 
     tc = creator( platname='XBox' )
-    scan = TestFileScanner( tc, TestCaseFactory() )
+    scan = TestFileScanner( Locator(os.getcwd()), tc, TestCaseFactory() )
     scan.scanPath( tlist, path )
 
     if timeout_attr != None:

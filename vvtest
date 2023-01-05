@@ -312,8 +312,7 @@ def construct_testcase_creator( rtdata, opts, optD ):
     ""
     from libvvtest.testcreator import TestCreator
 
-    creator = TestCreator( rtdata.loc,
-                           make_idflags( opts ),
+    creator = TestCreator( make_idflags( opts ),
                            rtdata.rtconfig.getPlatformName(),
                            rtdata.rtconfig.getOptionList(),
                            optD['param_dict'] )
@@ -356,7 +355,7 @@ def construct_test_scanner( rtdata, scandirs, opts ):
         scandirs.append( rtdata.curdir )  # magic:
         # scandirs.append( '.' )
 
-    scanner = TestFileScanner( rtdata.creator, rtdata.tcasefactory,
+    scanner = TestFileScanner( rtdata.loc, rtdata.creator, rtdata.tcasefactory,
                                scandirs, specform=opts.scan_type )
 
     rtdata.scanner = scanner

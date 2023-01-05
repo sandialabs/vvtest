@@ -9,19 +9,22 @@ from os.path import join as pjoin
 
 from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
+from .pathutil import change_directory
 
 
 class TestFileScanner:
 
-    def __init__(self, creator, tcasefactory,
+    def __init__(self, loc, creator, tcasefactory,
                        path_list=[],
                        specform=None,
                        warning_output_stream=sys.stdout):
         """
+        The 'loc' is a Locator object.
         If 'specform' is not None, it must be a list of strings, such as
         'vvt' and 'xml'.  The scanner will only pick up files for those test
         specification forms.  Default is only 'vvt' files.
         """
+        self.loc = loc
         self.creator = creator
         self.fact = tcasefactory
         self.path_list = path_list
@@ -56,10 +59,11 @@ class TestFileScanner:
 
     def completeTestParsing(self, testlist):
         ""
-        for tcase in testlist.getActiveTests():
-            tspec = tcase.getSpec()
-            if not tspec.constructionCompleted():
-                self.creator.reparse( tspec )
+        with change_directory( self.loc.makeAbsPath('.') ):
+            for tcase in testlist.getActiveTests():
+                tspec = tcase.getSpec()
+                if not tspec.constructionCompleted():
+                    self.creator.reparse( tspec )
 
     def _scan_recurse(self, testlist, basedir, d, dirs, files):
         """

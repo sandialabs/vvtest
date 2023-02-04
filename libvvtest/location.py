@@ -91,7 +91,7 @@ class Locator:
         ""
         sd = test_results_subdir_name( rundir, onopts, offopts, platname )
 
-        if not os.path.isabs( sd ):
+        if not os.path.isabs( sd ) and not self.mirror:
             tdir = self.makeAbsPath( sd )
             self.ipath = os.path.relpath( self.idir, tdir )
 
@@ -120,6 +120,7 @@ class Locator:
         relative directory. The 'subdir' is a relative path from the source
         to the directory containing the test vvt file.
         """
+        # print( 'magic: p2s', repr(subdir), repr(srcroot), repr(self.ipath), repr(self.idir) )
         if os.path.isabs( srcroot ):
             return normpath( pjoin( srcroot, subdir ) )
         elif self.ipath:

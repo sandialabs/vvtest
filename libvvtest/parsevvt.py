@@ -50,13 +50,13 @@ class ScriptTestParser:
         self.fpath = filepath
 
         self.root = rootpath or '.'
+        # print ( 'magic: parser, root', self.root, 'fpath', self.fpath )
 
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist
         self.force = force_params
 
         fname = os.path.join( self.root, filepath )
-        # print ( 'magic: parser, root', self.root, 'fname', fname )
         self.reader = ScriptReader( fname )
 
     def parseTestNames(self):

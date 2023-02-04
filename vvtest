@@ -352,8 +352,7 @@ def construct_test_scanner( rtdata, scandirs, opts ):
 
     if len( scandirs ) == 0:
         # scan current working directory by default
-        scandirs.append( rtdata.curdir )  # magic:
-        # scandirs.append( '.' )
+        scandirs.append( '.' )
 
     scanner = TestFileScanner( rtdata.loc, rtdata.creator, rtdata.tcasefactory,
                                scandirs, specform=opts.scan_type )

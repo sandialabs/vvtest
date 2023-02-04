@@ -113,7 +113,8 @@ class ExecutionHandler:
 
         tspec = tcase.getSpec()
 
-        srcdir = self.loc.path_to_source( tspec.getDirectory(), tspec.getRootpath() )
+        sub = dirname( tspec.getFilepath() ) or '.'
+        srcdir = self.loc.path_to_source( sub, tspec.getRootpath() )
 
         if self.symlinks:
             cpL = tspec.getCopyFiles()

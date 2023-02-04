@@ -416,22 +416,22 @@ class locator( vtu.vvtestTestCase ):
         ""
         loc = location.Locator( os.getcwd() )
         loc.computeLocation( None, [], [], 'foo' )
-        self.assertEqual( loc.path_to_source( 'sub', 'src' ), '../../../src/sub' )
-        self.assertEqual( loc.path_to_source( '.', 'src' ), '../../src' )
-        self.assertEqual( loc.path_to_source( '', 'src' ), '../../src' )
-        self.assertEqual( loc.path_to_source( 'sub', '../src/dir' ), '../../../../src/dir/sub' )
-        self.assertEqual( loc.path_to_source( '.', '.' ), '../..' )
-        self.assertEqual( loc.path_to_source( 'sub', '.' ), '../../../sub' )
-        self.assertEqual( loc.path_to_source( 'sub', '' ), '../../../sub' )
+        self.assertEqual( loc.path_to_source( 'sub/file', 'src' ), '../../../src/sub' )
+        self.assertEqual( loc.path_to_source( './file', 'src' ), '../../src' )
+        self.assertEqual( loc.path_to_source( 'file', 'src' ), '../../src' )
+        self.assertEqual( loc.path_to_source( 'sub/file', '../src/dir' ), '../../../../src/dir/sub' )
+        self.assertEqual( loc.path_to_source( './file', '.' ), '../..' )
+        self.assertEqual( loc.path_to_source( 'sub/file', '.' ), '../../../sub' )
+        self.assertEqual( loc.path_to_source( 'sub/file', '' ), '../../../sub' )
 
         loc = location.Locator( os.getcwd() )
         loc.computeLocation( 'my/rundir', [], [], 'foo' )
-        self.assertEqual( loc.path_to_source( 'sub', 'src' ), '../../../../src/sub' )
-        self.assertEqual( loc.path_to_source( 'sub', '.' ), '../../../../sub' )
+        self.assertEqual( loc.path_to_source( 'sub/file', 'src' ), '../../../../src/sub' )
+        self.assertEqual( loc.path_to_source( 'sub/file', '.' ), '../../../../sub' )
 
         loc = location.Locator( os.getcwd() )
         loc.computeLocation( '/my/abs/rundir', [], [], 'foo' )
-        self.assertEqual( loc.path_to_source( 'sub', 'src' ), abspath('src/sub') )
+        self.assertEqual( loc.path_to_source( 'sub/file', 'src' ), abspath('src/sub') )
 
 
 class exit_status_controls( vtu.vvtestTestCase ):

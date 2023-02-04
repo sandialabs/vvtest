@@ -352,12 +352,14 @@ class ExecutionHandler_class_methods( vtu.vvtestTestCase ):
         texec = testexec.TestExec( tcase )
 
         rtconfig = vtu.make_RuntimeConfig()
-        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None, None,
+        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None,
+                                             Locator(os.getcwd()),
                                              shbang_supported=True )
         cmdL = xhnd.make_execute_command( texec, False, sys.executable )
         assert cmdL == [ './atest.vvt' ]
 
-        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None, None,
+        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None,
+                                             Locator(os.getcwd()),
                                              shbang_supported=False )
         cmdL = xhnd.make_execute_command( texec, False, sys.executable )
         assert cmdL == [ sys.executable, 'atest.vvt' ]

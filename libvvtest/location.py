@@ -113,13 +113,14 @@ class Locator:
         else:
             return normpath( pjoin( self.idir, path ) )
 
-    def path_to_source(self, subdir, srcroot):
+    def path_to_source(self, relfile, srcroot):
         """
         Returns the path to the test source directory. May be an absolute
         path (if both the rundir and 'srcroot' are relative paths), or a
-        relative directory. The 'subdir' is a relative path from the source
-        to the directory containing the test vvt file.
+        relative directory. The 'relfile' is a relative path from the source
+        root to the test vvt file.
         """
+        subdir = dirname(relfile) or '.'
         # print( 'magic: p2s', repr(subdir), repr(srcroot), repr(self.ipath), repr(self.idir) )
         if os.path.isabs( srcroot ):
             return normpath( pjoin( srcroot, subdir ) )

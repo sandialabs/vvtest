@@ -113,8 +113,7 @@ class ExecutionHandler:
 
         tspec = tcase.getSpec()
 
-        sub = dirname( tspec.getFilepath() ) or '.'
-        srcdir = self.loc.path_to_source( sub, tspec.getRootpath() )
+        srcdir = self.loc.path_to_source( tspec.getFilepath(), tspec.getRootpath() )
 
         if self.symlinks:
             cpL = tspec.getCopyFiles()
@@ -168,7 +167,7 @@ class ExecutionHandler:
         ""
         tspec = tcase.getSpec()
 
-        srcdir = self.loc.path_to_source( tspec.getDirectory(), tspec.getRootpath() )
+        srcdir = self.loc.path_to_source( tspec.getFilepath(), tspec.getRootpath() )
 
         # TODO: add file globbing for baseline files
         for fromfile,tofile in tspec.getBaselineFiles():
@@ -212,7 +211,7 @@ class ExecutionHandler:
         ""
         tcase = texec.getTestCase()
 
-        maker = MakeScriptCommand( tcase.getSpec(),
+        maker = MakeScriptCommand( self.loc, tcase.getSpec(),
                                    pythonexe=pyexe,
                                    shbang_supported=self.shbang )
         cmdL = maker.make_base_execute_command( baseline )

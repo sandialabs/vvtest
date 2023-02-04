@@ -21,13 +21,11 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
     Writes a helper script for the test.  The script language is based on
     the 'lang' argument.
     """
-    testobj = testcase.getSpec()
-    tname = testobj.getName()
+    tspec = testcase.getSpec()
+    tname = tspec.getName()
 
-    troot = testobj.getRootpath()
-    # assert os.path.isabs( troot )
-    trel = dirname( testobj.getFilepath() )
-    srcdir = normpath( pjoin( troot, trel ) )  # magic: adjust if relative troot
+    troot = tspec.getRootpath()
+    srcdir = loc.path_to_source( tspec.getFilepath(), tspec.getRootpath() )
 
     test_dir = loc.getTestingDirectory()
 
@@ -58,7 +56,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
         w.add( 'import os, sys',
                '',
                'NAME = '+repr(tname),
-               'TESTID = '+repr( testobj.getTestID().computeMatchString() ),
+               'TESTID = '+repr( tspec.getTestID().computeMatchString() ),
                'PLATFORM = '+repr(platname),
                'COMPILER = '+repr(cplrname),
                'VVTESTSRC = '+repr(tdir),
@@ -68,7 +66,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
                'OPTIONS_OFF = '+repr( offopts ),
                'SRCDIR = '+repr(srcdir),
                'TIMEOUT = '+repr(timeout),
-               'KEYWORDS = '+repr(testobj.getKeywords(include_implicit=False)) )
+               'KEYWORDS = '+repr(tspec.getKeywords(include_implicit=False)) )
 
         w.add( 'CONFIGDIR = '+repr(configdirs) )
 
@@ -101,15 +99,15 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
             w.add( '    os.environ["'+k+'"] = '+repr(v) )
 
         w.add( '', '# parameters defined by the test' )
-        paramD = testobj.getParameters( typed=True )
+        paramD = tspec.getParameters( typed=True )
         w.add( 'PARAM_DICT = '+repr( paramD ) )
         for k,v in paramD.items():
             w.add( k+' = '+repr(v) )
 
-        if testobj.isAnalyze():
+        if tspec.isAnalyze():
             # the parameter names and values of the children tests
             w.add( '', '# parameters comprising the children' )
-            psetD = testobj.getParameterSet().getParameters( typed=True )
+            psetD = tspec.getParameterSet().getParameters( typed=True )
             for n,L in psetD.items():
                 if len(n) == 1:
                     L2 = [ T[0] for T in L ]
@@ -171,7 +169,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
 
         w.add( '',
                'NAME="'+tname+'"',
-               'TESTID="'+testobj.getTestID().computeMatchString()+'"',
+               'TESTID="'+tspec.getTestID().computeMatchString()+'"',
                'PLATFORM="'+platname+'"',
                'COMPILER="'+cplrname+'"',
                'VVTESTSRC="'+tdir+'"',
@@ -183,7 +181,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
                'TIMEOUT="'+str(timeout)+'"',
                'PYTHONEXE="'+sys.executable+'"' )
 
-        kwds = ' '.join( testobj.getKeywords(include_implicit=False) )
+        kwds = ' '.join( tspec.getKeywords(include_implicit=False) )
         w.add( 'KEYWORDS="'+kwds+'"' )
 
         w.add( 'CONFIGDIR="'+':'.join( configdirs )+'"' )
@@ -212,15 +210,15 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
         w.add( '}' )
 
         w.add( '', '# parameters defined by the test' )
-        paramD = testobj.getParameters()
+        paramD = tspec.getParameters()
         s = ' '.join( [ n+'/'+v for n,v in paramD.items() ] )
         w.add( 'PARAM_DICT="'+s+'"' )
         for k,v in paramD.items():
             w.add( k+'="'+v+'"' )
 
-        if testobj.isAnalyze():
+        if tspec.isAnalyze():
             w.add( '', '# parameters comprising the children' )
-            psetD = testobj.getParameterSet().getParameters()
+            psetD = tspec.getParameterSet().getParameters()
             if len(psetD) > 0:
                 # the parameter names and values of the children tests
                 for n,L in psetD.items():

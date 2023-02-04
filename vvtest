@@ -717,7 +717,7 @@ def extract_test_files( param_dict, target_dir, rtdata ):
     rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
     rtdata.selector.applyPermanentFilters( tlist )
 
-    extract.copy_out_test_files( target_dir, tlist.getActiveTests() )
+    extract.copy_out_test_files( rtdata.loc, target_dir, tlist.getActiveTests() )
 
 
 def run_tests( opts, optD, rtdata ):

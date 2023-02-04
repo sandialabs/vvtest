@@ -623,8 +623,8 @@ class script_utils_tests( vtu.vvtestTestCase ):
 
         assert vrun.countGrepLogs( 'quick brown fox', 'py1' ) == 1
         assert vrun.countGrepLogs( 'lazy dog', 'py1' ) == 1
-        assert vrun.countGrepLogs( 'which = /*/subdir/myscript', 'py1' ) == 1
-        assert vrun.countGrepLogs( 'which = /*/subdir/myscript', 'py2' ) == 1
+        assert vrun.countGrepLogs( 'which = */subdir/myscript', 'py1' ) == 1
+        assert vrun.countGrepLogs( 'which = */subdir/myscript', 'py2' ) == 1
 
     def test_the_user_termination_function(self):
         ""

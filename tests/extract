@@ -170,11 +170,11 @@ class extract_use_cases( vtu.vvtestTestCase ):
             #VVT: sources : file4.txt ${NAME}_*.py
             import os
             import vvtest_util as vvt
-            fp = open( 'file1.txt' ) ; print ( fp.read() ) ; fp.close()
-            fp = open( 'file2.txt' ) ; print ( fp.read() ) ; fp.close()
-            fp = open( vvt.SRCDIR+'/file3.txt' ) ; print ( fp.read() ) ; fp.close()
-            fp = open( vvt.SRCDIR+'/file4.txt' ) ; print ( fp.read() ) ; fp.close()
-            fp = open( vvt.SRCDIR+'/atest_1.py' ) ; print ( fp.read() ) ; fp.close()
+            for fn in [ 'file1.txt', 'file2.txt',
+                        vvt.SRCDIR+'/file3.txt', vvt.SRCDIR+'/file4.txt',
+                        vvt.SRCDIR+'/atest_1.py' ]:
+                with open( fn, 'rt' ) as fp:
+                    print ( fp.read() )
             if os.path.exists( vvt.SRCDIR+'/2_atest.py' ):
                 print ( 'py file 2 exists' )
             """ )

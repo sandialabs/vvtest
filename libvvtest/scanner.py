@@ -46,9 +46,6 @@ class TestFileScanner:
         """
         Recursively scans for test XML or VVT files starting at 'path'.
         """
-        path = os.path.normpath( os.path.abspath(path) )  # magic
-        # print( 'magic: scan, path', path )
-
         if os.path.isfile( path ):
             basedir,fname = os.path.split( path )
             self.readTestFile( testlist, basedir, fname )

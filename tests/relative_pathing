@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST: vvtest
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+from os.path import abspath
+from os.path import join as pjoin
+import time
+import shutil
+from glob import glob
+import stat
+
+import vvtestutils as vtu
+import testutils as util
+
+
+class suite( vtu.vvtestTestCase ):
+
+    def test_use_case_move_top_level(self):
+        ""
+        util.writefile( 'loc1/atest.vvt', """
+            #VVT: parameterize: foo = 3
+            #VVT: analyze: --analyze
+            import os, sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv[1:]:
+                assert len(vvt.DEPDIRS) == 1
+                assert os.path.exists( os.path.join( vvt.DEPDIRS[0], 'afile.txt' ) )
+            else:
+                with open( 'afile.txt', 'wt' ) as fp:
+                    fp.write( 'hello'+os.linesep )
+            """ )
+
+        vrun = vtu.runvvtest( chdir='loc1' )
+        vrun.assertCounts( total=2, npass=2 )
+
+        # rename the directory containing both the test source and the
+        # test execution
+        os.rename( 'loc1', 'loc2' )
+        vrun = vtu.runvvtest( '-ivv', chdir='loc2' )
+        vrun.assertCounts( total=2, npass=2 )
+
+
+# try rerunning just the analyze test after the move
+# use of mirror -M forces ipath to be an absolute path
+# use case: test source directory is relative but test directory is absolute
+
+# pathing in vvtest_util file
+# batch test results pathing (not the qbat files necessarily)
+# vvtest.cache file
+
+# test when specifying test source explicitely (versus assuming cwd)
+
+############################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

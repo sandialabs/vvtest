@@ -502,7 +502,7 @@ def construct_results_writers( rtdata, opts, optD ):
             writers.addWriter( wr )
 
         if opts.save_results:
-            wr = construct_testlist_writer( rtdata.testdir, opts, optD,
+            wr = construct_testlist_writer( rtdata, opts, optD,
                                             rtdata.perms, rtdata.plat )
             writers.addWriter( wr )
 
@@ -577,7 +577,7 @@ def construct_cdash_writer( test_dir, opts, optD, perms ):
     return cdashobj
 
 
-def construct_testlist_writer( test_dir, opts, optD, perms, platobj ):
+def construct_testlist_writer( rtdata, opts, optD, perms, platobj ):
     ""
     import libvvtest.listwriter as listwriter
 
@@ -586,7 +586,7 @@ def construct_testlist_writer( test_dir, opts, optD, perms, platobj ):
     if not listwriter.is_target_like_scp( todir ):
         todir = normpath( abspath( todir ) )
 
-    wlistobj = listwriter.ListWriter( perms, todir, test_dir )
+    wlistobj = listwriter.ListWriter( rtdata.loc, perms, todir, rtdata.testdir )
 
     wlistobj.setOutputDate( opts.results_date )
     wlistobj.setNamingTags( optD['onopts'], opts.results_tag )

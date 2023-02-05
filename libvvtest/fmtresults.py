@@ -714,7 +714,7 @@ def _svn_rootrel(tdir):
     return None
 
 
-def determine_rootrel( testspec, dcache ):
+def determine_rootrel( srcdir, dcache ):
     """
     Uses the directory containing the test specification file to determine
     the directory path from the root directory down to this test.  The path
@@ -723,18 +723,16 @@ def determine_rootrel( testspec, dcache ):
     determined.  The 'dcache' argument is a dictionary used for caching test
     directories to rootrel directories.
     """
-    tdir = testspec.getDirectory()
+    rootrel = dcache.get( srcdir, None )
 
-    rootrel = dcache.get( tdir, None )
-
-    if rootrel == None:
-        rootrel = _svn_rootrel( tdir )
-        if rootrel == None:
-            rootrel = file_rootrel( tdir )
-        if rootrel == None:
+    if rootrel is None:
+        rootrel = _svn_rootrel( srcdir )
+        if rootrel is None:
+            rootrel = file_rootrel( srcdir )
+        if rootrel is None:
             # mark this directory so we don't waste time trying again
             rootrel = ''
-        dcache[tdir] = rootrel
+        dcache[srcdir] = rootrel
 
     return rootrel
 

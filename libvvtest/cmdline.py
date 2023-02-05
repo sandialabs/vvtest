@@ -395,10 +395,6 @@ def adjust_options_and_create_derived_options( opts ):
         opts.tmax = mx
         opts.tsum = sm
 
-        errtype = '-j option'
-        if opts.bin_dir is not None:
-            opts.bin_dir = os.path.normpath( os.path.abspath( opts.bin_dir ) )
-
         errtype = '--results-date'
         if opts.results_date is not None:
             opts.results_date = check_convert_date_spec( opts.results_date )

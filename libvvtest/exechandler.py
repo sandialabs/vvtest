@@ -273,10 +273,14 @@ class ExecutionHandler:
         if self.rtconfig.getAttr('preclean') or \
            not os.path.exists( script_file ):
 
-            troot = self.loc.makeAbsPath( tspec.getRootpath() )
+            troot = self.loc.make_abspath( tspec.getRootpath() )
             assert os.path.isabs( troot )
             tdir = os.path.dirname( tspec.getFilepath() )
             srcdir = normpath( pjoin( troot, tdir ) )
+
+            exepath = self.rtconfig.getAttr('exepath')
+            if exepath is not None:
+                exepath = self.loc.path_to_file( tspec.getFilepath(), exepath )
 
             # note that this writes a different sequence if the test is an
             # analyze test
@@ -284,7 +288,7 @@ class ExecutionHandler:
                                          self.commondb,
                                          self.platform,
                                          self.rtconfig.getAttr('vvtestdir'),
-                                         self.rtconfig.getAttr('exepath'),
+                                         exepath,
                                          self.rtconfig.getAttr('configdir'),
                                          srcdir,
                                          self.rtconfig.getAttr('onopts'),

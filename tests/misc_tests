@@ -433,6 +433,20 @@ class locator( vtu.vvtestTestCase ):
         loc.computeLocation( '/my/abs/rundir', [], [], 'foo' )
         self.assertEqual( loc.path_to_source( 'sub/file', 'src' ), abspath('src/sub') )
 
+    def test_path_from_test_xdir_to_a_file_or_directory(self):
+        ""
+        loc = location.Locator( os.getcwd() )
+        loc.computeLocation( None, [], [], 'foo' )
+        self.assertEqual( loc.path_to_file( 'sub/file', abspath('foo') ), abspath('foo') )
+        self.assertEqual( loc.path_to_file( 'sub/file', 'foo' ), '../../../foo' )
+        up1 = normpath( pjoin( os.getcwd(), '..' ) )
+        self.assertEqual( loc.path_to_file( 'sub/file', up1 ), up1 )
+        self.assertEqual( loc.path_to_file( 'sub/file', '../foo' ), '../../../../foo' )
+
+        loc = location.Locator( os.getcwd() )
+        loc.computeLocation( 'my/rundir', [], [], 'foo' )
+        self.assertEqual( loc.path_to_file( 'sub/file', 'foo' ), '../../../../foo' )
+
 
 class exit_status_controls( vtu.vvtestTestCase ):
 

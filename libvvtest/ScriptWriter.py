@@ -37,7 +37,10 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
     trigdir = pjoin( tdir, 'trig' )  # magic: must be absolute
 
     projdir = rtconfig.getAttr('exepath')  # magic: examine
-    if not projdir: projdir = ''
+    if projdir is None:
+        projdir = ''
+    else:
+        projdir = loc.path_to_file( tspec.getFilepath(), projdir )
 
     onopts = rtconfig.getAttr('onopts')
     offopts = rtconfig.getAttr('offopts')

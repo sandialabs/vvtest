@@ -43,7 +43,7 @@ def copy_out_test_files( loc, target_dir, testcase_list ):
         tname = tspec.getName()
         T = (tname, tspec.getFilename())
 
-        from_dir = loc.makeAbsPath( tspec.getDirectory() )
+        from_dir = loc.make_abspath( tspec.getDirectory() )
         p = os.path.dirname( tspec.getFilepath() )
         if p: to_dir = os.path.normpath( os.path.join( target_dir, p ) )
         else: to_dir = target_dir

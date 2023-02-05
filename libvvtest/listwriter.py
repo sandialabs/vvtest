@@ -133,7 +133,7 @@ class ListWriter:
         tr = fmtresults.TestResults()
 
         for tcase in tcaseL:
-            srcdir = dirname( self.loc.makeAbsPath( tcase.getSpec().getFilename() ) )
+            srcdir = dirname( self.loc.make_abspath( tcase.getSpec().getFilename() ) )
             rootrel = fmtresults.determine_rootrel( srcdir, dcache )
             if rootrel:
                 tr.addTest( tcase, rootrel )

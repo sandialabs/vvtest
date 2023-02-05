@@ -92,10 +92,10 @@ class Locator:
         sd = test_results_subdir_name( rundir, onopts, offopts, platname )
 
         if not os.path.isabs( sd ) and not self.mirror:
-            tdir = self.makeAbsPath( sd )
+            tdir = self.make_abspath( sd )
             self.ipath = os.path.relpath( self.idir, tdir )
 
-        self.testdir = self.makeAbsPath( sd )
+        self.testdir = self.make_abspath( sd )
 
         return self.testdir
 
@@ -106,32 +106,45 @@ class Locator:
         if self.wipe:
             pathutil.remove_directory_contents( self.testdir )
 
-    def makeAbsPath(self, path):
-        ""
+    def make_abspath(self, path):
+        """
+        If 'path' is relative, then this returns an absolute path of 'path'
+        relative to the initial working directory. If absolute, it just
+        returns its input.
+        """
         if os.path.isabs( path ):
             return normpath( path )
         else:
             return normpath( pjoin( self.idir, path ) )
 
-    def path_to_source(self, relfile, srcroot):
+    def path_to_file(self, testfile, filepath):
         """
-        Returns the path to the test source directory. May be an absolute
-        path (if both the rundir and 'srcroot' are relative paths), or a
-        relative directory. The 'relfile' is a relative path from the source
-        root to the test vvt file.
+        Returns a path from the test execution directory to the given
+        'filepath' (which can be a file or a directory). The returned path
+        may be relative or absolute.
         """
-        subdir = dirname(relfile) or '.'
-        # print( 'magic: p2s', repr(subdir), repr(srcroot), repr(self.ipath), repr(self.idir) )
-        if os.path.isabs( srcroot ):
-            return normpath( pjoin( srcroot, subdir ) )
+        subdir = dirname(testfile) or '.'
+        if os.path.isabs( filepath ):
+            return normpath( filepath )
         elif self.ipath:
             # Note: The extra '..' is the final xdir segment for the test.
             #       Unfortunately, this means yet another place where the
             #       execution directory structure is encoded.
             upd = pjoin( '..', reverse_path_direction( subdir ) )
-            return normpath( pjoin( upd, self.ipath, srcroot, subdir ) )
+            return normpath( pjoin( upd, self.ipath, filepath ) )
         else:
-            return normpath( pjoin( self.idir, srcroot, subdir ) )
+            return normpath( pjoin( self.idir, filepath ) )
+
+    def path_to_source(self, testfile, srcroot):
+        """
+        Returns the path to the test source directory. The 'testfile' is a
+        relative path from the source root to the test vvt file. If the
+        returned path is a relative path, then it is relative from the
+        test execution directory for the test to the source directory for
+        the test.
+        """
+        subdir = dirname(testfile) or '.'
+        return self.path_to_file( testfile, pjoin( srcroot, subdir ) )
 
     def getLocation(self):
         ""

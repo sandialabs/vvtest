@@ -922,8 +922,7 @@ class CacheFileHandler:
             if self.opts.plat:
                   fp.write( 'PLATFORM=' + self.opts.plat.strip() + '\n' )
             if rtconfig.getAttr('exepath'):
-                fp.write( \
-                    'PROJECT=' + abspath( rtconfig.getAttr('exepath') ) + '\n' )
+                fp.write( 'PROJECT=' + rtconfig.getAttr('exepath') + '\n' )
             if self.optD['onopts']:
                 fp.write( 'ONOPTS=' + '+'.join( self.optD['onopts'] ) + '\n' )
             if self.optD['offopts']:
@@ -935,7 +934,7 @@ class CacheFileHandler:
                                 str(self.opts.timeout_multiplier).strip() + '\n' )
             if self.opts.short_xdirs:
                 fp.write( 'SHORT_XDIRS='+self.opts.short_xdirs + '\n' )
-            fp.write( 'LOCATION='+repr(loc.getLocation()) )
+            fp.write( 'LOCATION='+repr(loc.getLocation())+'\n' )
 
         perms.apply( abspath(fname) )
 

@@ -56,7 +56,7 @@ class TestFileScanner:
 
     def completeTestParsing(self, testlist):
         ""
-        with change_directory( self.loc.makeAbsPath('.') ):
+        with change_directory( self.loc.make_abspath('.') ):
             for tcase in testlist.getActiveTests():
                 tspec = tcase.getSpec()
                 if not tspec.constructionCompleted():

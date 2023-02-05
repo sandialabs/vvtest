@@ -23,50 +23,98 @@ import testutils as util
 
 class suite( vtu.vvtestTestCase ):
 
-    def test_use_case_move_top_level(self):
+    def use_case_move_top_level(self, batch):
         ""
-        util.writescript( 'loc1/bin/ascript', """
-            #!"""+sys.executable+"""
-            print ( 'running ascript' )
-            """ )
+        write_use_case_files( 'loc1' )
 
-        util.writefile( 'loc1/atest.vvt', """
-            #VVT: parameterize: foo = 3
-            #VVT: analyze: --analyze
-            import os, sys
-            import vvtest_util as vvt
-            assert os.path.exists( os.path.join( vvt.PROJECT, 'ascript' ) )
-            if '--analyze' in sys.argv[1:]:
-                assert len(vvt.DEPDIRS) == 1
-                assert os.path.exists( os.path.join( vvt.DEPDIRS[0], 'afile.txt' ) )
-            else:
-                with open( 'afile.txt', 'wt' ) as fp:
-                    fp.write( 'hello'+os.linesep )
-            """ )
-
-        vrun = vtu.runvvtest( '-j bin', chdir='loc1' )
+        vrun = vtu.runvvtest( '-j bin', chdir='loc1', batch=batch )
         vrun.assertCounts( total=2, npass=2 )
         rdir = basename( vrun.resultsDir() )
 
         # rename the directory containing both the test source and the
         # test execution
         os.rename( 'loc1', 'loc2' )
+
         vrun = vtu.runvvtest( '-ivv', chdir='loc2' )
         vrun.assertCounts( total=2, npass=2 )
 
-        vrun = vtu.runvvtest( '-R', chdir='loc2/'+rdir )
+        vrun = vtu.runvvtest( '-R', chdir='loc2/'+rdir, batch=batch )
+        vrun.assertCounts( total=2, npass=2 )
+
+    def test_use_case_move_top_level(self):
+        ""
+        self.use_case_move_top_level( False )
+
+    def test_use_case_move_top_level_in_batch_mode(self):
+        ""
+        self.use_case_move_top_level( True )
+
+    def use_case_move_the_test_results_directory(self, batch):
+        ""
+        write_use_case_files( 'tsrc' )
+
+        vrun = vtu.runvvtest( '-j tsrc/bin tsrc', batch=batch )
+        vrun.assertCounts( total=2, npass=2 )
+        tdir = basename( vrun.resultsDir() )
+
+        # rename just the test execution directory
+        os.rename( tdir, 'newtestdir' )
+
+        vrun = vtu.runvvtest( '-ivv', chdir='newtestdir' )
+        vrun.assertCounts( total=2, npass=2 )
+
+        vrun = vtu.runvvtest( '-R', chdir='newtestdir', batch=batch )
+        vrun.assertCounts( total=2, npass=2 )
+
+    def test_use_case_move_the_test_results_directory(self):
+        ""
+        self.use_case_move_the_test_results_directory( False )
+
+    def test_use_case_move_the_test_results_directory_in_batch_mode(self):
+        ""
+        self.use_case_move_the_test_results_directory( True )
+
+    def test_use_case_move_test_results_when_test_source_is_absolute(self):
+        ""
+        os.mkdir( 'subd' )
+        write_use_case_files( 'tsrc' )
+        tsrc = abspath('tsrc')
+
+        vrun = vtu.runvvtest( '-j '+tsrc+'/bin '+tsrc )
+        vrun.assertCounts( total=2, npass=2 )
+        tdir = basename( vrun.resultsDir() )
+
+        # move the execution directory into a subdirectory
+        os.rename( tdir, 'subd/'+tdir )
+
+        vrun = vtu.runvvtest( '-ivv', chdir='subd/'+tdir )
+        vrun.assertCounts( total=2, npass=2 )
+
+        vrun = vtu.runvvtest( '-R', chdir='subd/'+tdir )
         vrun.assertCounts( total=2, npass=2 )
 
 
-# try rerunning just the analyze test after the move
-# use of mirror -M forces ipath to be an absolute path
-# use case: test source directory is relative but test directory is absolute
+def write_use_case_files( topdir ):
+    ""
+    util.writescript( pjoin(topdir, 'bin/ascript'), """
+        #!"""+sys.executable+"""
+        print ( 'running ascript' )
+        """ )
 
-# pathing in vvtest_util file
-# batch test results pathing (not the qbat files necessarily)
-# vvtest.cache file
+    util.writefile( pjoin(topdir, 'atest.vvt'), """
+        #VVT: parameterize: foo = 3
+        #VVT: analyze: --analyze
+        import os, sys
+        import vvtest_util as vvt
+        assert os.path.exists( os.path.join( vvt.PROJECT, 'ascript' ) )
+        if '--analyze' in sys.argv[1:]:
+            assert len(vvt.DEPDIRS) == 1
+            assert os.path.exists( os.path.join( vvt.DEPDIRS[0], 'afile.txt' ) )
+        else:
+            with open( 'afile.txt', 'wt' ) as fp:
+                fp.write( 'hello'+os.linesep )
+        """ )
 
-# test when specifying test source explicitely (versus assuming cwd)
 
 ############################################################################
 

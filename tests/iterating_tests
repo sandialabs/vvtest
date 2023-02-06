@@ -17,7 +17,7 @@ import testutils as util
 print3 = util.print3
 
 import libvvtest.testcase as testcase
-import libvvtest.execlist as execlist
+from libvvtest.backlog import TestBacklog
 from libvvtest.execlist import TestExecList
 from libvvtest.TestList import TestList
 from libvvtest.testexec import TestExec
@@ -40,8 +40,8 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         back = make_test_backlog_object()
 
         tL = []
-        for texec in back.iterate():
-            tL.append( runtime_tuple(texec) )
+        for tcase in back.iterate():
+            tL.append( runtime_tuple(tcase) )
             print3( tL[-1] )
 
         assert tL == [ ['sdir/atest1.np=2', (2,0), 22],
@@ -53,59 +53,44 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         ""
         back = make_test_backlog_object()
 
-        class MyConstraint:
-            def __init__(self, maxnp):
-                self.maxnp = maxnp
-            def getMaxNP(self):
-                return self.maxnp
-            def apply(self, texec):
-                return texec.getTestCase().getStat().getRuntime() < 20
+        tcase = back.pop_by_size( (4,0) )
 
-        texec = back.pop( MyConstraint(4) )
+        print3( runtime_tuple(tcase) )
+        self.assertEqual( runtime_tuple(tcase), [ 'sdir/atest1.np=2', (2,0), 22 ] )
 
-        print3( runtime_tuple(texec) )
-        assert runtime_tuple(texec) == [ 'sdir/atest0.np=2', (2,0), 12 ]
+        tcase = back.pop_by_size( (1,0) )
 
-        texec = back.pop( MyConstraint(1) )
-
-        print3( runtime_tuple(texec) )
-        assert runtime_tuple(texec) == [ 'sdir/atest0.np=1', (1,0), 11 ]
+        print3( runtime_tuple(tcase) )
+        self.assertEqual( runtime_tuple(tcase), [ 'sdir/atest1.np=1', (1,0), 21 ] )
 
         tL = []
-        for texec in back.consume():
-            tL.append( runtime_tuple(texec) )
+        for tcase in back.consume():
+            tL.append( runtime_tuple(tcase) )
             print3( tL[-1] )
 
-        assert tL == [ [ 'sdir/atest1.np=2', (2,0), 22 ],
-                       [ 'sdir/atest1.np=1', (1,0), 21 ] ]
-
-    def test_iterate_backlog_by_size_and_timeout(self):
-        ""
-        back = make_test_backlog_object( timespec='timeout' )
-
-        tL = []
-        for texec in back.consume():
-            tL.append( timeout_tuple(texec) )
-            print3( tL[-1] )
-
-        assert tL == [ [ 'sdir/atest1.np=2', (2,0), 22 ],
-                       [ 'sdir/atest0.np=2', (2,0), 12 ],
-                       [ 'sdir/atest1.np=1', (1,0), 21 ],
-                       [ 'sdir/atest0.np=1', (1,0), 11 ] ]
+        self.assertEqual( tL, [ [ 'sdir/atest0.np=2', (2,0), 12 ],
+                                [ 'sdir/atest0.np=1', (1,0), 11 ] ] )
 
     def test_iterate_TestExecList_by_size_and_constraint(self):
-        ""
+        """
+        fake test list produces these tests with runtimes:
+            sdir/atest0.np=1 11
+            sdir/atest0.np=2 12
+            sdir/atest1.np=1 21
+            sdir/atest1.np=2 22
+
+        by default, tests are sorted by size and runtime
+        """
+
         tlist, xlist = vtu.make_fake_TestExecList( timespec='runtime' )
         tlist.setResultsDate()
         tlist.initializeResultsFile()
 
-        xlist._sort_by_size_and_runtime()
-
         texec1 = xlist.popNext( (1,0) )
-        assert texec1.getTestCase().getStat().getRuntime() == 21
+        assert texec1.getTestCase().getSpec().getDisplayString() == 'sdir/atest1.np=1'
 
         texec2 = xlist.popNext( (1,0) )
-        assert texec2.getTestCase().getStat().getRuntime() == 11
+        assert texec2.getTestCase().getSpec().getDisplayString() == 'sdir/atest0.np=1'
 
         assert xlist.popNext( (1,0) ) == None
 
@@ -114,28 +99,7 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         xlist.testDone( texec2 )
 
         texec3 = xlist.popNext( (1,0) )
-        assert texec3.getTestCase().getStat().getRuntime() == 22
-
-    def test_iterate_TestExecList_by_size_and_timeout(self):
-        ""
-        tlist, xlist = vtu.make_fake_TestExecList( timespec='timeout' )
-
-        xlist.sortBySizeAndTimeout()
-
-        tL = []
-        while True:
-            texec = xlist.getNextTest()
-            if texec:
-                tL.append( timeout_tuple(texec) )
-                # this checks that the test is "waiting"
-                xlist._move_to_started( texec )
-            else:
-                break
-
-        assert tL == [ [ 'sdir/atest1.np=2', (2,0), 22 ],
-                       [ 'sdir/atest0.np=2', (2,0), 12 ],
-                       [ 'sdir/atest1.np=1', (1,0), 21 ],
-                       [ 'sdir/atest0.np=1', (1,0), 11 ] ]
+        assert texec3.getTestCase().getSpec().getDisplayString() == 'sdir/atest1.np=2'
 
     def test_iteration_order_is_by_num_procs_even_with_num_devices_present(self):
         ""
@@ -146,7 +110,7 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
 
         tL = []
         for texec in xlist.consumeBacklog():
-            tL.append( runtime_tuple(texec) )
+            tL.append( runtime_tuple( texec.getTestCase() ) )
             print3( tL[-1] )
 
         assert tL[:4] == [ ['testC.np=8', (8, 0), None],
@@ -170,13 +134,13 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         tL = []
 
         texec = xlist.popNext( (4,2) )
-        tL.append( runtime_tuple(texec) )
+        tL.append( runtime_tuple( texec.getTestCase() ) )
 
         texec = xlist.popNext( (1,2) )
-        tL.append( runtime_tuple(texec) )
+        tL.append( runtime_tuple( texec.getTestCase() ) )
 
         texec = xlist.popNext( (1,2) )
-        tL.append( runtime_tuple(texec) )
+        tL.append( runtime_tuple( texec.getTestCase() ) )
 
         assert xlist.popNext( (1,2) ) == None
 
@@ -188,7 +152,7 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
                         ['testA.ndevice=2', (1, 2), None] ]
 
         texec = xlist.popNext( (8,0) )
-        assert runtime_tuple(texec) == ['testC.np=8', (8, 0), None]
+        assert runtime_tuple( texec.getTestCase() ) == ['testC.np=8', (8, 0), None]
 
 
 def write_np_and_ndevice_tests():
@@ -207,23 +171,19 @@ def write_np_and_ndevice_tests():
 def prepare_TestExecList():
     ""
     tlist,xlist = vtu.scan_to_make_TestExecList( '.' )
-    xlist = TestExecList( tlist, None )
-    xlist._generate_backlog_from_testlist()
-    xlist._sort_by_size_and_runtime()
+    xlist = TestExecList( tlist, vtu.FakeHandler() )
 
     return tlist, xlist
 
 
-def runtime_tuple( texec ):
+def runtime_tuple( tcase ):
     ""
-    tcase = texec.getTestCase()
     return [ tcase.getSpec().getDisplayString(),
              tcase.getSize(),
              tcase.getStat().getRuntime( None ) ]
 
-def timeout_tuple( texec ):
+def timeout_tuple( tcase ):
     ""
-    tcase = texec.getTestCase()
     return [ tcase.getSpec().getDisplayString(),
              tcase.getSize(),
              tcase.getStat().getAttr('timeout') ]
@@ -231,11 +191,11 @@ def timeout_tuple( texec ):
 
 def make_test_backlog_object( timespec='runtime' ):
     ""
-    back = execlist.TestBacklog()
+    back = TestBacklog()
     for tcase in vtu.make_TestCase_list( timespec=timespec ):
-        back.insert( TestExec( tcase ) )
+        back.insert( tcase )
 
-    back.sort( secondary=timespec )
+    back.sort()
 
     return back
 

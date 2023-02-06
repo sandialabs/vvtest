@@ -30,7 +30,7 @@ class BatchJob:
         self.tcheck = None
         self.result = None
 
-        self.attrs = {}
+        self.jobobj = None
 
     def getBatchID(self): return self.batchid
     def getJobSize(self): return self.size
@@ -50,15 +50,15 @@ class BatchJob:
 
     def getResult(self): return self.result
 
-    def setAttr(self, name, value):
-        ""
-        self.attrs[name] = value
+    def setJobObject(self, obj):
+        """
+        an arbitrary object set and used by the client
+        """
+        self.jobobj = obj
 
-    def getAttr(self, name, *default):
+    def getJobObject(self):
         ""
-        if len(default) > 0:
-            return self.attrs.get( name, default[0] )
-        return self.attrs[name]
+        return self.jobobj
 
     def setJobScriptName(self, scriptname):
         ""

@@ -329,15 +329,13 @@ class execute_tests( vtu.vvtestTestCase ):
 
     def test_behavior_when_two_tests_have_the_same_filename_path(self):
         ""
-        util.writefile( "adir/subdir/dup.xml", """
-            <rtest name="dup">
-                <execute> echo "test adir" </execute>
-            </rtest>""" )
+        util.writefile( "adir/subdir/dup.vvt", """
+            print ( "test adir" )
+            """ )
 
-        util.writefile( "bdir/subdir/dup.xml", """
-            <rtest name="dup">
-                <execute> echo "test bdir" </execute>
-            </rtest>""" )
+        util.writefile( "bdir/subdir/dup.vvt", """
+            print ( "test bdir" )
+            """ )
         time.sleep(1)
 
         # the bdir test should be selected because it is scanned first
@@ -348,10 +346,10 @@ class execute_tests( vtu.vvtestTestCase ):
         assert vrun.countGrepLogs( 'test bdir' ) == 1
         assert vrun.countGrepLogs( 'test adir' ) == 0
 
-        fL = util.findfiles( 'dup.xml', 'TestResults.*' )
+        fL = util.findfiles( 'dup.vvt', 'TestResults.*' )
         assert len( fL ) == 1
         fn = os.readlink( fL[0] )
-        assert os.path.samefile( fn, 'bdir/subdir/dup.xml' )
+        assert fn.endswith( 'bdir/subdir/dup.vvt' )
 
         vtu.remove_results()
 
@@ -362,10 +360,10 @@ class execute_tests( vtu.vvtestTestCase ):
         assert vrun.countGrepLogs( 'test bdir' ) == 0
         assert vrun.countGrepLogs( 'test adir' ) == 1
 
-        fL = util.findfiles( 'dup.xml', 'TestResults.*' )
+        fL = util.findfiles( 'dup.vvt', 'TestResults.*' )
         assert len( fL ) == 1
         fn = os.readlink( fL[0] )
-        assert os.path.samefile( fn, 'adir/subdir/dup.xml' )
+        assert fn.endswith( 'adir/subdir/dup.vvt' )
 
     def test_os_fork_with_retry(self):
         ""

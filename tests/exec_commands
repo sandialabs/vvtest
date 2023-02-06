@@ -22,11 +22,12 @@ import libvvtest.makecmd as makecmd
 from libvvtest.paramset import ParameterSet
 from libvvtest.testspec import TestSpec
 import libvvtest.testexec as testexec
+from libvvtest.location import Locator
 
 
 def mkobj( tspec, **kwargs ):
     ""
-    return makecmd.MakeScriptCommand( tspec, **kwargs )
+    return makecmd.MakeScriptCommand( Locator(os.getcwd()), tspec, **kwargs )
 
 
 class function_make_file_execute_command( vtu.vvtestTestCase ):
@@ -38,7 +39,7 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
             #!/bin/csh
             echo hello
             """ )
-        util.writescript( 'subdir/ascript', """
+        util.writescript( 'subdir/bscript', """
             #!/bin/csh
             echo hello
             """ )
@@ -48,10 +49,16 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
         cmdL = makecmd.make_file_execute_command( cwd, 'ascript' )
         assert len(cmdL) == 1 and cmdL[0] == './ascript'
 
+        cmdL = makecmd.make_file_execute_command( '.', 'ascript' )
+        assert len(cmdL) == 1 and cmdL[0] == './ascript'
+
         os.chdir( 'rundir' )
 
-        cmdL = makecmd.make_file_execute_command( cwd, 'subdir/ascript' )
-        assert len(cmdL) == 1 and cmdL[0] == './subdir/ascript'
+        cmdL = makecmd.make_file_execute_command( cwd, 'subdir/bscript' )
+        assert len(cmdL) == 1 and cmdL[0] == './subdir/bscript'
+
+        cmdL = makecmd.make_file_execute_command( '../subdir', 'bscript' )
+        assert len(cmdL) == 1 and cmdL[0] == './bscript'
 
     def test_python_execution_used_if_shbang_not_supported(self):
         ""

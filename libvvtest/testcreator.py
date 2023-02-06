@@ -20,6 +20,7 @@ class TestCreator:
                        optionlist=[],
                        force_params=None ):
         """
+        The 'loc' is a Locator object.
         If 'force_params' is not None, then any parameters in a test that
         are in the 'force_params' dictionary will have their values replaced
         for that parameter name.
@@ -52,9 +53,6 @@ class TestCreator:
         """
         assert not os.path.isabs( relpath )
 
-        if not rootpath:
-            rootpath = os.getcwd()
-
         maker = self.create_test_maker( relpath, rootpath, False )
 
         tests = maker.createTests()
@@ -73,7 +71,6 @@ class TestCreator:
         maker = self.create_test_maker( tspec.getFilepath(),
                                         tspec.getRootpath(),
                                         strict=True )
-
         maker.reparseTest( tspec )
 
     def create_test_maker(self, relpath, rootpath, strict):

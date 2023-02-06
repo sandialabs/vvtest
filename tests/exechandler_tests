@@ -24,6 +24,7 @@ from vvtestutils import windows, not_windows
 import libvvtest.exechandler as exechandler
 import libvvtest.outpututils as outpututils
 import libvvtest.testexec as testexec
+from libvvtest.location import Locator
 
 
 class exechandler_free_functions( vtu.vvtestTestCase ):
@@ -315,13 +316,14 @@ class ExecutionHandler_class_methods( vtu.vvtestTestCase ):
         util.writefile( 'sdir/cp.foo', 'bar\n' )
         os.mkdir( 'xdir1' )
         os.mkdir( 'xdir2' )
+        loc = Locator( os.getcwd() )
 
         tcase = vtu.make_fake_TestCase()
         tcase.getSpec().addCopyFile( 'cp.foo' )
 
         if not windows:
             with util.change_directory( 'xdir1' ):
-                xhnd = exechandler.ExecutionHandler( None, None, None, None, None,
+                xhnd = exechandler.ExecutionHandler( None, None, None, None, loc,
                                                      symlinks_supported=True )
                 xhnd.setWorkingFiles( tcase )
             assert os.path.islink( 'xdir1/atest.vvt' )
@@ -330,7 +332,7 @@ class ExecutionHandler_class_methods( vtu.vvtestTestCase ):
             assert filecmp.cmp( 'xdir1/cp.foo', 'sdir/cp.foo', shallow=False )
 
         with util.change_directory( 'xdir2' ):
-            xhnd = exechandler.ExecutionHandler( None, None, None, None, None,
+            xhnd = exechandler.ExecutionHandler( None, None, None, None, loc,
                                                  symlinks_supported=False )
             xhnd.setWorkingFiles( tcase )
         assert not os.path.islink( 'xdir2/atest.vvt' )
@@ -350,12 +352,14 @@ class ExecutionHandler_class_methods( vtu.vvtestTestCase ):
         texec = testexec.TestExec( tcase )
 
         rtconfig = vtu.make_RuntimeConfig()
-        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None, None,
+        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None,
+                                             Locator(os.getcwd()),
                                              shbang_supported=True )
         cmdL = xhnd.make_execute_command( texec, False, sys.executable )
         assert cmdL == [ './atest.vvt' ]
 
-        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None, None,
+        xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None,
+                                             Locator(os.getcwd()),
                                              shbang_supported=False )
         cmdL = xhnd.make_execute_command( texec, False, sys.executable )
         assert cmdL == [ sys.executable, 'atest.vvt' ]

@@ -659,28 +659,31 @@ def _svn_rootrel(tdir):
     try: os.chdir( tdir )
     except Exception: return None
 
-    # run svn info to get the relative URL and the repository URL
-    import subprocess
+    try:
+        # run svn info to get the relative URL and the repository URL
+        import subprocess
 
-    p = subprocess.Popen( 'svn info', shell=True,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, close_fds=True )
-    ip,fp = (p.stdin, p.stdout)
+        p = subprocess.Popen( 'svn info', shell=True,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, close_fds=True )
+        ip,fp = (p.stdin, p.stdout)
 
-    url = None
-    relurl = None
-    repo = None
-    line = fp.readline()
-    while line:
-      if line[:4] == 'URL:':
-        url = line.split()[-1]
-      elif line[:13] == 'Relative URL:':
-        relurl = line.split()[-1]
-      elif line[:16] == 'Repository Root:':
-        repo = line.split()[-1]
-      line = fp.readline()
-    ip.close() ; fp.close()
-    os.chdir(cdir)
+        url = None
+        relurl = None
+        repo = None
+        line = fp.readline()
+        while line:
+          if line[:4] == 'URL:':
+            url = line.split()[-1]
+          elif line[:13] == 'Relative URL:':
+            relurl = line.split()[-1]
+          elif line[:16] == 'Repository Root:':
+            repo = line.split()[-1]
+          line = fp.readline()
+        ip.close() ; fp.close()
+    finally:
+        os.chdir(cdir)
+
     if relurl == None:
       if url == None or repo == None:
         return None
@@ -711,7 +714,7 @@ def _svn_rootrel(tdir):
     return None
 
 
-def determine_rootrel( testspec, dcache ):
+def determine_rootrel( srcdir, dcache ):
     """
     Uses the directory containing the test specification file to determine
     the directory path from the root directory down to this test.  The path
@@ -720,18 +723,16 @@ def determine_rootrel( testspec, dcache ):
     determined.  The 'dcache' argument is a dictionary used for caching test
     directories to rootrel directories.
     """
-    tdir = testspec.getDirectory()
+    rootrel = dcache.get( srcdir, None )
 
-    rootrel = dcache.get( tdir, None )
-
-    if rootrel == None:
-        rootrel = _svn_rootrel( tdir )
-        if rootrel == None:
-            rootrel = file_rootrel( tdir )
-        if rootrel == None:
+    if rootrel is None:
+        rootrel = _svn_rootrel( srcdir )
+        if rootrel is None:
+            rootrel = file_rootrel( srcdir )
+        if rootrel is None:
             # mark this directory so we don't waste time trying again
             rootrel = ''
-        dcache[tdir] = rootrel
+        dcache[srcdir] = rootrel
 
     return rootrel
 

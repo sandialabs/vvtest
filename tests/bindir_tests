@@ -21,6 +21,9 @@ class bindir_tests( vtu.vvtestTestCase ):
 
     def test_that_the_bindir_is_provided_to_the_test_scripts(self):
         ""
+        # just to make sure an auto bin dir search is not done
+        os.mkdir( 'bin' )
+
         util.writescript( 'mybin/myprog', """
             #!"""+sys.executable+"""
             print ( 'running myprog' )
@@ -39,8 +42,6 @@ class bindir_tests( vtu.vvtestTestCase ):
                 </execute>
             </rtest>
             """ )
-        os.mkdir( 'bin' )
-        time.sleep(1)
 
         for batch in [False,True]:
 
@@ -58,8 +59,8 @@ class bindir_tests( vtu.vvtestTestCase ):
 
                 L = vrun.greplogs( 'bindir=' )
                 assert len(L) == 2
-                assert os.path.samefile( L[0].split('=',1)[1].strip(), 'mybin' )
-                assert os.path.samefile( L[1].split('=',1)[1].strip(), 'mybin' )
+                assert L[0].split('=',1)[1].strip() == '../../mybin'
+                assert L[1].split('=',1)[1].strip() == '../../mybin'
 
 
 ########################################################################

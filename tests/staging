@@ -27,7 +27,6 @@ import libvvtest.depend as depend
 import libvvtest.testlistio as tio
 import libvvtest.exechandler as exechandler
 
-from libvvtest.testcreator import TestCreator
 from libvvtest.testcreator import TestMaker
 from libvvtest.parsevvt import ScriptTestParser
 import libvvtest.staging as staging
@@ -589,7 +588,7 @@ class staged_parameters( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        tc = TestCreator()
+        tc = vtu.creator()
         tL1 = tc.fromFile( 'd1/red.vvt' )
         tL2 = tc.fromFile( 'd2/red.vvt' )
 
@@ -703,7 +702,7 @@ def reparse_test_string( stringid ):
     ""
     tcase = tio.string_to_test( stringid, TestCaseFactory() )
 
-    TestCreator().reparse( tcase.getSpec() )
+    vtu.creator().reparse( tcase.getSpec() )
 
     return tcase
 

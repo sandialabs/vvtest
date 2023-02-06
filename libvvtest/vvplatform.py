@@ -84,7 +84,7 @@ class Platform:
         else:
             return self.attrs[name]
 
-    def getDefaultQsubLimit(self):
+    def getDefaultBatchLimit(self):
         ""
         n = self.attrs.get( 'maxsubs', 5 )
         return n

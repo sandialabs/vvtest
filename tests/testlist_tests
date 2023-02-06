@@ -277,6 +277,20 @@ class TestList_results_file( vtu.vvtestTestCase ):
         time.sleep(1)
         read_TestList_and_check_fake_test()
 
+    def test_set_filename_separately(self):
+        ""
+        tl = TestList.TestList( TestCaseFactory() )
+        tl.setResultsDate()
+        f1 = basename( tl.getResultsFilename() )
+
+        tl.setFilename( 'foobar' )
+        f2 = basename( tl.getResultsFilename() )
+
+        bn1,xt1 = f1.split('.',1)
+        bn2,xt2 = f2.split('.',1)
+        assert bn1 != bn2
+        self.assertEqual( xt1, xt2 )
+
     def test_arbitrary_attributes_can_be_written(self):
         ""
         tl = TestList.TestList( TestCaseFactory() )

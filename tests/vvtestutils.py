@@ -54,6 +54,7 @@ from libvvtest.scanner import TestFileScanner
 from libvvtest.wordexpr import WordExpression
 from libvvtest.depend import connect_dependency
 from libvvtest.tcfactory import TestCaseFactory
+from libvvtest.location import Locator
 
 
 ##########################################################################
@@ -467,7 +468,7 @@ def vvtest_command_line( *cmd_args, **options ):
         if '--batch-length' not in argL:
             cmdL.extend( [ '--batch-length', '0' ] )
 
-    else:
+    elif '--batch' not in argL:
         if '-n' not in argL:
             cmdL.extend( [ '-n', '8' ] )
 
@@ -725,10 +726,15 @@ def parse_time( colon_time_string ):
     return tval
 
 
+def creator( idflags={}, platname=None, opts=[] ):
+    ""
+    return testcreator.TestCreator( idflags, platname, opts )
+
+
 def create_tests_from_file( filename, platname=core_platform_name(),
                                       optionlist=[] ):
     ""
-    creator = testcreator.TestCreator( {}, platname, optionlist )
+    tc = creator( {}, platname, optionlist )
 
     assert not os.path.isabs( filename )
     assert not os.path.normpath(filename).startswith('..')
@@ -736,7 +742,7 @@ def create_tests_from_file( filename, platname=core_platform_name(),
     dname,fname = os.path.split( filename )
 
     tL = []
-    for tspec in creator.fromFile( fname, dname ):
+    for tspec in tc.fromFile( fname, dname ):
         tL.append( testcase.TestCase( tspec ) )
 
     return tL
@@ -892,6 +898,7 @@ def make_TestCase_list( timespec='runtime' ):
 
             if timespec == 'runtime':
                 tstat.setRuntime( (i+1)*10+j+1 )
+                # print( 'tcase', tcase.getSpec().getDisplayString(), tstat.getRuntime() )
             else:
                 assert timespec == 'timeout'
                 tstat.setAttr( 'timeout', (i+1)*10+j+1 )
@@ -899,6 +906,40 @@ def make_TestCase_list( timespec='runtime' ):
             tests.append( tcase )
 
     return tests
+
+
+def make_fake_TestList( timespec='runtime' ):
+    ""
+    tests = make_TestCase_list( timespec=timespec )
+
+    tlist = TestList( TestCaseFactory() )
+    for tcase in tests:
+        tlist.addTest( tcase )
+
+    return tlist
+
+
+def scan_to_make_TestList( path, timeout_attr=None ):
+    ""
+    tlist = TestList( TestCaseFactory() )
+
+    tc = creator( platname='XBox' )
+    scan = TestFileScanner( Locator(os.getcwd()), tc, TestCaseFactory() )
+    scan.scanPath( tlist, path )
+
+    if timeout_attr != None:
+        for tcase in tlist.getTests():
+            tcase.getStat().setAttr( 'timeout', timeout_attr )
+
+    tlist.createAnalyzeGroupMap()
+    tlist.connectDependencies()
+
+    return tlist
+
+
+class FakeHandler:
+    def initialize_for_execution(self, *args):
+        pass
 
 
 def make_fake_TestExecList( timespec='runtime' ):
@@ -909,9 +950,7 @@ def make_fake_TestExecList( timespec='runtime' ):
     for tcase in tests:
         tlist.addTest( tcase )
 
-    xlist = TestExecList( tlist, None )
-
-    xlist._generate_backlog_from_testlist()
+    xlist = TestExecList( tlist, FakeHandler() )
 
     return tlist, xlist
 
@@ -920,8 +959,8 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
     ""
     tlist = TestList( TestCaseFactory() )
 
-    tc = testcreator.TestCreator( {}, 'XBox', [] )
-    scan = TestFileScanner( tc, TestCaseFactory() )
+    tc = creator( platname='XBox' )
+    scan = TestFileScanner( Locator(os.getcwd()), tc, TestCaseFactory() )
     scan.scanPath( tlist, path )
 
     if timeout_attr != None:
@@ -929,10 +968,9 @@ def scan_to_make_TestExecList( path, timeout_attr=None ):
             tcase.getStat().setAttr( 'timeout', timeout_attr )
 
     tlist.createAnalyzeGroupMap()
+    tlist.connectDependencies()
 
-    xlist = TestExecList( tlist, None )
-    xlist._generate_backlog_from_testlist()
-    xlist._connect_execute_dependencies( strict=True )
+    xlist = TestExecList( tlist, FakeHandler() )
 
     return tlist, xlist
 

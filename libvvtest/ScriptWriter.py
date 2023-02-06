@@ -16,28 +16,31 @@ except Exception:
 from .teststatus import DIFF_EXIT_STATUS, SKIP_EXIT_STATUS
 
 
-def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir ):
+def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
     """
     Writes a helper script for the test.  The script language is based on
     the 'lang' argument.
     """
-    testobj = testcase.getSpec()
-    tname = testobj.getName()
+    tspec = testcase.getSpec()
+    tname = tspec.getName()
 
-    troot = testobj.getRootpath()
-    assert os.path.isabs( troot )
-    trel = dirname( testobj.getFilepath() )
-    srcdir = normpath( pjoin( troot, trel ) )
-    
-    configdirs = rtconfig.getAttr('configdir')
+    troot = tspec.getRootpath()
+    srcdir = loc.path_to_source( tspec.getFilepath(), tspec.getRootpath() )
 
-    tdir = rtconfig.getAttr('vvtestdir')
+    test_dir = loc.getTestingDirectory()
+
+    configdirs = rtconfig.getAttr('configdir')  # magic: examine
+
+    tdir = rtconfig.getAttr('vvtestdir')  # magic: ensure absolute ??
     assert tdir
 
-    trigdir = pjoin( tdir, 'trig' )
+    trigdir = pjoin( tdir, 'trig' )  # magic: must be absolute
 
-    projdir = rtconfig.getAttr('exepath')
-    if not projdir: projdir = ''
+    projdir = rtconfig.getAttr('exepath')  # magic: examine
+    if projdir is None:
+        projdir = ''
+    else:
+        projdir = loc.path_to_file( tspec.getFilepath(), projdir )
 
     onopts = rtconfig.getAttr('onopts')
     offopts = rtconfig.getAttr('offopts')
@@ -47,7 +50,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
 
     timeout = testcase.getStat().getAttr( 'timeout', -1 )
 
-    dep_list = testcase.getDepDirectories()
+    dep_list = testcase.getDepDirectories()  # magic: examine
 
     w = LineWriter()
 
@@ -56,17 +59,17 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
         w.add( 'import os, sys',
                '',
                'NAME = '+repr(tname),
-               'TESTID = '+repr( testobj.getTestID().computeMatchString() ),
+               'TESTID = '+repr( tspec.getTestID().computeMatchString() ),
                'PLATFORM = '+repr(platname),
                'COMPILER = '+repr(cplrname),
                'VVTESTSRC = '+repr(tdir),
-               'TESTROOT = '+repr(test_dir),
+               'TESTROOT = '+repr(test_dir),  # magic: can test_dir be relative??
                'PROJECT = '+repr(projdir),
                'OPTIONS = '+repr( onopts ),
                'OPTIONS_OFF = '+repr( offopts ),
                'SRCDIR = '+repr(srcdir),
                'TIMEOUT = '+repr(timeout),
-               'KEYWORDS = '+repr(testobj.getKeywords(include_implicit=False)) )
+               'KEYWORDS = '+repr(tspec.getKeywords(include_implicit=False)) )
 
         w.add( 'CONFIGDIR = '+repr(configdirs) )
 
@@ -75,6 +78,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                'sys.path.insert( 0, '+repr(trigdir)+' )',
                'sys.path.insert( 0, VVTESTSRC )' )
         for d in configdirs[::-1]:
+            # magic: config dirs must be abs by this point
             w.add( 'sys.path.insert( 0, '+repr(d)+' )' )
 
         w.add( '',
@@ -98,15 +102,15 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
             w.add( '    os.environ["'+k+'"] = '+repr(v) )
 
         w.add( '', '# parameters defined by the test' )
-        paramD = testobj.getParameters( typed=True )
+        paramD = tspec.getParameters( typed=True )
         w.add( 'PARAM_DICT = '+repr( paramD ) )
         for k,v in paramD.items():
             w.add( k+' = '+repr(v) )
 
-        if testobj.isAnalyze():
+        if tspec.isAnalyze():
             # the parameter names and values of the children tests
             w.add( '', '# parameters comprising the children' )
-            psetD = testobj.getParameterSet().getParameters( typed=True )
+            psetD = tspec.getParameterSet().getParameters( typed=True )
             for n,L in psetD.items():
                 if len(n) == 1:
                     L2 = [ T[0] for T in L ]
@@ -115,10 +119,10 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                     n2 = '_'.join( n )
                     w.add( 'PARAM_'+n2+' = ' + repr(L) )
 
-        L = generate_dependency_list( dep_list, test_dir )
+        L = generate_dependency_list( dep_list, test_dir )  # magic: examine
         w.add( '', 'DEPDIRS = '+repr(L) )
 
-        D = generate_dependency_map( dep_list, test_dir )
+        D = generate_dependency_map( dep_list, test_dir )  # magic: examine
         w.add( '', 'DEPDIRMAP = '+repr(D) )
 
         w.add( '',
@@ -168,7 +172,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
 
         w.add( '',
                'NAME="'+tname+'"',
-               'TESTID="'+testobj.getTestID().computeMatchString()+'"',
+               'TESTID="'+tspec.getTestID().computeMatchString()+'"',
                'PLATFORM="'+platname+'"',
                'COMPILER="'+cplrname+'"',
                'VVTESTSRC="'+tdir+'"',
@@ -180,7 +184,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
                'TIMEOUT="'+str(timeout)+'"',
                'PYTHONEXE="'+sys.executable+'"' )
 
-        kwds = ' '.join( testobj.getKeywords(include_implicit=False) )
+        kwds = ' '.join( tspec.getKeywords(include_implicit=False) )
         w.add( 'KEYWORDS="'+kwds+'"' )
 
         w.add( 'CONFIGDIR="'+':'.join( configdirs )+'"' )
@@ -209,15 +213,15 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, test_dir
         w.add( '}' )
 
         w.add( '', '# parameters defined by the test' )
-        paramD = testobj.getParameters()
+        paramD = tspec.getParameters()
         s = ' '.join( [ n+'/'+v for n,v in paramD.items() ] )
         w.add( 'PARAM_DICT="'+s+'"' )
         for k,v in paramD.items():
             w.add( k+'="'+v+'"' )
 
-        if testobj.isAnalyze():
+        if tspec.isAnalyze():
             w.add( '', '# parameters comprising the children' )
-            psetD = testobj.getParameterSet().getParameters()
+            psetD = tspec.getParameterSet().getParameters()
             if len(psetD) > 0:
                 # the parameter names and values of the children tests
                 for n,L in psetD.items():

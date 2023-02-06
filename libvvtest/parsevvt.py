@@ -5,7 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
-from os.path import dirname, normpath, join as pjoin
+from os.path import dirname, normpath, abspath, join as pjoin
 import platform
 import re
 import shlex
@@ -49,15 +49,14 @@ class ScriptTestParser:
         ""
         self.fpath = filepath
 
-        if not rootpath:
-            rootpath = os.getcwd()
-        self.root = rootpath
+        self.root = rootpath or '.'
+        # print ( 'magic: parser, root', self.root, 'fpath', self.fpath )
 
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist
         self.force = force_params
 
-        fname = os.path.join( rootpath, filepath )
+        fname = os.path.join( self.root, filepath )
         self.reader = ScriptReader( fname )
 
     def parseTestNames(self):
@@ -621,7 +620,8 @@ def generate_parameters( testfile, gencmd, testname, platname, lineno ):
     if len(cmdL) == 0:
         raiseError( 'invalid generator specification', line=lineno )
 
-    prog,xcute = get_generator_program( dirname(testfile), cmdL[0] )
+    dname = dirname( abspath( testfile ) )
+    prog,xcute = get_generator_program( dname, cmdL[0] )
     cmdL[0] = prog
 
     out = run_generator_prog( cmdL, gencmd, xcute )

@@ -70,7 +70,8 @@ class BatchRunner( TestListRunner ):
 
         self.tlist.setResultsDate()
 
-        self.batch.writeQsubScripts()
+        self.batch.clearBatchDirectories()
+        self.batch.constructBatchJobs()
 
         self.qsleep = int( os.environ.get( 'VVTEST_BATCH_SLEEP_LENGTH', 15 ) )
         self.info = TestInformationPrinter( sys.stdout, self.tlist, self.batch )
@@ -163,12 +164,12 @@ class DirectRunner( TestListRunner ):
         ""
         TestListRunner.__init__( self, test_dir, tlist, xlist, perms,
                                  rtinfo, results_writer, plat, total_timeout )
-        self.qsub_id = None
+        self.batch_id = None
         self.handler = xlist.getExecutionHandler()
 
-    def setQsubID(self, qsub_id):
+    def setBatchID(self, batch_id):
         ""
-        self.qsub_id = qsub_id
+        self.batch_id = batch_id
 
     def startup(self):
         ""
@@ -182,7 +183,7 @@ class DirectRunner( TestListRunner ):
         ""
         self.startup()
 
-        uthook = utesthooks.construct_unit_testing_hook( 'run', self.qsub_id )
+        uthook = utesthooks.construct_unit_testing_hook( 'run', self.batch_id )
 
         try:
             while True:
@@ -254,15 +255,13 @@ class DirectRunner( TestListRunner ):
         ""
         if len(nrL) > 0:
             print3()
-        tcase_with_reason = [ (T[0].getTestCase(),T[1]) for T in nrL ]
-        print_notrun_reasons( tcase_with_reason )
+        print_notrun_reasons( [ (tc,tc.getBlockedReason()) for tc in nrL ] )
 
 
 def print_notrun_reasons( notrunlist ):
     ""
     for tcase,reason in notrunlist:
         xdir = tcase.getSpec().getDisplayString()
-        # magic: reason = tcase.getBlockedReason()
         print3( '*** Warning: test "'+xdir+'"',
                 'notrun due to dependency: ' + str(reason) )
 

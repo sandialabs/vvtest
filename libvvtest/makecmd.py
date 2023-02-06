@@ -5,13 +5,15 @@
 # Government retains certain rights in this software.
 
 import os, sys
+from os.path import basename
 
 
 class MakeScriptCommand:
 
-    def __init__(self, tspec, pythonexe=sys.executable,
-                              shbang_supported=True):
+    def __init__(self, loc, tspec, pythonexe=sys.executable,
+                            shbang_supported=True):
         ""
+        self.loc = loc
         self.tspec = tspec
         self.pyexe = pythonexe
         self.shbang = shbang_supported
@@ -44,7 +46,9 @@ class MakeScriptCommand:
         if self.tspec.getSpecificationForm() == 'xml':
             cmdL = ['/bin/csh', '-f', './runscript']
         else:
-            srcdir,fname = os.path.split( self.tspec.getFilename() )
+            srcdir = self.loc.path_to_source( self.tspec.getFilepath(),
+                                              self.tspec.getRootpath() )
+            fname = basename( self.tspec.getFilename() )
             cmdL = make_file_execute_command( srcdir, fname,
                                               self.pyexe, self.shbang )
 

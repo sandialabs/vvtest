@@ -15,7 +15,6 @@ from os.path import abspath
 import vvtestutils as vtu
 import testutils as util
 
-from libvvtest.testcreator import TestCreator
 from libvvtest.errors import TestSpecError
 
 from libvvtest.paramset import ParameterSet
@@ -276,7 +275,7 @@ class script_tests( vtu.vvtestTestCase ):
         assert tmap['dx'] == float
         assert tmap['dy'] == float
 
-        tL = TestCreator().fromFile( 'blue.vvt' )
+        tL = vtu.creator().fromFile( 'blue.vvt' )
         assert len( tL ) == 2*2*2*2
 
         def checktypes( pD ):
@@ -354,7 +353,7 @@ class script_tests( vtu.vvtestTestCase ):
         assert tmap['over'] == int
         assert tmap['board'] == int
 
-        tL = TestCreator().fromFile( 'blue.vvt' )
+        tL = vtu.creator().fromFile( 'blue.vvt' )
         assert len( tL ) == 2*2*2*2*2*2
 
         for tspec in tL:
@@ -901,7 +900,7 @@ def reparse_test_string( stringid ):
     ""
     tcase = tio.string_to_test( stringid, TestCaseFactory() )
 
-    TestCreator().reparse( tcase.getSpec() )
+    vtu.creator().reparse( tcase.getSpec() )
 
     return tcase
 

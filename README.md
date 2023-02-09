@@ -1,4 +1,3 @@
-
 # vvtest
 
 **vvtest** is a test harness specialized for running regression, validation,
@@ -10,7 +9,7 @@ plugin and control features that enable the execution of complex tests on
 workstations up to large HPC platforms.
 
 Notable features include:
-* Pure Python, compatible with versions 2.6+ and 3.x
+* Pure Python, compatible with versions 2.7 and 3.x
 * Built-in CPU & GPU resource management and load balancing
 * Built-in support for HPC batch queuing systems, such as SLURM and LSF
 * Test parameterization, allowing a single script file to produce multiple

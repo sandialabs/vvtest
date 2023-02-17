@@ -16,7 +16,10 @@ Improvements:
 
 Fixes:
 
-    -
+    - The script_util.standard_utilities have a way to register a function
+      that runs when the test script exits. When using Python3, calling
+      exit_diff() inside the termination function was not returning a diff
+      exit status. Now fixed.
 
 Changes:
 

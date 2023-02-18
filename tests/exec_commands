@@ -36,11 +36,11 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
         ""
         os.mkdir( 'rundir' )
         util.writescript( 'ascript', """
-            #!/bin/csh
+            #!/bin/bash
             echo hello
             """ )
         util.writescript( 'subdir/bscript', """
-            #!/bin/csh
+            #!/bin/bash
             echo hello
             """ )
 
@@ -65,8 +65,7 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
         os.mkdir( 'rundir' )
         util.writescript( 'ascript', """
             #!/bin/bash
-            import os, sys
-            sys.stdout.write( 'hello'+os.linesep )
+            echo hello
             """ )
         cwd = os.getcwd()
 
@@ -108,12 +107,30 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
 
         cwd = os.getcwd()
 
+        # actually, any program path can be specified - not just python
         pyexe = '/fake/python'
         cmdL = makecmd.make_file_execute_command( cwd, 'ascript', pyexe )
         assert cmdL[0] == pyexe
         assert cmdL[1] == 'ascript'
 
-    def test_an_executable_abs_file_ignores_srcdir(self):
+    def test_specifying_the_program_will_override_the_execute_bit(self):
+        ""
+        util.writescript( 'ascript', """
+            #!/usr/bin/python3
+            print ( 'hello' )
+            """ )
+        abscript = abspath('ascript')
+
+        cwd = os.getcwd()
+        prog = '/fake/program'
+
+        cmdL = makecmd.make_file_execute_command( cwd, 'ascript', prog )
+        assert cmdL[0] == prog and cmdL[1] == 'ascript'
+
+        cmdL = makecmd.make_file_execute_command( cwd, abscript, prog )
+        assert cmdL[0] == prog and cmdL[1] == abscript
+
+    def test_an_absolute_file_path_ignores_srcdir(self):
         ""
         os.mkdir( 'rundir' )
         util.writescript( 'subdir/ascript', """
@@ -121,26 +138,18 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
             echo hello
             """ )
         abscript = os.path.abspath( 'subdir/ascript' )
+        util.writefile( 'subdir/afile', """
+            print ( 'hello' )
+            """ )
+        absfile = os.path.abspath( 'subdir/afile' )
 
         os.chdir( 'rundir' )
 
         cmdL = makecmd.make_file_execute_command( '/foo/bar', abscript )
         assert len(cmdL) == 1 and cmdL[0] == abscript
 
-    def test_a_file_ignores_srcdir(self):
-        ""
-        os.mkdir( 'rundir' )
-        util.writefile( 'subdir/ascript', """
-            print ( 'hello' )
-            """ )
-        absfile = os.path.abspath( 'subdir/ascript' )
-
-        os.chdir( 'rundir' )
-
         cmdL = makecmd.make_file_execute_command( '/foo/bar', absfile )
-        assert len(cmdL) == 2
-        assert cmdL[0] == sys.executable
-        assert cmdL[1] == absfile
+        assert len(cmdL) == 2 and cmdL[0] == sys.executable and cmdL[1] == absfile
 
 
 def make_TestSpec( filename ):

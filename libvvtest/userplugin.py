@@ -81,7 +81,7 @@ class UserPluginBridge:
         May modify os.environ and return value is either None/empty or
         a string containing the python to use.
         """
-        pyexe = None
+        prog = None
 
         if self.preload is not None:
             specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
@@ -89,13 +89,21 @@ class UserPluginBridge:
                 label = tcase.getSpec().getPreloadLabel()
                 if label:
                     specs['preload'] = label
-                pyexe = self.preload( specs )
+                prog = self.preload( specs )
+                if prog is not None:
+                    if type(prog) != type(''):
+                        raise Exception( "function 'preload' returned an object "
+                            "of type "+str(type(prog))+" but only None or "
+                            "string are allowed" )
+                    if not prog.strip():
+                        raise Exception( "function 'preload' returned an "
+                            "empty string" )
             except Exception:
                 xs,tb = outpututils.capture_traceback( sys.exc_info() )
                 sys.stdout.write( '\n' + tb + '\n' )
-                pyexe = None
+                prog = None
 
-        return pyexe
+        return prog
 
     def _call_time_function(self, tcase, func):
         ""

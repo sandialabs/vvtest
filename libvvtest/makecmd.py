@@ -10,12 +10,18 @@ from os.path import basename
 
 class MakeScriptCommand:
 
-    def __init__(self, loc, tspec, pythonexe=sys.executable,
+    def __init__(self, loc, tspec, program=None,
                             shbang_supported=True):
-        ""
+        """
+        The 'program' is a path to an executable to execute the test script.
+        If None, then
+            - if the test file is executable and shbang is supported, then
+              the script is executed directly
+            - otherwise, Python is used to run the script, sys.executable
+        """
         self.loc = loc
         self.tspec = tspec
-        self.pyexe = pythonexe
+        self.prog = program
         self.shbang = shbang_supported
 
     def make_base_execute_command(self, baseline):
@@ -50,7 +56,7 @@ class MakeScriptCommand:
                                               self.tspec.getRootpath() )
             fname = basename( self.tspec.getFilename() )
             cmdL = make_file_execute_command( srcdir, fname,
-                                              self.pyexe, self.shbang )
+                                              self.prog, self.shbang )
 
         return cmdL
 
@@ -62,7 +68,7 @@ class MakeScriptCommand:
         else:
             srcdir = self.tspec.getDirectory()
             cmdL = make_file_execute_command( srcdir, spec,
-                                              self.pyexe, self.shbang )
+                                              self.prog, self.shbang )
 
         return cmdL
 
@@ -107,18 +113,23 @@ class MakeScriptCommand:
         return cmdL
 
 
-def make_file_execute_command( srcdir, path, pyexe=sys.executable,
-                                             shbang=True ):
+def make_file_execute_command( srcdir, path,
+                               prog=None,
+                               shbang=True ):
     ""
     if os.path.isabs( path ):
-        if shbang and os.access( path, os.X_OK ):
+        if prog:
+            return [ prog, path ]
+        elif shbang and os.access( path, os.X_OK ):
             return [ path ]
         else:
-            return [ pyexe, path ]
+            return [ sys.executable, path ]
 
     else:
-        full = os.path.join( srcdir, path )
-        if shbang and os.access( full, os.X_OK ):
+        srcpath = os.path.join( srcdir, path )
+        if prog:
+            return [ prog, path ]
+        elif shbang and os.access( srcpath, os.X_OK ):
             return [ './'+path ]
         else:
-            return [ pyexe, path ]
+            return [ sys.executable, path ]

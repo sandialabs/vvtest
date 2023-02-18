@@ -355,13 +355,13 @@ class ExecutionHandler_class_methods( vtu.vvtestTestCase ):
         xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None,
                                              Locator(os.getcwd()),
                                              shbang_supported=True )
-        cmdL = xhnd.make_execute_command( texec, False, sys.executable )
+        cmdL = xhnd.make_execute_command( texec, False, None )
         assert cmdL == [ './atest.vvt' ]
 
         xhnd = exechandler.ExecutionHandler( None, rtconfig, None, None,
                                              Locator(os.getcwd()),
                                              shbang_supported=False )
-        cmdL = xhnd.make_execute_command( texec, False, sys.executable )
+        cmdL = xhnd.make_execute_command( texec, False, None )
         assert cmdL == [ sys.executable, 'atest.vvt' ]
 
 

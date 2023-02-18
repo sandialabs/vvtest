@@ -126,14 +126,6 @@ class ExecutionHandler:
 
         return ok
 
-    def apply_plugin_preload(self, tcase):
-        ""
-        pyexe = self.plugin.testPreload( tcase )
-        if pyexe:
-            return pyexe
-        else:
-            return sys.executable
-
     def set_timeout_environ_variable(self, timeout):
         """
         add a timeout environ variable so the test can take steps to
@@ -207,12 +199,12 @@ class ExecutionHandler:
 
         self.platform.returnResources( texec.getResourceObject() )
 
-    def make_execute_command(self, texec, baseline, pyexe):
+    def make_execute_command(self, texec, baseline, prog):
         ""
         tcase = texec.getTestCase()
 
         maker = MakeScriptCommand( self.loc, tcase.getSpec(),
-                                   pythonexe=pyexe,
+                                   program=prog,
                                    shbang_supported=self.shbang )
         cmdL = maker.make_base_execute_command( baseline )
 
@@ -249,9 +241,9 @@ class ExecutionHandler:
 
         set_PYTHONPATH( self.rtconfig.getAttr( 'configdir' ) )
 
-        pyexe = self.apply_plugin_preload( tcase )
+        prog = self.plugin.testPreload( tcase )
 
-        cmd_list = self.make_execute_command( texec, baseline, pyexe )
+        cmd_list = self.make_execute_command( texec, baseline, prog )
 
         echo_test_execution_info( tcase.getSpec().getName(), cmd_list, tm )
 

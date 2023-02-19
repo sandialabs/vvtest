@@ -1,6 +1,10 @@
 
 Improvements:
 
+    - A new option, -B, has been added which is similar to the -b option.
+      Using -b means perform a re-baseline operation on tests that "diff".
+      Using -B means re-baseline on all tests regardless of result status.
+
     - The parameterize directive can now use an external script to generate
       the parameter names and associated values. For example,
 
@@ -22,6 +26,11 @@ Fixes:
       exit status. Now fixed.
 
 Changes:
+
+    - A test script that is executable will be run directly (using the #!
+      mechanism). Now when a plugin preload function returns a file path,
+      that path will always be used to run the test (when before the test
+      would still be run directly).
 
     - Python 2.6 is no longer supported. Now vvtest supports Python 2.7 and
       3.2 or newer.

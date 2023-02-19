@@ -258,8 +258,10 @@ def create_parser( argvlist, vvtest_version ):
         help='Alternate way to specify the CDash project name.' )
 
     grp = psr.add_argument_group( 'Other operating modes' )
-    grp.add_argument( '-b', dest='dash_b', action='store_true',
+    grp.add_argument( '-b', dest='rebase', action='store_true',
         help='Rebaseline tests that have diffed.' )
+    grp.add_argument( '-B', dest='rebase_all', action='store_true',
+        help='Rebaseline all tests regardless of result status.' )
 
     grp.add_argument( '-g', dest='dash_g', action='store_true',
         help='Scan for tests and populate the test results tree, '

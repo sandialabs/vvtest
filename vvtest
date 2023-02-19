@@ -114,10 +114,10 @@ def run_vvtest( rtdata, opts, optD ):
     elif opts.dash_g:
         generate_test_list( opts, optD, rtdata )
 
-    elif opts.dash_b:
+    elif opts.rebase or opts.rebase_all:
 
         if opts.dash_R or opts.dash_w:
-            raise FatalError( 'cannot use -R or -w with -b (baseline)' )
+            raise FatalError( 'cannot use -R or -w when rebaselining (-b or -B)' )
 
         baseline_tests( opts, optD, rtdata )
 
@@ -792,9 +792,10 @@ def baseline_tests( opts, optD, rtdata ):
 
     rtdata.tlm.readAndMergePreviouslyRunTests()
 
-    # if the keyword expression does not include a results keyword, then
-    # add the 'diff' keyword so that only diffs are rebaselined by default
-    rtdata.rtconfig.addResultsKeywordExpression( 'diff' )
+    if not opts.rebase_all:
+        # if the keyword expression does not include a results keyword, then
+        # add the 'diff' keyword so that only diffs are rebaselined by default
+        rtdata.rtconfig.addResultsKeywordExpression( 'diff' )
 
     rtdata.selector.applyRuntimeFilters( tlist )
     rtdata.scanner.completeTestParsing( tlist )

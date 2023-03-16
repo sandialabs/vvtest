@@ -52,6 +52,9 @@ def get_platform():
         # Capacity Technology System, running TOSS
         return 'CTS1'
 
+    if snlsystem == 'cts2':
+        return 'CTS2'
+
     if base_match( [nodename,pbshost,snlcluster], ['astra','stria'] ):
         # Vanguard System
         return 'ASTRA'
@@ -117,6 +120,10 @@ def load_specifications( specs, platname, cplrname, options ):
             specs['ppn'] = 48
         else:
             specs['ppn'] = 36
+
+    elif platname == "CTS2":
+        specs['batchsys'] = 'slurm'
+        specs['ppn'] = 112
 
     elif platname == "ASTRA":
         specs['batchsys'] = 'slurm'

@@ -28,21 +28,18 @@ class script_utils_tests( vtu.vvtestTestCase ):
 
     def test_using_the_have_diff_utility(self):
         ""
-        util.writescript( 'pypass.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pypass.vvt', """
             import os, sys
             import script_util as util
             util.if_diff_exit_diff()
             """ )
-        util.writescript( 'pydiff.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pydiff.vvt', """
             import os, sys
             import script_util as util
             util.set_have_diff()
             util.if_diff_exit_diff()
             """ )
-        util.writescript( 'pydiff2.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pydiff2.vvt', """
             import os, sys
             import script_util as util
             util.exit_diff()
@@ -97,8 +94,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             the quick brown fox jumps
             over the lazy dog
             """ )
-        util.writescript( 'pytest.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pytest.vvt', """
             #VVT: link = changeme.txt
             import os
             import script_util as util
@@ -135,8 +131,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
         util.writefile( 'baseline.txt',
                    'the quick brown fox jumps\n' + \
                    'over the lazy dog\n' )
-        util.writescript( 'pypass.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pypass.vvt', """
             #VVT: link = baseline.txt
             import os
             import script_util as util
@@ -147,8 +142,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             util.unixdiff( 'baseline.txt', 'genfile.txt' )
             util.if_diff_exit_diff()
             """ )
-        util.writescript( 'pydiff.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pydiff.vvt', """
             #VVT: link = baseline.txt
             import os
             import script_util as util
@@ -191,8 +185,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
 
     def test_the_nlinesdiff_utility(self):
         ""
-        util.writescript( 'pypass.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pypass.vvt', """
             import os
             import script_util as util
             fp = open( 'genfile.txt', 'w' )
@@ -202,8 +195,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             util.nlinesdiff( 'genfile.txt', 2 )
             util.if_diff_exit_diff()
             """ )
-        util.writescript( 'pydiff.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pydiff.vvt', """
             import os
             import script_util as util
             fp = open( 'genfile.txt', 'w' )
@@ -245,8 +237,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
         ""
         platname = vtu.core_platform_name()
 
-        util.writescript( 'pytest.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pytest.vvt', """
             #VVT: parameterize : A = 1 3 5
             import vvtest_util as vvt
             import script_util as util
@@ -347,8 +338,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
         ""
         platname = vtu.core_platform_name()
 
-        util.writescript( 'pytest.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'pytest.vvt', """
             #VVT: parameterize : A = 1 2
             #VVT: analyze : -a
             import sys
@@ -454,29 +444,25 @@ class script_utils_tests( vtu.vvtestTestCase ):
 
     def test_the_runcmd_script_util(self):
         ""
-        util.writescript( 'py1.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py1.vvt', """
             import script_util as vvt
             print3 = vvt.print3
             x = vvt.runcmd( 'ls -l' )
             assert x == 0
             """ )
-        util.writescript( 'py2.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py2.vvt', """
             import script_util as vvt
             print3 = vvt.print3
             x = vvt.runcmd( 'failprogram', ignore_exit=True )
             assert x != 0
             """ )
-        util.writescript( 'py3.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py3.vvt', """
             import script_util as vvt
             print3 = vvt.print3
             vvt.runcmd( 'failprogram' )
             print3( 'should not get here' )
             """ )
-        util.writescript( 'py4.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py4.vvt', """
             import script_util as vvt
             print3 = vvt.print3
             out = vvt.runcmd( 'ls -l', capture_output=True )
@@ -491,16 +477,14 @@ class script_utils_tests( vtu.vvtestTestCase ):
             #!/bin/sh
             echo "hello world"
             """ )
-        util.writescript( 'py5.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py5.vvt', """
             #VVT: link : helloworld
             import script_util as vvt
             print3 = vvt.print3
             vvt.runcmd( './helloworld progargs', echo=False )
             """ )
 
-        util.writescript( 'py6.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py6.vvt', """
             #VVT: link : helloworld
             import script_util as vvt
             print3 = vvt.print3
@@ -511,16 +495,14 @@ class script_utils_tests( vtu.vvtestTestCase ):
             #!/bin/sh
             echo "hello mars"
             """ )
-        util.writescript( 'py7.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py7.vvt', """
             #VVT: link : helloworld hellomars
             import script_util as vvt
             print3 = vvt.print3
             vvt.runcmd( './helloworld', redirect='prog.out' )
             vvt.runcmd( './hellomars', redirect='prog.out' )
             """ )
-        util.writescript( 'py8.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py8.vvt', """
             #VVT: link : helloworld hellomars
             import script_util as vvt
             print3 = vvt.print3
@@ -563,8 +545,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
 
     def test_permissions_helpers_in_script_util(self):
         ""
-        util.writescript( 'py1.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py1.vvt', """
             import script_util as util
             fp = open( 'script', 'w' )
             fp.write( '#!/bin/sh\\n' )
@@ -598,8 +579,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             #!/bin/sh
             echo "hello from myscript"
             """ )
-        util.writescript( 'py1.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py1.vvt', """
             #VVT: link : file1.txt file2.txt
             import os
             import vvtest_util as vvt
@@ -623,54 +603,70 @@ class script_utils_tests( vtu.vvtestTestCase ):
 
         assert vrun.countGrepLogs( 'quick brown fox', 'py1' ) == 1
         assert vrun.countGrepLogs( 'lazy dog', 'py1' ) == 1
-        assert vrun.countGrepLogs( 'which = /*/subdir/myscript', 'py1' ) == 1
-        assert vrun.countGrepLogs( 'which = /*/subdir/myscript', 'py2' ) == 1
+        assert vrun.countGrepLogs( 'which = */subdir/myscript', 'py1' ) == 1
+        assert vrun.countGrepLogs( 'which = */subdir/myscript', 'py2' ) == 1
 
     def test_the_user_termination_function(self):
         ""
-        util.writescript( 'py1.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py1.vvt', """
+            import sys
             import script_util as util
             def lastcall():
-                util.print3( 'lastcall called' )
+                print ( 'lastcall called' )
+                sys.stdout.flush() ; sys.stderr.flush()
             util.register_termination_function( lastcall )
             try:
                 raise Exception( 'fake exception' )
             except Exception:
                 pass
             """ )
-        util.writescript( 'py2.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py2.vvt', """
+            import sys
             import script_util as util
             def lastcall():
-                util.print3( 'lastcall called' )
+                print ( 'lastcall called' )
+                sys.stdout.flush() ; sys.stderr.flush()
             util.register_termination_function( lastcall )
             raise Exception( 'fake exception' )
-            util.print3( 'should not be here' )
+            print ( 'should not be here' )
             """ )
-        util.writescript( 'py3.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py3.vvt', """
+            import sys
             import script_util as util
             def lastcall():
-                util.print3( 'lastcall called' )
+                print( 'lastcall called' )
             util.register_termination_function( lastcall )
             util.set_have_diff()
             util.if_diff_exit_diff()
-            util.print3( 'should not be here' )
+            print ( 'should not be here' )
             """ )
-        time.sleep(1)
+        util.writefile( 'py4.vvt', """
+            import sys
+            import script_util as util
+            def lastcall():
+                print ( 'lastcall called' )
+                sys.stdout.flush() ; sys.stderr.flush()
+                util.if_diff_exit_diff()
+                print ( 'Houston, we have a problem' )
+            util.register_termination_function( lastcall )
+            util.set_have_diff()
+            print ( 'last line of the script' )
+            """ )
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=3, npass=1, diff=1, fail=1 )
+        vrun.assertCounts( total=4, npass=1, diff=2, fail=1 )
 
-        assert vrun.countGrepLogs( 'fake exception', 'py1' ) == 0
-        assert vrun.countGrepLogs( 'lastcall called', 'py1' ) == 1
-        assert vrun.countGrepLogs( 'fake exception', 'py2' ) > 0
-        assert vrun.countGrepLogs( 'lastcall called', 'py2' ) == 0
+        assert vrun.countGrepLogs( 'fake exception',     'py1' ) == 0
+        assert vrun.countGrepLogs( 'lastcall called',    'py1' ) == 1
+        assert vrun.countGrepLogs( 'fake exception',     'py2' ) > 0
+        assert vrun.countGrepLogs( 'lastcall called',    'py2' ) == 0
         assert vrun.countGrepLogs( 'should not be here', 'py2' ) == 0
-        assert vrun.countGrepLogs( 'exiting diff', 'py3' ) == 1
-        assert vrun.countGrepLogs( 'lastcall called', 'py3' ) == 0
+        assert vrun.countGrepLogs( 'exiting diff',       'py3' ) == 1
+        assert vrun.countGrepLogs( 'lastcall called',    'py3' ) == 0
         assert vrun.countGrepLogs( 'should not be here', 'py3' ) == 0
+        assert vrun.countGrepLogs( 'lastcall called',    'py4' ) == 1
+        assert vrun.countGrepLogs( 'last line of the script',    'py4' ) == 1
+        assert vrun.countGrepLogs( 'Houston, we have a problem', 'py4' ) == 0
 
     def test_the_python_trace_utility(self):
         ""
@@ -678,8 +674,7 @@ class script_utils_tests( vtu.vvtestTestCase ):
             this is line one
             and line two
             """ )
-        util.writescript( 'py1.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'py1.vvt', """
             #VVT: link : file1.txt
             import os
             import script_util as util

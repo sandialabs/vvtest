@@ -5,6 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
+from os.path import dirname
 import time
 
 from . import outpututils
@@ -32,8 +33,9 @@ class ListWriter:
     is given on the vvtest command line, then that date is used instead.
     """
 
-    def __init__(self, permsetter, output_dir, results_test_dir, scpexe='scp'):
+    def __init__(self, loc, permsetter, output_dir, results_test_dir, scpexe='scp'):
         ""
+        self.loc = loc
         self.permsetter = permsetter
         self.outdir = output_dir
         self.testdir = results_test_dir
@@ -131,7 +133,8 @@ class ListWriter:
         tr = fmtresults.TestResults()
 
         for tcase in tcaseL:
-            rootrel = fmtresults.determine_rootrel( tcase.getSpec(), dcache )
+            srcdir = dirname( self.loc.make_abspath( tcase.getSpec().getFilename() ) )
+            rootrel = fmtresults.determine_rootrel( srcdir, dcache )
             if rootrel:
                 tr.addTest( tcase, rootrel )
 

@@ -9,19 +9,22 @@ from os.path import join as pjoin
 
 from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
+from .pathutil import change_directory
 
 
 class TestFileScanner:
 
-    def __init__(self, creator, tcasefactory,
+    def __init__(self, loc, creator, tcasefactory,
                        path_list=[],
                        specform=None,
                        warning_output_stream=sys.stdout):
         """
+        The 'loc' is a Locator object.
         If 'specform' is not None, it must be a list of strings, such as
         'vvt' and 'xml'.  The scanner will only pick up files for those test
         specification forms.  Default is only 'vvt' files.
         """
+        self.loc = loc
         self.creator = creator
         self.fact = tcasefactory
         self.path_list = path_list
@@ -43,22 +46,21 @@ class TestFileScanner:
         """
         Recursively scans for test XML or VVT files starting at 'path'.
         """
-        bpath = os.path.normpath( os.path.abspath(path) )
-
-        if os.path.isfile( bpath ):
-            basedir,fname = os.path.split( bpath )
+        if os.path.isfile( path ):
+            basedir,fname = os.path.split( path )
             self.readTestFile( testlist, basedir, fname )
 
         else:
-            for root,dirs,files in os.walk( bpath ):
-                self._scan_recurse( testlist, bpath, root, dirs, files )
+            for root,dirs,files in os.walk( path ):
+                self._scan_recurse( testlist, path, root, dirs, files )
 
     def completeTestParsing(self, testlist):
         ""
-        for tcase in testlist.getActiveTests():
-            tspec = tcase.getSpec()
-            if not tspec.constructionCompleted():
-                self.creator.reparse( tspec )
+        with change_directory( self.loc.make_abspath('.') ):
+            for tcase in testlist.getActiveTests():
+                tspec = tcase.getSpec()
+                if not tspec.constructionCompleted():
+                    self.creator.reparse( tspec )
 
     def _scan_recurse(self, testlist, basedir, d, dirs, files):
         """
@@ -68,11 +70,7 @@ class TestFileScanner:
         """
         d = os.path.normpath(d)
 
-        if basedir == d:
-            reldir = '.'
-        else:
-            assert basedir+os.sep == d[:len(basedir)+1]
-            reldir = d[len(basedir)+1:]
+        reldir = os.path.relpath( d, basedir )
 
         # scan files with extension specific extensions; soft links to
         # directories are skipped by os.walk so special handling is performed
@@ -115,12 +113,10 @@ class TestFileScanner:
         skipped if they don't appear to be a test file.  Attributes from
         existing tests will be absorbed.
         """
-        assert basepath
-        assert relfile
-        assert os.path.isabs( basepath )
-        assert not os.path.isabs( relfile )
+        # assert basepath and os.path.isabs( basepath )
+        assert relfile and not os.path.isabs( relfile )
 
-        basepath = os.path.normpath( basepath )
+        basepath = os.path.normpath( basepath or '.' )
         relfile  = os.path.normpath( relfile )
 
         assert relfile

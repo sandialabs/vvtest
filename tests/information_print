@@ -211,13 +211,11 @@ def make_fake_TestExecList():
         ts = vtu.make_fake_TestCase( 'running', name='atest'+str(i) )
         tlist.addTest( ts )
 
-    xlist = TestExecList( tlist, None )
+    xlist = TestExecList( tlist, vtu.FakeHandler() )
 
-    xlist._generate_backlog_from_testlist()
-
-    # mark the tests as running
-    for tcase in xlist.consumeBacklog():
-        pass
+    # mark the tests as running by consuming the backlog
+    for texec in xlist.consumeBacklog():
+        texec.getTestCase().getStat().markStarted( time.time() )
 
     return tlist, xlist
 
@@ -230,13 +228,12 @@ def make_fake_Batcher( tlist ):
     jobhandler = batching.BatchJobHandler( 5, 5, 'clean', namer )
 
     batch = batchutils.Batcher( None,
-                                tlist, None, None,
-                                None,
+                                tlist, None,
                                 None, None,
-                                None, jobhandler, None )
+                                None, None, jobhandler )
 
     bjob = jobhandler.createJob()
-    bjob.setAttr( 'testlist', tlist )
+    bjob.setJobObject( tlist )
 
     jid = 42
     jobhandler.markJobStarted( bjob, jid )

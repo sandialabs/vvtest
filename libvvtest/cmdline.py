@@ -139,7 +139,7 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '--run-dir',
         help='The name of the directory to contain the test execution results. '
              'Defaults to TestResults.*, where * is the platform name plus '
-             'any -o options.' )
+             '-o options.' )
     grp.add_argument( '-L', dest='dash_L', action='store_true',
         help='Do not redirect test output to log files.' )
     grp.add_argument( '-a', '--analyze', dest='analyze', action='store_true',
@@ -221,7 +221,7 @@ def create_parser( argvlist, vvtest_version ):
         help='Limit the number of tests in each job group such that the '
              'sum of their runtimes is less than the given value (number '
              'of seconds or 10m or 2h or HH:MM:SS). Default is 30 minutes.' )
-    psr.add_argument( '--qsub-id', type=int, help=argutil.SUPPRESS )
+    psr.add_argument( '--batch-id', type=int, help=argutil.SUPPRESS )
 
     # results
     grp = psr.add_argument_group( 'Results handling' )
@@ -260,8 +260,10 @@ def create_parser( argvlist, vvtest_version ):
         help='Alternate way to specify the CDash project name.' )
 
     grp = psr.add_argument_group( 'Other operating modes' )
-    grp.add_argument( '-b', dest='dash_b', action='store_true',
+    grp.add_argument( '-b', dest='rebase', action='store_true',
         help='Rebaseline tests that have diffed.' )
+    grp.add_argument( '-B', dest='rebase_all', action='store_true',
+        help='Rebaseline all tests regardless of result status.' )
 
     grp.add_argument( '-g', dest='dash_g', action='store_true',
         help='Scan for tests and populate the test results tree, '
@@ -396,10 +398,6 @@ def adjust_options_and_create_derived_options( opts ):
         opts.tmin = mn
         opts.tmax = mx
         opts.tsum = sm
-
-        errtype = '-j option'
-        if opts.bin_dir is not None:
-            opts.bin_dir = os.path.normpath( os.path.abspath( opts.bin_dir ) )
 
         errtype = '--results-date'
         if opts.results_date is not None:

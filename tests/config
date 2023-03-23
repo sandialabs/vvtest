@@ -10,6 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+from os.path import abspath
 import platform
 
 import vvtestutils as vtu
@@ -575,15 +576,40 @@ class preload_tests( vtu.vvtestTestCase ):
                 return 'fakepython31'
             """ )
 
-        os.environ.pop( 'VVTEST_PRELOAD_PLUGIN_TEST', None )
-
         tcase = vtu.make_fake_TestCase()
-        try:
+
+        with util.set_environ( VVTEST_PRELOAD_PLUGIN_TEST=None ):
             rtn = plug.testPreload( tcase )
             assert rtn == 'fakepython31'
             assert os.environ['VVTEST_PRELOAD_PLUGIN_TEST'] == 'value'
-        finally:
-            os.environ.pop( 'VVTEST_PRELOAD_PLUGIN_TEST', None )
+
+    def test_error_case_preload_returns_invalid_type(self):
+        ""
+        plug = vtu.make_user_plugin( """
+            import os
+            def test_preload( specs ):
+                ""
+                return ['junk']
+            """ )
+
+        tcase = vtu.make_fake_TestCase()
+        rtn,out,err = util.call_capture_output( plug.testPreload, tcase )
+        assert rtn is None
+        assert 'only None or string are allowed' in out
+
+    def test_error_case_preload_returns_empty_string(self):
+        ""
+        plug = vtu.make_user_plugin( """
+            import os
+            def test_preload( specs ):
+                ""
+                return ' '
+            """ )
+
+        tcase = vtu.make_fake_TestCase()
+        rtn,out,err = util.call_capture_output( plug.testPreload, tcase )
+        assert rtn is None
+        assert 'returned an empty string' in out
 
     def test_parsing_preload_label_in_test_specification(self):
         ""
@@ -607,7 +633,7 @@ class preload_tests( vtu.vvtestTestCase ):
         util.writescript( 'mybin/fakepython31', """
             #!/bin/bash
             echo "Fake Python 3.1"
-            exec python "$@"
+            exec """+sys.executable+""" "$@"
             """ )
         util.writefile( "cfg/vvtest_user_plugin.py", """
             import os
@@ -633,6 +659,74 @@ class preload_tests( vtu.vvtestTestCase ):
 
             assert vrun.countGrepLogs( 'in testB', 'testB' ) == 1
             assert vrun.countGrepLogs( 'Fake Python 3.1', 'testB' ) == 0
+
+    def test_the_preload_environment_propagates_to_the_test_script(self):
+        ""
+        util.writefile( "testA.vvt", """
+            import os
+            print ( "testA: "+os.environ['MY_FAKE_ENVIRON_VARIABLE'] )
+            """ )
+        util.writescript( "testB.vvt", """
+            #!/usr/bin/env fakepython31
+            import os
+            print ( "testB: "+os.environ["MY_FAKE_ENVIRON_VARIABLE"] )
+            """ )
+        util.writescript( 'mybin/fakepython31', """
+            #!/bin/bash
+            echo "Fake Python 3.1"
+            exec """+sys.executable+""" "$@"
+            """ )
+        util.writefile( "cfg/vvtest_user_plugin.py", """
+            import os
+            def test_preload( specs ):
+                ""
+                os.environ['PATH'] += ':"""+os.path.abspath('mybin')+"""'
+                os.environ['MY_FAKE_ENVIRON_VARIABLE'] = "fake value"
+                return 'fakepython31'
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( '--config cfg', batch=batch )
+            vrun.assertCounts( total=2, npass=2 )
+
+            assert vrun.countGrepLogs( 'testA: fake value', 'testA' ) == 1
+            assert vrun.countGrepLogs( 'Fake Python 3.1', 'testA' ) == 1
+
+            assert vrun.countGrepLogs( 'testB: fake value', 'testB' ) == 1
+            assert vrun.countGrepLogs( 'Fake Python 3.1', 'testB' ) == 1
+
+    def test_a_preload_plugin_value_overrides_the_execute_bit(self):
+        """
+        if the preload plugin returns non-None, then the execute bit is
+        ignored and the returned script is used to launch the test
+        """
+        util.writescript( "atest.vvt", """
+            #!"""+sys.executable+"""
+            print ( "running atest" )
+            """ )
+        util.writescript( 'mybin/fakepython3', """
+            #!"""+sys.executable+"""
+            import os, sys, subprocess
+            print ( "Fake Python 3" )
+            sys.stdout.flush() ; sys.stderr.flush()
+            subprocess.check_call( [sys.executable]+sys.argv[1:] )
+            """ )
+        util.writefile( "cfg/vvtest_user_plugin.py", """
+            def test_preload( specs ):
+                return '"""+abspath('mybin/fakepython3')+"""'
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( '--config cfg', batch=batch )
+            vrun.assertCounts( total=1, npass=1 )
+
+            assert vrun.countGrepLogs( 'Fake Python 3', 'atest' ) == 1
 
 
 ########################################################################

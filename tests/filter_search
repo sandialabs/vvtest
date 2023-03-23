@@ -18,7 +18,6 @@ import testutils as util
 from testutils import print3
 
 from libvvtest.RuntimeConfig import FileSearcher
-from libvvtest.testcreator import TestCreator
 
 
 class filtering_by_file_search( vtu.vvtestTestCase ):
@@ -161,7 +160,7 @@ def regexlist( *patterns ):
 
 def create_tests( relpath, platname='dummy', optlist=[] ):
     ""
-    creator = TestCreator( {}, platname, optlist )
+    creator = vtu.creator( {}, platname, optlist )
     tL = creator.fromFile( relpath )
     sortL = [ (ts.getDisplayString(),ts) for ts in tL ]
     sortL.sort()

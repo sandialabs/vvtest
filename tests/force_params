@@ -10,23 +10,26 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+from os.path import abspath
 import time
 
 import vvtestutils as vtu
 import testutils as util
+
+import libvvtest.parsevvt as parsevvt
+check_for_forced_values = parsevvt.check_for_forced_values
+from libvvtest.errors import TestSpecError
 
 
 class force_params( vtu.vvtestTestCase ):
 
     def test_forcing_parameterize_values_on_command_line(self):
         ""
-        util.writefile( "param.xml", """
-            <rtest name="param">
-              <parameterize hello="world mars"/>
-              <execute>
-                echo "parm=$hello"
-              </execute>
-            </rtest>""" )
+        util.writefile( "pink.vvt", """
+            #VVT: parameterize : hello = world mars
+            import vvtest_util as vvt
+            print ( 'parm='+vvt.hello )
+            """ )
         util.writefile( "blue.vvt", """
             #VVT: parameterize : hello = foo bar
             import vvtest_util as vvt
@@ -69,7 +72,7 @@ class force_params( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '-S hello=jupiter' )
         vrun.assertCounts( total=0, npass=0 )
 
-    def test_force_parameter_with_generate_option(self):
+    def test_force_parameter_in_generate_mode(self):
         ""
         util.writefile( "subdir/param.vvt", """
             #VVT: parameterize : hello = world mars
@@ -139,6 +142,136 @@ class force_params( vtu.vvtestTestCase ):
                             'blue.hello stage=2(hello=jupiter)',
                             'red.hello stage=1(hello=jupiter)',
                             'red.hello stage=2(hello=jupiter)' ] )
+
+    def test_force_param_with_type_specifications(self):
+        ""
+        util.writefile( 'blue.vvt', """
+            #VVT: parameterize (int) : foo = 1 8
+            """ )
+        util.writefile( 'pink.vvt', """
+            #VVT: parameterize (autotype) : foo = 1 8
+            """ )
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt' )
+        pset = parser.parseParameterSet( 'blue' )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == int
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt',
+                                            force_params={'foo':['2','9']} )
+        pset = parser.parseParameterSet( 'blue' )
+        assert_equal_params( pset, [{'foo': '2'}, {'foo': '9'}] )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == int
+
+        parser = parsevvt.ScriptTestParser( 'blue.vvt',
+                                            force_params={'foo':['2','oops']} )
+        self.assertRaises( TestSpecError, parser.parseParameterSet, 'blue' )
+
+        parser = parsevvt.ScriptTestParser( 'pink.vvt' )
+        pset = parser.parseParameterSet( 'pink' )
+        assert_equal_params( pset, [{'foo': '1'}, {'foo': '8'}] )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == int
+
+        # for good or bad, the autotype uses the forced parameters to determine type
+        parser = parsevvt.ScriptTestParser( 'pink.vvt',
+                                            force_params={'foo':['2','8.5']} )
+        pset = parser.parseParameterSet( 'pink' )
+        assert_equal_params( pset, [{'foo': '2'}, {'foo': '8.5'}] )
+        tmap = pset.getParameterTypeMap()
+        assert tmap['foo'] == float
+
+    def test_forcing_values_in_generated_parameters(self):
+        ""
+        util.writefile( 'afile', """
+            from json import dumps
+            print ( dumps( [ {'A':1}, {'A':2} ] ) )
+            """ )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (generator) : afile
+            """ )
+
+        util.writefile( 'bfile', """
+            from json import dumps
+            print ( dumps( [ {'A':1,'B':1.1}, {'A':2,'B':2.2} ] ) )
+            """ )
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize (generator) : bfile
+            """ )
+
+        nameL = ['foo'] ; valL = [['bar']] ; typmap = {'foo':str}
+
+        vL = check_for_forced_values( nameL, valL, typmap, {}, 3 )
+        self.assertEqual( vL, [['bar']] )
+
+        vL = check_for_forced_values( nameL, valL, typmap, {'foo':['baz']}, 3 )
+        self.assertEqual( vL, [['baz']] )
+
+        vL = check_for_forced_values( nameL, valL, typmap, {'foo':['baz','fiz']}, 3 )
+        self.assertEqual( vL, [['baz'],['fiz']] )
+
+        vL = check_for_forced_values( nameL, valL, {}, {}, 3 )
+        self.assertEqual( vL, [['bar']] )
+
+        nameL = ['foo'] ; valL = [[23]] ; typmap = {'foo':int}
+        vL = check_for_forced_values( nameL, valL, typmap, {'foo':['32']}, 3 )
+        self.assertEqual( vL, [[32]] )
+
+        nameL = ['foo'] ; valL = [[13.0]] ; typmap = {'foo':float}
+        vL = check_for_forced_values( nameL, valL, typmap, {'foo':['31']}, 3 )
+        # should be [[31.0]]
+        assert len(vL) == 1 and len(vL[0]) == 1 and abs(vL[0][0]-31.0) < 1.e-12
+
+        psr = parsevvt.ScriptTestParser( 'atest.vvt',
+                                         force_params={'A':['4','5','6']} )
+        pset = psr.parse_parameterize( 'atest' )
+        self.assertEqual( pset.getInstances(), [{'A':'4'}, {'A':'5'},{'A':'6'}] )
+        self.assertEqual( pset.getParameterTypeMap(), {'A':int} )
+
+        psr = parsevvt.ScriptTestParser( 'atest.vvt',
+                                         force_params={'A':['4.1','5.1','6.1']} )
+        self.assertRaises( TestSpecError, psr.parse_parameterize, 'atest' )
+
+        psr = parsevvt.ScriptTestParser( 'btest.vvt', force_params={'A':['4']} )
+        self.assertRaises( TestSpecError, psr.parse_parameterize, 'btest' )
+
+    def test_force_param_with_a_generator_script(self):
+        ""
+        util.writefile( 'afile', """
+            from json import dumps
+            print ( dumps( [ {'A':1}, {'A':2} ] ) )
+            """ )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (generator) : afile
+            import vvtest_util as vvt
+            assert type(vvt.A) == int
+            """ )
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( '-S "A=8 9 10"', batch=batch )
+            vrun.assertCounts( total=3, npass=3 )
+            tdir = vrun.resultsDir()
+            self.assertEqual( vrun.getTestIds(),
+                              ['atest.A=10', 'atest.A=8', 'atest.A=9'] )
+
+            vrun = vtu.runvvtest( '-R', batch=batch, chdir=tdir )
+            vrun.assertCounts( total=3, npass=3 )
+            self.assertEqual( vrun.getTestIds(),
+                              ['atest.A=10', 'atest.A=8', 'atest.A=9'] )
+
+
+def assert_equal_params( pset, ilist ):
+    ""
+    plist = pset.getInstances()
+    assert len(plist) == len(ilist)
+    for d1 in plist:
+        assert d1 in ilist
+    for d2 in ilist:
+        assert d2 in plist
 
 
 ############################################################################

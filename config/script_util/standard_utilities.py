@@ -41,11 +41,9 @@ def set_have_diff():
 def exit_diff():
     ""
     import vvtest_util as vvt
-    print3( "\n*** exiting diff,", vvt.TESTID )
-    # prevent termination func from being called, if one was registered
-    global _user_terminate_func_
-    _user_terminate_func_ = None
-    sys.exit( vvt.diff_exit_status )
+    print ( "\n*** exiting diff, " + str(vvt.TESTID) )
+    sys.stdout.flush() ; sys.stderr.flush()
+    os._exit( vvt.diff_exit_status )
 
 def if_diff_exit_diff():
     if have_diff:
@@ -80,6 +78,7 @@ def _except_hook_( exctype, excvalue, tb ):
     _num_exceptions_ += 1
     import traceback
     traceback.print_exception( exctype, excvalue, tb )
+    sys.stdout.flush() ; sys.stderr.flush()
 
 def _terminate_func_():
     """
@@ -87,7 +86,7 @@ def _terminate_func_():
     The purpose is to check if the shutdown is due to a failure or not.
     If not a failure, the user function is called.
     """
-    if _num_exceptions_ == 0 and _user_terminate_func_ != None:
+    if _num_exceptions_ == 0 and _user_terminate_func_ is not None:
         _user_terminate_func_()
 
 _user_terminate_func_ = None
@@ -249,7 +248,7 @@ def sedfile( filename, pattern, replacement, *more ):
         info += ', '+more[i]+' -> '+more[i+1]
         prL.append( ( re.compile( more[i] ), more[i+1] ) )
     
-    print3( info )
+    print ( info )
 
     fpin = open( filename, 'r' )
     fpout = open( filename+'.sedfile_tmp', 'w' )
@@ -276,10 +275,9 @@ def unixdiff( file1, file2 ):
     assert os.path.exists( file1 ), "file does not exist: "+file1
     assert os.path.exists( file2 ), "file does not exist: "+file2
     import filecmp
-    print3( '\nunixdiff: diff '+file1+' '+file2 )
+    print ( '\nunixdiff: diff '+file1+' '+file2 )
     if not filecmp.cmp( file1, file2 ):
-        print3( '*** unixdiff: files are different,',
-                'setting have_diff' )
+        print ( '*** unixdiff: files are different, setting have_diff' )
         set_have_diff()
         fp1 = open( file1, 'r' )
         flines1 = fp1.readlines()
@@ -311,11 +309,11 @@ def nlinesdiff( filename, maxlines ):
         line = fp.readline()
     fp.close()
 
-    print3( '\nnlinesdiff: filename = '+filename + \
+    print ( '\nnlinesdiff: filename = '+filename + \
             ', num lines = '+str(n) + \
             ', max lines = '+str(maxlines) )
     if n > maxlines:
-        print3( '*** nlinesdiff: number of lines exceeded',
+        print ( '*** nlinesdiff: number of lines exceeded '
                 'max, setting have_diff' )
         set_have_diff()
         return True

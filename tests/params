@@ -428,7 +428,6 @@ class parameter_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : np = 0 4
             #VVT: parameterize : ndevice = 0 4
             """ )
-        time.sleep(1)
 
         parser = parsevvt.ScriptTestParser( 'err0.vvt' )
         self.assertRaises( TestSpecError,

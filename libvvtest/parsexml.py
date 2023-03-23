@@ -37,15 +37,13 @@ class XMLTestParser:
         ""
         self.fpath = filepath
 
-        if not rootpath:
-            rootpath = os.getcwd()
-        self.root = rootpath
+        self.root = rootpath or '.'
 
         self.platname = platname if platname else platform.uname()[0]
         self.optionlist = optionlist
         self.force = force_params
 
-        fname = os.path.join( rootpath, filepath )
+        fname = os.path.join( self.root, filepath )
         self.xmldoc = read_xml_file( fname, strict )
 
     def parseTestNames(self):
@@ -180,7 +178,7 @@ class XMLTestParser:
                   else:
                       L = [ list(T) for T in zip( *pL ) ]
                       check_for_duplicate_parameter( L[1:], nd.getLineNumber() )
-                      pset.addParameterGroup( L[0], L[1:] )
+                      pset.addParameters( L[0], L[1:] )
 
         return pset
 

@@ -251,7 +251,7 @@ def string_to_test( strid, factory ):
     if 'paramset' in testdict:
         pset = tspec.getParameterSet()
         for T,L in testdict['paramset'].items():
-            pset.addParameterGroup( T, L )
+            pset.addParameters( T, L )
         tspec.setIsAnalyze()
     else:
         tspec.setParameters( testdict['params'] )

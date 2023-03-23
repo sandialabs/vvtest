@@ -50,7 +50,6 @@ class info_tests( vtu.vvtestTestCase ):
                 set have_diff = yes
               </execute>
             </rtest>""")
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, npass=2, diff=1, fail=1 )
@@ -577,15 +576,16 @@ def extract_keywords( out ):
 def extract_files( out, rootd ):
     ""
     D = {}
-    for line in out.split( '\n' ):
+    for line in out.splitlines():
         line = line.strip()
-        if line and line[0] == '/':
+        if line:
             D[line] = None
     fL = list( D.keys() )
 
-    lend = len(rootd)
+    lend = len(rootd)+1
     for i in range(len(fL)):
-        fL[i] = fL[i][lend+1:]
+        if fL[i].startswith(rootd):
+            fL[i] = fL[i][lend:]
 
     fL.sort()
 

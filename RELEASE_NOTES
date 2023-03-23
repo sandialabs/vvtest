@@ -1,15 +1,39 @@
 
 Improvements:
 
-    -
+    - A new option, -B, has been added which is similar to the -b option.
+      Using -b means perform a re-baseline operation on tests that "diff".
+      Using -B means re-baseline on all tests regardless of result status.
+
+    - The parameterize directive can now use an external script to generate
+      the parameter names and associated values. For example,
+
+          #VVT: parameterize (generator) : myscript.py --my-args
+
+      will call myscript.py for a JSON encoded list of dictionaries that
+      contains the sets of parameter name=value.
+
+    - To complement the parameterize autotype directive attribute, specific
+      types can be specified. Valid types are int, float, and str. For example,
+
+          #VVT: parameterize (int,float) : N,val = 4,4.1  8,4.2
 
 Fixes:
 
-    -
+    - The script_util.standard_utilities have a way to register a function
+      that runs when the test script exits. When using Python3, calling
+      exit_diff() inside the termination function was not returning a diff
+      exit status. Now fixed.
 
 Changes:
 
-    -
+    - A test script that is executable will be run directly (using the #!
+      mechanism). Now when a plugin preload function returns a file path,
+      that path will always be used to run the test (when before the test
+      would still be run directly).
+
+    - Python 2.6 is no longer supported. Now vvtest supports Python 2.7 and
+      3.2 or newer.
 
 
 ==============================================================================

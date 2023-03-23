@@ -21,40 +21,33 @@ class baseline_tests( vtu.vvtestTestCase ):
 
     def test_basic_rebaselining(self):
         ""
-        util.writefile( "param.xml", """
-            <rtest name="param">
-              <parameterize hello="world mars"/>
-              <execute> <![CDATA[
-                sleep 1
-                echo "parm=$hello"
-                ]]>
-              </execute>
-            </rtest>""" )
+        util.writefile( "param.vvt", """
+            #VVT: parameterize : hello = world mars
+            import vvtest_util as vvt
+            print ( "parm="+vvt.hello )
+            """ )
 
-        util.writefile( "bline.xml", """
-            <rtest name="bline">
-              <execute> <![CDATA[
-                # create a single baseline file to use for the first differencing
-                echo "baseline test data file" >! bline.txt
-                echo "line two" >> bline.txt
-                ]]>
-              </execute>
-              <execute name="unixdiff"> bline.txt ${XMLDIR}/bline.txt </execute>
-              <execute> <![CDATA[
-                # copy the previous file to a separate name
-                cp bline.txt bline2.txt
-                ]]>
-              </execute>
-              <execute name="unixdiff"> bline2.txt ${XMLDIR}/blinetwo.txt </execute>
-              <baseline file="bline.txt"/>
-              <baseline file="bline2.txt" destination="blinetwo.txt"/>
-            </rtest>""" )
+        util.writefile( "bline.vvt", """
+            #VVT: baseline : bline.txt, bline.txt
+            #VVT: baseline : bline2.txt, blinetwo.txt
+
+            import os, shutil
+            import vvtest_util as vvt
+            import script_util as util
+
+            with open( "bline.txt", 'wt' ) as fp:
+                fp.write( "baseline test data file"+os.linesep + \\
+                          "line two"+os.linesep )
+
+            util.unixdiff( 'bline.txt', vvt.SRCDIR+'/bline.txt' )
+            shutil.copy( 'bline.txt', 'bline2.txt' )
+
+            util.if_diff_exit_diff()
+            """ )
 
         util.writefile( "bline.txt", "" )
         util.writefile( "bline2.txt", "" )
         util.writefile( "blinetwo.txt", "" )
-
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=3, npass=2, diff=1 )
@@ -69,26 +62,20 @@ class baseline_tests( vtu.vvtestTestCase ):
         util.writefile( 'base1.txt', "" )
         util.writefile( 'base2.txt', "" )
 
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-              <rtest name="multi2"/>
-              <link_files testname="multi" linkname="base.txt">
-                base1.txt
-              </link_files>
-              <link_files testname="multi2" linkname="base.txt">
-                base2.txt
-              </link_files>
-              <execute testname="multi">
-                echo "new multi contents" > output.txt
-              </execute>
-              <execute testname="multi2">
-                echo "new multi2 contents" > output.txt
-              </execute>
-              <execute name="unixdiff"> base.txt output.txt </execute>
-              <baseline testname="multi" file="output.txt" destination="base1.txt"/>
-            </rtest>""" )
-
-        time.sleep(1)
+        util.writefile( "multi.vvt", """
+            #VVT: testname = multi
+            #VVT: testname = multi2
+            #VVT: link (testname=multi, rename) : base1.txt, base.txt
+            #VVT: link (testname=multi2, rename) : base2.txt, base.txt
+            #VVT: baseline (testname=multi) : output.txt, base1.txt
+            import os
+            import vvtest_util as vvt
+            import script_util as util
+            with open( 'output.txt', 'wt' ) as fp:
+                fp.write( "new "+vvt.NAME+" contents"+os.linesep )
+            if util.unixdiff( 'base.txt', 'output.txt' ):
+                util.exit_diff()
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, diff=2 )
@@ -129,8 +116,6 @@ class baseline_tests( vtu.vvtestTestCase ):
         util.writefile( "bline2.txt", "b" )
         util.writefile( "blinetwo.txt", "c" )
 
-        time.sleep(1)
-
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=3, npass=2, diff=1 )
 
@@ -166,8 +151,6 @@ class baseline_tests( vtu.vvtestTestCase ):
         util.writefile( "bline2.txt", "b" )
         util.writefile( "blinetwo.txt", "c" )
 
-        time.sleep(1)
-
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=1, diff=1 )
 
@@ -179,8 +162,7 @@ class baseline_tests( vtu.vvtestTestCase ):
 
     def test_script_format_rebaseline_using_option(self):
         ""
-        util.writescript( "bline.vvt", """
-            #!"""+sys.executable+"""
+        util.writefile( "bline.vvt", """
             #VVT: baseline : --bline
             import os, sys
             import shutil, filecmp
@@ -209,8 +191,6 @@ class baseline_tests( vtu.vvtestTestCase ):
         util.writefile( "bline.txt", "a" )
         util.writefile( "bline2.txt", "b" )
         util.writefile( "blinetwo.txt", "c" )
-
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=1, diff=1 )
@@ -270,8 +250,7 @@ class baseline_tests( vtu.vvtestTestCase ):
               <execute name="unixdiff"> bline.txt ${XMLDIR}/bline_base.txt </execute>
               <baseline file="$NAME.txt" destination="${NAME}_base.txt"/>
             </rtest>""" )
-        util.writescript( "pybase.vvt", """
-            #!"""+sys.executable+"""
+        util.writefile( "pybase.vvt", """
             #VVT: baseline : $NAME.txt, ${NAME}_base.txt
             import vvtest_util as vvt
             import sys, filecmp
@@ -286,8 +265,6 @@ class baseline_tests( vtu.vvtestTestCase ):
 
         util.writefile( "bline_base.txt", "" )
         util.writefile( "pybase_base.txt", "" )
-
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, diff=2 )
@@ -312,8 +289,7 @@ class baseline_tests( vtu.vvtestTestCase ):
               <baseline parameters="foo=1"
                         file="$NAME.txt" destination="${NAME}_base.txt"/>
             </rtest>""" )
-        util.writescript( "pybase.vvt", """
-            #!"""+sys.executable+"""
+        util.writefile( "pybase.vvt", """
             #VVT: parameterize : foo = 1 2
             #VVT: baseline (parameters="foo<2") : $NAME.txt, ${NAME}_base.txt
             import vvtest_util as vvt
@@ -329,8 +305,6 @@ class baseline_tests( vtu.vvtestTestCase ):
 
         util.writefile( "bline_base.txt", "" )
         util.writefile( "pybase_base.txt", "" )
-
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, diff=4 )
@@ -353,8 +327,7 @@ class baseline_tests( vtu.vvtestTestCase ):
 
     def test_specifying_baseline_for_analyze_only(self):
         ""
-        util.writescript( "control.vvt", """
-            #!"""+sys.executable+"""
+        util.writefile( "control.vvt", """
             #VVT: parameterize : foo = 1 2
             #VVT: analyze : --analyze
             #VVT: baseline : --rebase
@@ -369,8 +342,7 @@ class baseline_tests( vtu.vvtestTestCase ):
                 print ( 'executing this test' )
             """ )
 
-        util.writescript( "pybase.vvt", """
-            #!"""+sys.executable+"""
+        util.writefile( "pybase.vvt", """
             #VVT: parameterize : foo = 1 2
             #VVT: analyze : --analyze
             #VVT: baseline (parameters="!foo") : --rebase
@@ -384,8 +356,6 @@ class baseline_tests( vtu.vvtestTestCase ):
             else:
                 print ( 'executing this test' )
             """ )
-
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=6, npass=6 )
@@ -415,7 +385,6 @@ class baseline_tests( vtu.vvtestTestCase ):
                 fp = open( 'bline.txt', 'w' ) ; fp.close()
                 sys.exit( vvt.diff_exit_status )
                 """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, diff=2 )
@@ -426,6 +395,23 @@ class baseline_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '-R' )
         vrun.assertCounts( total=2, npass=1, diff=1 )
+
+    def test_the_baseline_all_option(self):
+        ""
+        util.writefile( 'A.txt', "" )
+        util.writefile( 'atest.vvt', """
+            #VVT: baseline : B.txt, A.txt
+            import os
+            with open( 'B.txt', 'wt' ) as fp:
+                fp.write( 'new contents'+os.linesep )
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=1, npass=1 )
+
+        vrun = vtu.runvvtest( '-B' )
+        assert vrun.countLines( 'baselining atest' ) == 1
+        assert util.readfile( 'A.txt' ).strip() == 'new contents'
 
 
 #####################################################################

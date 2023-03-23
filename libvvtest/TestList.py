@@ -13,6 +13,7 @@ from os.path import join as pjoin
 from . import testlistio
 from .groups import ParameterizeAnalyzeGroups
 from .teststatus import copy_test_results
+from . import depend
 
 
 default_filename = 'testlist'
@@ -27,10 +28,7 @@ class TestList:
     def __init__(self, tcasefactory, filename=None):
         ""
         self.fact = tcasefactory
-        if filename:
-            self.filename = normpath( abspath( filename ) )
-        else:
-            self.filename = abspath( default_filename )
+        self.setFilename( filename )
 
         self.rundate = None
         self.startdate = None
@@ -39,6 +37,13 @@ class TestList:
         self.tlistwriter = None
         self.groups = None  # a ParameterizeAnalyzeGroups class instance
         self.tcasemap = {}  # TestSpec ID -> TestCase object
+
+    def setFilename(self, filename):
+        ""
+        if filename:
+            self.filename = normpath( abspath( filename ) )
+        else:
+            self.filename = abspath( default_filename )
 
     def getFilename(self):
         ""
@@ -71,10 +76,7 @@ class TestList:
 
         tlw = testlistio.TestListWriter( self.filename )
 
-        if self.rundate != None:
-            tlw.start( rundate=self.rundate, **file_attrs )
-        else:
-            tlw.start( **file_attrs)
+        tlw.start( rundate=self.rundate, **file_attrs )
 
         for tcase in self.tcasemap.values():
             tlw.append( tcase, extended=extended )
@@ -125,7 +127,7 @@ class TestList:
             tlr.read()
 
             rd = tlr.getAttr( 'rundate', None )
-            if rd != None:
+            if rd is not None:
                 self.rundate = rd
 
             for xdir,tcase in tlr.getTests().items():
@@ -173,7 +175,7 @@ class TestList:
         for tcase in tcaselist:
             tspec = tcase.getSpec()
             t = self.tcasemap.get( tspec.getID(), None )
-            if t != None:
+            if t is not None:
                 copy_test_results( t.getStat(), tcase.getStat() )
                 t.getSpec().setIDTraits( tspec.getIDTraits() )
 
@@ -289,6 +291,70 @@ class TestList:
             self.groups.rebuild( self.tcasemap )
 
         return self.groups
+
+    def getTestCaseFactory(self):
+        ""
+        return self.fact
+
+    def connectDependencies(self, check_dependencies=True):
+        """
+        Find and set inter-test dependencies. If 'check_dependencies' is True
+        and a dependency cannot be found or will always fail, then a warning
+        is printed.
+        """
+        tmap = self.getTestMap()
+        groups = self.getGroupMap()
+
+        for tcase in self.getTests():
+            if not tcase.getStat().skipTest():
+                assert tcase.getSpec().constructionCompleted()
+                if tcase.getSpec().isAnalyze():
+                    grpL = groups.getGroup( tcase )
+                    depend.connect_analyze_dependencies( tcase, grpL, tmap )
+
+                depend.check_connect_dependencies( tcase, tmap, check_dependencies )
+
+    def copyResultsIfStateChange(self, tests):
+        """
+        For each test in the given list of tests, if the test status is
+        different from the test in this TestList object, then the test
+        results are copied from the given test to the corresponding test in
+        this TestList.
+
+        A list of tests whose state changed to "done" is returned.
+        """
+        donetests = []
+
+        for src_tcase in tests:
+            tid = src_tcase.getSpec().getID()
+            tstat = src_tcase.getStat()
+            tcase = self._check_state_change( tid, tstat )
+
+            if tcase and tcase.getStat().isDone():
+                donetests.append( tcase )
+
+        return donetests
+
+    def _check_state_change(self, testid, teststatus):
+        """
+        Finds the corresponding test in this TestList and if the result status
+        is different, then the test results are copied into this object's
+        test and the test list file is appended.
+
+        Returns None if the test's result status did not change, or the test
+        itself if the status did change.
+        """
+        tcase = self.tcasemap[testid]
+
+        old = tcase.getStat().getResultStatus()
+        new = teststatus.getResultStatus()
+
+        if new != old:
+            copy_test_results( tcase.getStat(), teststatus )
+            self.appendTestResult( tcase )
+            return tcase
+
+        return None  # return None if no state change
 
 
 def glob_results_files( basename ):

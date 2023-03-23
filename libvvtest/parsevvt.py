@@ -5,8 +5,12 @@
 # Government retains certain rights in this software.
 
 import os, sys
+from os.path import dirname, normpath, abspath, join as pjoin
 import platform
 import re
+import shlex
+import subprocess
+import json
 
 from .errors import TestSpecError
 from . import timehandler
@@ -29,7 +33,10 @@ from .parseutil import (
         evaluate_platform_expr,
         evaluate_option_expr,
         evaluate_parameter_expr,
+        raiseError,
     )
+
+platform_windows = platform.uname()[0].lower().startswith('win')
 
 
 class ScriptTestParser:
@@ -42,15 +49,14 @@ class ScriptTestParser:
         ""
         self.fpath = filepath
 
-        if not rootpath:
-            rootpath = os.getcwd()
-        self.root = rootpath
+        self.root = rootpath or '.'
+        # print ( 'magic: parser, root', self.root, 'fpath', self.fpath )
 
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist
         self.force = force_params
 
-        fname = os.path.join( rootpath, filepath )
+        fname = os.path.join( self.root, filepath )
         self.reader = ScriptReader( fname )
 
     def parseTestNames(self):
@@ -93,22 +99,23 @@ class ScriptTestParser:
         for spec in self.itr_specs( None, "testname", "name" ):
 
             if spec.attrs:
-                raise TestSpecError( 'no attributes allowed here, ' + \
-                                     'line ' + str(spec.lineno) )
+                raiseError( 'no attributes allowed here', line=spec.lineno )
 
             name,attrD = parse_test_name_value( spec.value, spec.lineno )
 
-            if not name or not allowable_word(name):
-                raise TestSpecError( 'missing or invalid test name, ' + \
-                                     repr(name) + ', line ' + str(spec.lineno) )
+            if not name:
+                raiseError( 'missing test name', line=spec.lineno )
+            if not allowable_word(name):
+                raiseError( 'invalid test name:', repr(name), line=spec.lineno )
+
             L.append( name )
 
         if len(L) == 0:
             # the name defaults to the basename of the script file
             name = self.reader.basename()
             if not name or not allowable_word(name):
-                raise TestSpecError( 'the basename of the test filename is not ' + \
-                                     'a valid test name: '+repr(name) )
+                raiseError( 'the basename of the test filename is not',
+                            'a valid test name: '+repr(name) )
             L.append( name )
 
         return L
@@ -126,58 +133,51 @@ class ScriptTestParser:
             #VVT: parameterize : np,dt,dh = 1, 0.1  , 0.2
             #VVT::                          4, 0.01 , 0.02
             #VVT::                          8, 0.001, 0.002
+
+            #VVT: parameterize (autotype) : np = 1 8
+            #VVT: parameterize (int) : np = 1 8
+            #VVT: parameterize (float) : val = 2 5
+            #VVT: parameterize (int,float) : foo,bar = 1,2 8,5
+            #VVT: parameterize (float) : A,B = 1,2 3,4
+            #VVT: parameterize (str,float,str) : X,Y,Z = 1,2,3 4,5,6
         """
         pset = ParameterSet()
         tmap = {}
 
         for spec in self.itr_specs( testname, 'parameterize' ):
 
-            lnum = spec.lineno
-
-            check_allowed_attrs( spec.attrs, lnum,
+            check_allowed_attrs( spec.attrs, spec.lineno,
                     'testname platform platforms option options '
-                    'staged autotype' )
+                    'staged autotype str int float generator' )
 
-            if not self.attr_filter( spec.attrs, testname, None, lnum ):
+            if not self.attr_filter( spec.attrs, testname, None, spec.lineno ):
                 continue
 
-            L = spec.value.split( '=', 1 )
-            if len(L) < 2:
-                raise TestSpecError( "invalid parameterize specification, " + \
-                                     "line " + str(lnum) )
+            if spec.attrs and 'generator' in spec.attrs:
 
-            namestr,valuestr = L
+                if 'int' in spec.attrs or 'float' in spec.attrs or \
+                   'str' in spec.attrs or 'autotype' in spec.attrs:
+                    raiseError( 'cannot specify type specifiers with a',
+                                'generator attribute', line=spec.lineno )
 
-            if not namestr.strip():
-                raise TestSpecError( "no parameter name given, " + \
-                                     "line " + str(lnum) )
-            if not valuestr.strip():
-                raise TestSpecError( "no parameter value(s) given, " + \
-                                     "line " + str(lnum) )
+                fname = os.path.join( self.root, self.fpath )
+                nameL,valL = generate_parameters( fname, spec.value,
+                                                  testname, self.platname,
+                                                  spec.lineno )
+                valL,typmap = types_and_forced_values( nameL, valL,
+                                                       self.force, spec.lineno )
 
-            nameL = [ n.strip() for n in namestr.strip().split(',') ]
-
-            check_parameter_names( nameL, lnum )
-
-            if len(nameL) == 1:
-                valL = parse_param_values( nameL[0], valuestr, self.force )
-                check_parameter_values( valL, lnum )
-                check_special_parameters( nameL[0], valL, lnum )
             else:
-                valL = parse_param_group_values( nameL, valuestr, lnum )
-                check_forced_group_parameter( self.force, nameL, lnum )
+                nameL,valL = parse_param_names_and_values( spec.value, self.force, spec.lineno )
+                typmap = parse_param_type_map( spec.attr_names, nameL, valL, spec.lineno )
 
-            if spec.attrs and 'autotype' in spec.attrs:
-                auto_determine_param_types( nameL, valL, tmap )
+            tmap.update( typmap )
 
-            staged = check_for_staging( spec.attrs, pset, nameL, valL, lnum )
+            staged = check_for_staging( spec.attrs, pset, nameL, valL, spec.lineno )
 
             valL = remove_duplicate_parameter_values( valL )
 
-            if len(nameL) == 1:
-                pset.addParameter( nameL[0], valL )
-            else:
-                pset.addParameterGroup( nameL, valL, staged )
+            pset.addParameters( nameL, valL, staged )
 
         pset.setParameterTypeMap( tmap )
 
@@ -194,9 +194,8 @@ class ScriptTestParser:
             - if the value starts with a hyphen, then an option is assumed
             - otherwise, a script file is assumed
 
-        Returns true if an analyze specification was found.
+        Returns None or the analyze specification (a string).
         """
-        form = None
         specval = None
         for spec in self.itr_specs( testname, 'analyze' ):
 
@@ -208,8 +207,7 @@ class ScriptTestParser:
 
             sval = spec.value
             if not sval or not sval.strip():
-                raise TestSpecError( 'missing or invalid analyze value, ' + \
-                                     'line ' + str(spec.lineno) )
+                raiseError( 'missing analyze value', line=spec.lineno )
 
             specval = sval.strip()
 
@@ -266,12 +264,11 @@ class ScriptTestParser:
             if spec.value:
                 val = spec.value.lower().strip()
                 if val != 'true' and val != 'false':
-                    raise TestSpecError( 'invalid "enable" value, line ' + \
-                                         str(spec.lineno) )
-                if val == 'false' and ( platexpr != None or optexpr != None ):
-                    raise TestSpecError( 'an "enable" with platforms or ' + \
-                        'options attributes cannot specify "false", line ' + \
-                        str(spec.lineno) )
+                    raiseError( 'invalid "enable" value:', repr(spec.value),
+                                line=spec.lineno )
+                if val == 'false' and ( platexpr is not None or optexpr is not None ):
+                    raiseError( 'an "enable" with platforms or options',
+                        'attributes cannot specify "false"', line=spec.lineno )
                 tspec.setEnabled( val == 'true' )
 
         wx = parse_to_word_expression( platexprL )
@@ -311,8 +308,7 @@ class ScriptTestParser:
                 if allowable_word(key):
                     keys.append( key )
                 else:
-                    raise TestSpecError( 'invalid keyword: '+repr(key) + \
-                                         ', line ' + str(spec.lineno) )
+                    raiseError( 'invalid keyword:', repr(key), line=spec.lineno )
 
         tspec.setKeywordList( keys )
 
@@ -382,7 +378,7 @@ class ScriptTestParser:
                 ival,err = timehandler.parse_timeout_value( sval )
 
                 if err:
-                    raise TestSpecError( 'invalid timeout value: '+err )
+                    raiseError( 'invalid timeout value:', err, line=spec.lineno )
 
                 tspec.setTimeout( ival )
 
@@ -412,18 +408,14 @@ class ScriptTestParser:
                 sval = spec.value.strip()
 
                 if not sval or not sval.strip():
-                    raise TestSpecError( 'missing or invalid baseline value, ' + \
-                                         'line ' + str(spec.lineno) )
+                    raiseError( 'missing or empty baseline value', line=spec.lineno )
 
                 if spec.attrs and 'file' in spec.attrs:
-                    raise TestSpecError( 'the "file" baseline attribute is ' + \
-                                         'no longer supported, ' + \
-                                         'line ' + str(spec.lineno) )
-
+                    raiseError( 'the "file" baseline attribute is no longer',
+                                'supported', line=spec.lineno )
                 if spec.attrs and 'argument' in spec.attrs:
-                    raise TestSpecError( 'the "argument" baseline attribute is ' + \
-                                         'no longer supported, ' + \
-                                         'line ' + str(spec.lineno) )
+                    raiseError( 'the "argument" baseline attribute is no longer',
+                                'supported', line=spec.lineno )
 
                 if ',' in sval:
                     form = 'copy'
@@ -437,12 +429,12 @@ class ScriptTestParser:
                     for s in cpat.sub( ',', sval ).split():
                         L = s.split(',')
                         if len(L) != 2:
-                            raise TestSpecError( 'malformed baseline file ' + \
-                                      'list: "'+s+'", line ' + str(spec.lineno) )
+                            raiseError( 'malformed baseline file list:',
+                                        repr(s), line=spec.lineno )
                         fsrc,fdst = L
                         if os.path.isabs(fsrc) or os.path.isabs(fdst):
-                            raise TestSpecError( 'file names cannot be ' + \
-                                      'absolute paths, line ' + str(spec.lineno) )
+                            raiseError( 'file names cannot be absolute paths',
+                                        line=spec.lineno )
                         fL.append( [fsrc,fdst] )
 
                     variable_expansion( testname,
@@ -573,9 +565,8 @@ class ScriptTestParser:
                             return False
 
                 except ValueError:
-                    raise TestSpecError( 'invalid '+name+' expression, ' + \
-                                         'line ' + lineno + ": " + \
-                                         str(sys.exc_info()[1]) )
+                    raiseError( 'invalid', name, 'expression',
+                                '(at line '+str(lineno)+'):', sys.exc_info()[1] )
 
         return True
 
@@ -593,16 +584,15 @@ def parse_test_name_value( value, lineno ):
             pass
 
         elif tail[0] == '(':
-            aD,_ = check_parse_attributes_section( tail, str(lineno) )
+            aD,_,_ = check_parse_attributes_section( tail, str(lineno) )
 
         else:
-            raise TestSpecError( 'invalid test name: ' + repr(value) + \
-                    ', line ' + str(lineno) )
+            raiseError( 'invalid test name:', line=lineno )
 
     return name, aD
 
 
-def check_allowed_attrs( attrD, lnum, allowed ):
+def check_allowed_attrs( attrD, lineno, allowed ):
     ""
     if attrD:
 
@@ -611,22 +601,355 @@ def check_allowed_attrs( attrD, lnum, allowed ):
 
         for name in attrD.keys():
             if name not in allowed:
-                raise TestSpecError( "attribute "+repr(name) + \
-                        " not allowed here, line " + str(lnum) )
+                raiseError( 'attribute', repr(name), 'not allowed here',
+                            line=lineno )
 
 
-def auto_determine_param_types( nameL, valL, tmap ):
+def generate_parameters( testfile, gencmd, testname, platname, lineno ):
     ""
-    if len( nameL ) == 1:
-        typ = try_cast_to_int_or_float( valL )
-        if typ != None:
-            tmap[ nameL[0] ] = typ
+    if not gencmd.strip():
+        raiseError( 'generator specification is missing', line=lineno )
 
+    # NAME and PLATFORM variable expansion reuses a function for file names
+    tmpL = [gencmd]
+    variable_expansion( testname, platname, {}, tmpL )
+    gencmd = tmpL[0]
+
+    cmdL = shlex.split( gencmd.strip() )
+
+    if len(cmdL) == 0:
+        raiseError( 'invalid generator specification', line=lineno )
+
+    dname = dirname( abspath( testfile ) )
+    prog,xcute = get_generator_program( dname, cmdL[0] )
+    cmdL[0] = prog
+
+    out = run_generator_prog( cmdL, gencmd, xcute )
+
+    try:
+        plist = json.loads( out.strip() )
+    except Exception as e:
+        raiseError( 'from line '+str(lineno)+',',
+                    'could not load generator output (expected a ' + \
+                    'JSON encoded list of dictionaries):',
+                    '\n    output = '+repr(out.strip()),
+                    '\n    error  = '+str(e) )
+
+    check_for_rectangular_matrix( plist, lineno )
+
+    if sys.version_info[0] < 3:
+        plist = remove_unicode( plist )
+
+    nameL, valL = make_names_and_value_lists( plist, lineno )
+
+    check_special_parameters( nameL, valL, lineno )
+
+    return nameL,valL
+
+
+def remove_unicode( plist ):
+    """
+    This function assumes a list of dictionaries.
+    """
+    new_plist = []
+    try:
+        for D in plist:
+            newD = {}
+            for k,v in D.items():
+                if type(k) == unicode:
+                    k = str(k)
+                if type(v) == unicode:
+                    v = str(v)
+                newD[k] = v
+            new_plist.append( newD )
+
+    except Exception as e:
+        raiseError( 'not done' )
+
+    return new_plist
+
+
+def types_and_forced_values( nameL, valL, force_params, lineno ):
+    ""
+    typmap = {}
+    for i,n in enumerate(nameL):
+        typ = type( valL[0][i] )  # representative value
+        if typ == int:
+            typmap[n] = int
+        elif typ == float:
+            typmap[n] = float
+        else:
+            typmap[n] = str
+
+    valL = check_for_forced_values( nameL, valL, typmap, force_params, lineno )
+
+    new_valL = []
+    for tup in valL:
+        new_tup = []
+        for v in tup:
+            if type(v) != str:
+                v = repr(v)
+            new_tup.append(v)
+        new_valL.append( new_tup )
+
+    return new_valL,typmap
+
+
+def check_for_forced_values( nameL, valL, typmap, force_params, lineno ):
+    """
+    The 'force_params' argument is a dictionary mapping parameter names
+    to a list of strings (multiple values can be forced onto a parameter).
+    """
+    if force_params:
+        if len(nameL) == 1:
+            force_vals = force_params.get( nameL[0], None )
+            if force_vals:
+                oldvals = [ tup[0] for tup in valL ]
+                newvals = replace_param_values( oldvals, force_vals )
+
+                typ = typmap.get( nameL[0], str )
+                if typ != str:
+                    try:
+                        newvals = [ typ(v) for v in newvals ]
+                    except Exception as e:
+                        raiseError( '-S value(s) for', repr(nameL[0]),
+                            'failed to parse to generator type',
+                            str(typ)+':', newvals, line=lineno )
+
+                valL = [ [v] for v in newvals ]
+        else:
+            check_forced_group_parameter( force_params, nameL, lineno )
+
+    return valL
+
+
+def check_for_rectangular_matrix( plist, lineno ):
+    ""
+    errmsg = None
+
+    if len(plist) == 0:
+        errmsg = 'generator output cannot be an empty list'
+    elif any( [ type(D) != type({}) for D in plist ] ):
+        errmsg = 'generator output must be a list of dictionaries'
+    elif any( [ len(D) == 0 for D in plist ] ):
+        errmsg = 'the dictionaries in the generator list cannot be empty'
+    elif min([len(D) for D in plist]) != max([len(D) for D in plist]):
+        errmsg = 'the dictionaries in the generator list must ' + \
+                 'all be the same size'
+
+    if errmsg:
+        raiseError( errmsg, line=lineno )
+
+
+def make_names_and_value_lists( plist, lineno ):
+    """
+    creates and returns
+
+        nameL = [ param_name_1, param_name_2, ... ]
+
+        valueL = [
+                   [ p1_v1, p1_v2, ... ],
+                   [ p2_v1, p2_v2, ... ],
+                   ...
+                 ]
+    """
+    # this check may not be necessary, since JSON keys are always strings
+    for D in plist:
+        for n in D.keys():
+            if type(n) != str:
+                raiseError( 'the keys in the generator dictionaries must'
+                            'be strings', line=lineno )
+
+    check_generator_instance_names( plist, lineno )
+
+    nameL = None
+    valL = None
+    for D in plist:
+        if nameL is None:
+            nameL = sorted( D.keys() )
+            valL = [ [ D[n] for n in nameL ] ]
+        else:
+            if sorted(D.keys()) != nameL:
+                raiseError( 'all the dictionaries in the generator list'
+                            'must have the same keys', line=lineno )
+            valL.append( [ D[n] for n in nameL ] )
+
+    check_parameter_names( nameL, lineno )
+
+    for name,vals in iter_name_values( nameL, valL ):
+        check_generator_value_types( name, vals, lineno )
+
+    return nameL, valL
+
+
+def check_generator_instance_names( plist, lineno ):
+    ""
+    for D in plist:
+        for n in D.keys():
+            if not allowable_variable(n):
+                raiseError( 'invalid parameter name found in generator list:',
+                            repr(n), line=lineno )
+
+
+def check_generator_value_types( name, vals, lineno ):
+    ""
+    ns = ni = nf = 0
+    for v in vals:
+        if type(v) == type(''):
+            ns += 1
+        elif type(v) == int:
+            ni += 1
+        elif type(v) == float:
+            nf += 1
+        else:
+            raiseError( "unsupported generator value type for",
+                        repr(name)+":", type(v), line=lineno )
+
+    if ns > 0:
+        if ni > 0 or nf > 0:
+            raiseError( 'not all generator value types are',
+                        'the same for', repr(name), line=lineno )
+    elif ni > 0:
+        if nf > 0:
+            raiseError( 'not all generator value types are the',
+                        'same for', repr(name), line=lineno )
+
+
+def run_generator_prog( cmdL, cmdstr, executable ):
+    ""
+    if os.path.isabs( cmdL[0] ):
+        if executable:
+            pop = subprocess.Popen( cmdL, stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE )
+        else:
+            pycmdL = [sys.executable]+cmdL
+            pop = subprocess.Popen( pycmdL, stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE )
     else:
-        for i,name in enumerate(nameL):
-            typ = try_cast_to_int_or_float( [ tup[i] for tup in valL ] )
-            if typ != None:
+        pop = subprocess.Popen( cmdstr, shell=True,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE )
+
+    mjr,mnr = sys.version_info[0],sys.version_info[1]
+
+    if mjr < 3 or ( mjr == 3 and mnr < 3 ):
+        out,err = pop.communicate( None )
+        x = pop.returncode
+    else:
+        try:
+            out,err = pop.communicate( None, 10 )  # fail after 10 seconds
+            x = pop.returncode
+        except subprocess.TimeoutExpired:
+            pop.kill()
+            x = 1
+
+    if mjr > 2:
+        out = out.decode() if out else ''
+        err = err.decode() if err else ''
+
+    if x != 0:
+        raiseError( 'parameter generator command failed:',
+                    repr(cmdstr), '\n'+out+'\n'+err )
+
+    return out
+
+
+def get_generator_program( srcdir, prog ):
+    ""
+    if os.path.isabs(prog):
+        exists = os.path.exists( prog )
+    else:
+        fn = normpath( pjoin( srcdir, prog ) )
+        if os.path.exists(fn):
+            prog = fn
+            exists = True
+        else:
+            exists = False
+
+    if platform_windows:
+        xcute = False
+    else:
+        xcute = ( exists and os.access( prog, os.R_OK | os.X_OK ) )
+
+    return prog,xcute
+
+
+def iter_name_values( nameL, valL ):
+    """
+    Given a list of names and a list of value "tuples", like
+
+        nameL = [ param_name_1, param_name_2, ... ]
+
+        valueL = [
+                   [ p1_v1, p1_v2, ... ],
+                   [ p2_v1, p2_v2, ... ],
+                   ...
+                 ]
+
+    this function returns name and value list pairs, like
+
+        param_name, [ value1, value2, ... ]
+    """
+    for i,name in enumerate(nameL):
+        yield name, [ tup[i] for tup in valL ]
+
+
+def parse_param_type_map( attr_names, nameL, valL, lineno ):
+    ""
+    tmap = {}
+
+    if attr_names and 'autotype' in attr_names:
+
+        if 'int' in attr_names or 'float' in attr_names or 'str' in attr_names:
+            raiseError( 'cannot mix autotype with int, float or str', line=lineno )
+
+        for name,vals in iter_name_values( nameL, valL ):
+            typ = try_cast_to_int_or_float( vals )
+            if typ is not None:
                 tmap[ name ] = typ
+
+    elif attr_names:
+        tL = parse_type_array( attr_names, nameL, lineno )
+
+        if len(tL) > 0:
+            for i,nv in enumerate( iter_name_values( nameL, valL ) ):
+                name,vals = nv
+                typ = tL[i]
+                if values_cast_to_type( typ, vals ):
+                    tmap[ name ] = typ
+                else:
+                    raiseError( 'cannot cast all', repr(name), 'values to',
+                                typ, line=lineno )
+
+    return tmap
+
+
+def parse_type_array( attr_names, nameL, lineno ):
+    ""
+    tL = extract_types_from_attrs( attr_names )
+
+    if len(tL) > len(nameL):
+        raiseError( 'more type specifications than parameter names', line=lineno )
+
+    if len(tL) == 1:
+        # a single type specifier is applied to all parameters
+        typ = tL[0]
+        tL = [ typ for _ in range(len(nameL)) ]
+
+    elif len(tL) > 0 and len(tL) != len(nameL):
+        raiseError( 'the list of types must be length one or match',
+                    'the number of parameter names', line=lineno )
+
+    return tL
+
+
+def extract_types_from_attrs( attr_names ):
+    ""
+    tL = []
+    for n in attr_names:
+        if n in ['str','int','float']:
+            tL.append( eval(n) )
+    return tL
 
 
 def try_cast_to_int_or_float( valuelist ):
@@ -655,9 +978,8 @@ def check_for_staging( spec_attrs, pset, nameL, valL, lineno ):
     """
     if spec_attrs and 'staged' in spec_attrs:
 
-        if pset.getStagedGroup() != None:
-            raise TestSpecError( 'only one parameterize can be staged' + \
-                                 ', line ' + str(lineno) )
+        if pset.getStagedGroup() is not None:
+            raiseError( 'only one parameterize can be staged', line=lineno )
 
         insert_staging_into_names_and_values( nameL, valL )
 
@@ -668,46 +990,80 @@ def check_for_staging( spec_attrs, pset, nameL, valL, lineno ):
 
 def insert_staging_into_names_and_values( names, values ):
     ""
-    if len( names ) == 1:
-        values[:] = [ [str(i),v] for i,v in enumerate(values, start=1) ]
-    else:
-        values[:] = [ [str(i)]+vL for i,vL in enumerate(values, start=1) ]
-
     names[:] = [ 'stage' ] + names
+    values[:] = [ [str(i)]+vL for i,vL in enumerate(values, start=1) ]
 
 
 def check_parameter_names( name_list, lineno ):
     ""
     for v in name_list:
         if not allowable_variable(v):
-            raise TestSpecError( 'invalid parameter name: "' + \
-                                 v+'", line ' + str(lineno) )
+            raiseError( 'invalid parameter name:', repr(v), line=lineno )
 
 
-def check_parameter_values( value_list, lineno ):
+def check_parameter_values( name_list, values, lineno ):
     ""
-    for v in value_list:
-        if not allowable_word(v):
-            raise TestSpecError( 'invalid parameter value: "' + \
-                                 v+'", line ' + str(lineno) )
+    for name,vals in iter_name_values( name_list, values ):
+        for v in vals:
+            if not allowable_word(v):
+                raiseError( 'invalid parameter value for name',
+                            repr(name)+':', repr(v), line=lineno )
 
 
-def check_special_parameters( param_name, value_list, lineno ):
+def check_special_parameters( names, values, lineno ):
     ""
-    if param_name in [ 'np', 'ndevice', 'nnode' ]:
-        for val in value_list:
-            try:
-                ival = int(val)
-            except Exception:
-                ival = None
+    for name, vals in iter_name_values( names, values ):
+        if name in [ 'np', 'ndevice', 'nnode' ]:
+            for val in vals:
+                try:
+                    ival = int(val)
+                except Exception:
+                    ival = None
 
-            if ival == None or ival < 0:
-                raise TestSpecError( 'the parameter "'+param_name+'" '
-                                     'must be a non-negative integer: "' + \
-                                     val+'", line ' + str(lineno) )
+                if ival is None or ival < 0:
+                    raiseError( 'the parameter', repr(name),
+                                'must be a non-negative integer:',
+                                repr(val), line=lineno )
 
 
-def parse_param_values( param_name, value_string, force_params ):
+def param_name_and_value_strings( spec_value, lineno ):
+    ""
+    L = spec_value.split( '=', 1 )
+    if len(L) < 2:
+        raiseError( "invalid parameterize specification", line=lineno )
+
+    namestr,valuestr = L
+
+    if not namestr.strip():
+        raiseError( "no parameter name given", line=lineno )
+
+    if not valuestr.strip():
+        raiseError( "no parameter value(s) given", line=lineno )
+
+    return namestr, valuestr
+
+
+def parse_param_names_and_values( spec_value, force_params, lineno ):
+    ""
+    namestr,valuestr = param_name_and_value_strings( spec_value, lineno )
+
+    nameL = [ n.strip() for n in namestr.strip().split(',') ]
+
+    check_parameter_names( nameL, lineno )
+
+    if len(nameL) == 1:
+        valL = parse_single_param_values( nameL[0], valuestr, force_params )
+    else:
+        check_forced_group_parameter( force_params, nameL, lineno )
+        valL = parse_param_group_values( nameL, valuestr, lineno )
+
+    check_parameter_values( nameL, valL, lineno )
+    check_special_parameters( nameL, valL, lineno )
+
+    return nameL, valL
+
+
+def parse_single_param_values( param_name, valuestr, force_params ):
     """
     The 'force_params' argument is a dictionary mapping parameter names
     to a list of values (multiple values can be forced onto a parameter).
@@ -717,24 +1073,31 @@ def parse_param_values( param_name, value_string, force_params ):
         - np=1 2 3  force=5 6    ->  np=5 6 5 (dups get removed if not staged)
         - np=1 2    force=5 6 7  ->  np=5 6 7
 
-    Keep same number of values as 'value_string' if less than or equal to
+    Keep same number of values as 'values' if less than or equal to
     the list in 'force_params'. May need to repeat the forced values.
 
-    Increase the number of values to equal the list in 'force_params' if the
-    'value_string' values has smaller length.
+    Increase the number of values to equal the list in 'force_params' if
+    'values' has smaller length.
     """
-    vals = value_string.strip().split()
+    vals = valuestr.strip().split()
 
-    if force_params != None and param_name in force_params:
+    if force_params is not None and param_name in force_params:
 
         force_vals = force_params[ param_name ]
-        new_len = max( len(vals), len(force_vals) )
+        vals = replace_param_values( vals, force_vals )
 
-        vals = []
-        j = 0
-        for i in range(new_len):
-            vals.append( force_vals[j] )
-            j = (j+1)%len(force_vals)
+    return [ [v] for v in vals ]
+
+
+def replace_param_values( orig_vals, new_vals ):
+    ""
+    new_len = max( len(orig_vals), len(new_vals) )
+
+    vals = []
+    j = 0
+    for i in range(new_len):
+        vals.append( new_vals[j] )
+        j = (j+1)%len(new_vals)
 
     return vals
 
@@ -750,14 +1113,12 @@ def parse_param_group_values( name_list, value_string, lineno ):
 
         gL = s.split(',')
         if len(gL) != len(name_list):
-            raise TestSpecError( 'malformed parameter list: "' + \
-                                  s+'", line ' + str(lineno) )
-
-        check_parameter_values( gL, lineno )
-        for name,val in zip( name_list, gL ):
-            check_special_parameters( name, [val], lineno )
+            raiseError( 'malformed parameter list', repr(s), line=lineno )
 
         vL.append( gL )
+
+    check_parameter_values( name_list, vL, lineno )
+    check_special_parameters( name_list, vL, lineno )
 
     return vL
 
@@ -775,12 +1136,12 @@ def collect_filenames( spec, flist, tname, paramD, platname ):
         for s in cpat.sub( ',', val ).split():
             L = s.split(',')
             if len(L) != 2:
-                raise TestSpecError( 'malformed (rename) file list: "' + \
-                                      s+'", line ' + str(spec.lineno) )
+                raiseError( 'malformed "rename" file list:', repr(s),
+                            line=spec.lineno )
             fsrc,fdst = L
             if os.path.isabs(fsrc) or os.path.isabs(fdst):
-                raise TestSpecError( 'file names cannot be absolute ' + \
-                                     'paths, line ' + str(spec.lineno) )
+                raiseError( 'file names cannot be absolute paths',
+                            line=spec.lineno )
             fL.append( [fsrc,fdst] )
         
         variable_expansion( tname, platname, paramD, fL )
@@ -792,8 +1153,8 @@ def collect_filenames( spec, flist, tname, paramD, platname ):
         
         for f in fL:
             if os.path.isabs(f):
-                raise TestSpecError( 'file names cannot be absolute ' + \
-                                     'paths, line ' + str(spec.lineno) )
+                raiseError( 'file names cannot be absolute paths',
+                            line=spec.lineno )
         
         variable_expansion( tname, platname, paramD, fL )
 
@@ -815,8 +1176,7 @@ def parse_expect_criterion( attrs, lineno ):
             ok = False
 
         if not ok or ival < 0:
-            raise TestSpecError( "invalid 'expect' value, \""+str(exp) + \
-                                 "\", line " + str(lineno) )
+            raiseError( "invalid 'expect' value", repr(exp), line=lineno )
 
     return exp
 
@@ -832,8 +1192,7 @@ def testname_ok( attrs, tname, lineno ):
                 if not evaluate_testname_expr( tname, tval ):
                     ok = False
             except Exception as e:
-                raise TestSpecError( 'bad testname expression, ' + \
-                            repr(tval) + ': '+str(e) + \
-                            ', line ' + str(lineno) )
+                raiseError( 'bad testname expression', repr(tval)+':', str(e),
+                            line=lineno )
 
     return ok

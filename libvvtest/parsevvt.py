@@ -504,22 +504,29 @@ class ScriptTestParser:
             # VVT: skipif: True
             # VVT: skipif: os.getenv("SNLSYSTEM") == "tlcc2"
             # VVT: skipif: not importable("numpy")
+            # VVT: skipif (reason=text)
 
         """
         testname = tspec.getName()
         for spec in self.itr_specs(testname, "skipif"):
+            reason = None
             if spec.attrs:
-                raiseError("skipif does not accept additional attributes", spec.lineno)
-            if not spec.value:
+                check_allowed_attrs(spec.attrs, spec.lineno, 'reason')
+                reason = spec.attrs.get("reason")
+            if reason and not spec.value:
+                skip = True
+            elif not spec.value:
                 raiseError("empty skipif directive", spec.lineno)
-            skip = evaluate_boolean_expression(spec.value)
-            if skip is None:
-                raiseError(
-                    "failed to evaluate the expression {0!r}".format(spec.value),
-                    spec.lineno,
-                )
+            else:
+                skip = evaluate_boolean_expression(spec.value)
+                if skip is None:
+                    raiseError(
+                        "failed to evaluate the expression {0!r}".format(spec.value),
+                        spec.lineno,
+                    )
             if skip:
-                tspec.setSkipped("{0} evaluated to True".format(spec.value))
+                reason = reason or "{0} evaluated to True".format(spec.value)
+                tspec.setSkipped(reason)
 
     def parse_preload_label(self, tspec):
         """

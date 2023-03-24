@@ -501,10 +501,12 @@ class ScriptTestParser:
         """
         Parse syntax that will skip this test by python expression.
 
+            # VVT: skipif [(reason=text)] : <python_expression>
+
             # VVT: skipif: True
             # VVT: skipif: os.getenv("SNLSYSTEM") == "tlcc2"
             # VVT: skipif: not importable("numpy")
-            # VVT: skipif (reason=text)
+            # VVT: skipif (reason=some reason) : some_expression
 
         """
         testname = tspec.getName()
@@ -1236,11 +1238,14 @@ def importable(module):
     return True
 
 
+def safe_eval(expression):
+    globals = {"os": os, "sys": sys, "importable": importable}
+    return eval(expression, globals, {})
+
+
 def evaluate_boolean_expression(expression):
-    # Variables exist so they can be used in evaluation
-    snlsystem = os.getenv("SNLSYSTEM")  # noqa: F841
     try:
-        result = eval(expression)
+        result = safe_eval(expression)
     except Exception:
         return None
     return bool(result)

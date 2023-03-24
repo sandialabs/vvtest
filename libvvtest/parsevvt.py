@@ -513,17 +513,14 @@ class ScriptTestParser:
             if spec.attrs:
                 check_allowed_attrs(spec.attrs, spec.lineno, 'reason')
                 reason = spec.attrs.get("reason")
-            if reason and not spec.value:
-                skip = True
-            elif not spec.value:
-                raiseError("empty skipif directive", spec.lineno)
-            else:
-                skip = evaluate_boolean_expression(spec.value)
-                if skip is None:
-                    raiseError(
-                        "failed to evaluate the expression {0!r}".format(spec.value),
-                        spec.lineno,
-                    )
+            if not spec.value:
+                raiseError("no skipif expression at line", spec.lineno)
+            skip = evaluate_boolean_expression(spec.value)
+            if skip is None:
+                raiseError(
+                    "failed to evaluate the expression {0!r}".format(spec.value),
+                    spec.lineno,
+                )
             if skip:
                 reason = reason or "{0} evaluated to True".format(spec.value)
                 tspec.setSkipped(reason)

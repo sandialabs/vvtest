@@ -141,6 +141,10 @@ class TestStatus:
         ""
         self.attrs['skip'] = 'enabled'
 
+    def markSkipped(self, reason):
+        ""
+        self.attrs['skip'] = reason
+
     def markSkipByPlatform(self):
         ""
         self.attrs['skip'] = 'platform'

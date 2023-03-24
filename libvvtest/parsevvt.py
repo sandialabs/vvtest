@@ -11,6 +11,7 @@ import re
 import shlex
 import subprocess
 import json
+from contextlib import contextmanager
 
 from .errors import TestSpecError
 from . import timehandler
@@ -78,6 +79,7 @@ class ScriptTestParser:
     def parseTestInstance(self, tspec):
         ""
         self.parse_enable        ( tspec )
+        self.parse_skipif        ( tspec )
         self.parse_keywords      ( tspec )
         self.parse_working_files ( tspec )
         self.parse_timeouts      ( tspec )
@@ -494,6 +496,30 @@ class ScriptTestParser:
                 for depname in attrD.get( 'depends on', '' ).split():
                     dpat = DependencyPattern( depname, exp, wx )
                     tspec.addDependencyPattern( dpat )
+
+    def parse_skipif(self, tspec):
+        """
+        Parse syntax that will skip this test by python expression.
+
+            # VVT: skipif: True
+            # VVT: skipif: os.getenv("SNLSYSTEM") == "tlcc2"
+            # VVT: skipif: "numpy" not in sys.modules
+
+        """
+        testname = tspec.getName()
+        for spec in self.itr_specs(testname, "skipif"):
+            if spec.attrs:
+                raiseError("skipif does not accept additional attributes", spec.lineno)
+            if not spec.value:
+                raiseError("empty skipif directive", spec.lineno)
+            skip = evaluate_boolean_expression(spec.value)
+            if skip is None:
+                raiseError(
+                    "failed to evaluate the expression {0!r}".format(spec.value),
+                    spec.lineno,
+                )
+            if skip:
+                tspec.setSkipped("{0} evaluated to True".format(spec.value))
 
     def parse_preload_label(self, tspec):
         """
@@ -1196,3 +1222,21 @@ def testname_ok( attrs, tname, lineno ):
                             line=lineno )
 
     return ok
+
+
+def importable(module):
+    try:
+        __import__(module)
+    except (ModuleNotFoundError, ImportError):
+        return False
+    return True
+
+
+def evaluate_boolean_expression(expression):
+    # Variables exist so they can be used in evaluation
+    snlsystem = os.getenv("SNLSYSTEM")  # noqa: F841
+    try:
+        result = eval(expression)
+    except Exception:
+        return None
+    return bool(result)

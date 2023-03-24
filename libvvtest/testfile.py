@@ -42,6 +42,7 @@ class TestFile:
         self.baseline_spec = None
         self.src_files = []        # extra source files listed by the test
         self.deps = []             # list of DependencyPattern
+        self.skip_reason = None
 
     def getFilename(self):
         """
@@ -77,6 +78,10 @@ class TestFile:
             self.enabled = True
         else:
             self.enabled = False
+
+    def setSkipped(self, reason):
+        ""
+        self.skip_reason = reason
 
     def setEnablePlatformExpression(self, word_expression):
         ""

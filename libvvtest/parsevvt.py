@@ -509,12 +509,12 @@ class ScriptTestParser:
         """
         testname = tspec.getName()
         for spec in self.itr_specs(testname, "skipif"):
+            if not spec.value:
+                raiseError("no skipif expression at line", spec.lineno)
             reason = None
             if spec.attrs:
                 check_allowed_attrs(spec.attrs, spec.lineno, 'reason')
                 reason = spec.attrs.get("reason")
-            if not spec.value:
-                raiseError("no skipif expression at line", spec.lineno)
             skip = evaluate_boolean_expression(spec.value)
             if skip is None:
                 raiseError(

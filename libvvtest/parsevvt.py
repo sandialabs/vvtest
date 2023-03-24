@@ -503,7 +503,7 @@ class ScriptTestParser:
 
             # VVT: skipif: True
             # VVT: skipif: os.getenv("SNLSYSTEM") == "tlcc2"
-            # VVT: skipif: "numpy" not in sys.modules
+            # VVT: skipif: not importable("numpy")
 
         """
         testname = tspec.getName()

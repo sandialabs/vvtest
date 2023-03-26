@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST: vvtest
+import os
+import sys
+from contextlib import contextmanager
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+
+import vvtestutils as vtu
+import testutils as util
+
+
+@contextmanager
+def environ(**kwds):
+    orig_env = os.environ.copy()
+    for (var, val) in kwds.items():
+        os.environ[var] = val
+    yield
+    os.environ = orig_env
+
+
+class skipif_tests( vtu.vvtestTestCase ):
+    def test_parse_skipif_integration_test(self):
+        ""
+        util.writefile('a.vvt', "#VVT: skipif : False\nimport sys\nsys.exit(0)")
+        util.writefile('b.vvt', "#VVT: skipif (reason=I want to skip unconditionally) : True\nimport sys\nsys.exit(1)")
+        util.writefile('c0.vvt', "#VVT: skipif (reason=FOO is a BAZ) : os.environ['FOO'] == 'BAZ'\nimport sys\nsys.exit(1)")
+        util.writefile('c1.vvt', "#VVT: skipif : os.environ['FOO'] == 'BAZ'\nimport sys\nsys.exit(1)")
+        util.writefile('d0.vvt', "#VVT: skipif (reason=1 + 1 is 2) : 1 + 1 == 2\nimport sys\nsys.exit(1)")
+        util.writefile('d1.vvt', "#VVT: skipif : 1 + 1 == 2\nimport sys\nsys.exit(1)")
+        with environ(FOO="BAZ"):
+            vrun = vtu.runvvtest( '-vv' )
+            vrun.assertCounts(total=6, npass=1, skip=5)
+            assert '1 due to "I want to skip unconditionally"' in vrun.out
+            assert '1 due to "1 + 1 is 2"' in vrun.out
+            assert '1 due to "1 + 1 == 2 evaluated to True"' in vrun.out
+            assert '1 due to "FOO is a BAZ"' in vrun.out
+            assert '1 due to "os.environ[\'FOO\'] == \'BAZ\' evaluated to True"' in vrun.out
+
+
+
+########################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

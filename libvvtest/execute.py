@@ -291,8 +291,8 @@ class DirectRunner( TestListRunner ):
 def progress_bar(num_test, num_done, duration, width=30):
     bar = tty.progress_bar(num_test, num_done, width)
     pct = 100 * num_done / float(num_test)
-    ave = duration / num_done
-    togo = ave * (num_test - num_done)
+    ave = None if not num_done else duration / num_done
+    togo = None if ave is None else ave * (num_test - num_done)
     w = len(str(num_test))
     line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6}]   ".format(
         bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), hhmmss(ave), w
@@ -301,6 +301,8 @@ def progress_bar(num_test, num_done, duration, width=30):
 
 
 def hhmmss(arg):
+    if arg is None:
+        return "--:--:--"
     seconds = int(arg)
     minutes = seconds // 60
     hours = minutes // 60

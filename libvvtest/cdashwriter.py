@@ -10,7 +10,7 @@ from os.path import join as pjoin
 from os.path import basename
 import stat
 
-from . import tty
+from . import logger
 from . import outpututils
 
 
@@ -71,7 +71,7 @@ class CDashWriter:
 
     def _create_and_fill_formatter(self, atestlist, rtinfo):
         ""
-        tty.info('\nComposing CDash submission data...')
+        logger.info('\nComposing CDash submission data...')
 
         set_global_data( self.fmtr, self.dspecs, rtinfo )
         set_test_list( self.fmtr, self.dspecs, atestlist, self.testdir )
@@ -83,26 +83,26 @@ class CDashWriter:
             fname = pjoin( self.testdir, 'vvtest_cdash_submit.xml' )
 
             try:
-                tty.info('Writing CDash submission file: {0}'.format(fname))
+                logger.info('Writing CDash submission file: {0}'.format(fname))
                 self._write_file( fmtr, fname )
 
                 assert self.dspecs.project, 'CDash project name not set'
                 self.subm.setDestination( self.dspecs.url,
                                           self.dspecs.project,
                                           method=self.dspecs.method )
-                tty.info('Sending CDash file to:', self.dspecs.url + ',',
+                logger.info('Sending CDash file to:', self.dspecs.url + ',',
                         'project='+self.dspecs.project )
                 self.subm.send( fname )
 
-                tty.emit("\n")
+                logger.emit("\n")
 
             except Exception as e:
-                tty.warn('error submitting CDash results: {0}'.format(e))
+                logger.warn('error submitting CDash results: {0}'.format(e))
 
         else:
-            tty.info( 'Writing CDash submission file:', self.dspecs.file )
+            logger.info( 'Writing CDash submission file:', self.dspecs.file )
             self._write_file( fmtr, self.dspecs.file )
-            tty.emit("\n")
+            logger.emit("\n")
 
     def _write_file(self, fmtr, filename):
         ""

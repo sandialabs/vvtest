@@ -16,7 +16,7 @@ try:
 except Exception:
     from pipes import quote
 
-from . import tty
+from . import logger
 from . import CommonSpec
 from . import cshScriptWriter
 from . import ScriptWriter
@@ -90,7 +90,7 @@ class ExecutionHandler:
         removes all files in the execute directory except for a few vvtest
         files.
         """
-        tty.info("Cleaning execute directory for execution...")
+        logger.info("Cleaning execute directory for execution...")
         specform = tcase.getSpec().getSpecificationForm()
         pre_clean_execute_directory( specform )
 
@@ -110,7 +110,7 @@ class ExecutionHandler:
         copy files in the test execution directory.  Returns False if certain
         errors are encountered and written to stderr, otherwise True.
         """
-        tty.emit("Linking and copying working files...", end="\n")
+        logger.emit("Linking and copying working files...", end="\n")
 
         tspec = tcase.getSpec()
 
@@ -150,7 +150,7 @@ class ExecutionHandler:
         Should only be run right after the test script finishes.  It removes
         all files in the execute directory except for a few vvtest files.
         """
-        tty.info("Cleaning execute directory after execution...")
+        logger.info("Cleaning execute directory after execution...")
 
         specform = tcase.getSpec().getSpecificationForm()
 
@@ -165,7 +165,7 @@ class ExecutionHandler:
         # TODO: add file globbing for baseline files
         for fromfile,tofile in tspec.getBaselineFiles():
             dst = pjoin( srcdir, tofile )
-            tty.emit("baseline: cp -p {0} {1}".format(fromfile, dst), end="\n")
+            logger.emit("baseline: cp -p {0} {1}".format(fromfile, dst), end="\n")
             shutil.copy2( fromfile, dst )
 
     def check_write_mpi_machine_file(self, resourceobj):
@@ -248,7 +248,7 @@ class ExecutionHandler:
 
         echo_test_execution_info( tcase.getSpec().getName(), cmd_list, tm )
 
-        tty.emit("\n")
+        logger.emit("\n")
 
         if baseline:
             self.copyBaselineFiles( tcase )
@@ -361,16 +361,16 @@ def determine_PYTHONPATH( configdirs ):
 
 def echo_test_execution_info( testname, cmd_list, timeout ):
     ""
-    tty.emit("Starting test: {0}".format(testname), end="\n")
-    tty.emit("Directory    : {0}".format(os.getcwd()), end="\n")
+    logger.emit("Starting test: {0}".format(testname), end="\n")
+    logger.emit("Directory    : {0}".format(os.getcwd()), end="\n")
 
     if cmd_list != None:
         cmd = ' '.join( [ quote(arg) for arg in cmd_list ] )
-        tty.emit("Command      : {0}".format(cmd), end="\n")
+        logger.emit("Command      : {0}".format(cmd), end="\n")
 
-    tty.emit("Timeout      : {0}".format(timeout), end="\n")
+    logger.emit("Timeout      : {0}".format(timeout), end="\n")
 
-    tty.emit("\n")
+    logger.emit("\n")
 
 
 def pre_clean_execute_directory( specform ):
@@ -451,11 +451,11 @@ def check_source_file_list( operation_type, srcf, srcL, destname ):
     ok = True
 
     if len( srcL ) == 0:
-        tty.error("cannot {0} a non-existent file: {1}".format(operation_type, srcf))
+        logger.error("cannot {0} a non-existent file: {1}".format(operation_type, srcf))
         ok = False
 
     elif len( srcL ) > 1 and destname != None:
-        tty.error(
+        logger.error(
             "{0} failed because the source expanded to more than one file but a "
             "destination path was given: {1} {2}".format(operation_type, srcf, destname)
         )
@@ -487,11 +487,11 @@ def force_link_path_to_current_directory( srcf, destname ):
         lf = os.readlink( tstf )
         if lf != srcf:
             os.remove( tstf )
-            tty.emit('ln -s {0} {1}'.format(srcf, tstf), end="\n")
+            logger.emit('ln -s {0} {1}'.format(srcf, tstf), end="\n")
             os.symlink( srcf, tstf )
     else:
         remove_path( tstf )
-        tty.emit('ln -s {0} {1}'.format(srcf, tstf), end="\n")
+        logger.emit('ln -s {0} {1}'.format(srcf, tstf), end="\n")
         os.symlink( srcf, tstf )
 
 
@@ -505,10 +505,10 @@ def force_copy_path_to_current_directory( srcf, destname ):
     remove_path( tstf )
 
     if os.path.isdir( srcf ):
-        tty.emit('cp -rp {0} {1}'.format(srcf, tstf), end="\n")
+        logger.emit('cp -rp {0} {1}'.format(srcf, tstf), end="\n")
         shutil.copytree( srcf, tstf, symlinks=True )
     else:
-        tty.emit('cp -rp {0} {1}'.format(srcf, tstf), end="\n")
+        logger.emit('cp -rp {0} {1}'.format(srcf, tstf), end="\n")
         shutil.copy2( srcf, tstf )
 
 

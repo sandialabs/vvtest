@@ -11,7 +11,7 @@ import glob
 import itertools
 from os.path import dirname
 
-from . import tty
+from . import logger
 from . import TestList
 from .testlistio import TestListReader, file_is_marked_finished
 from . import pathutil
@@ -276,7 +276,7 @@ class Batcher:
     def _remove_batch_directories(self):
         ""
         for d in self.namer.globBatchDirectories():
-            tty.emit('rm -rf {0}'.format(d), end="\n")
+            logger.emit('rm -rf {0}'.format(d), end="\n")
             pathutil.fault_tolerant_remove( d )
 
 

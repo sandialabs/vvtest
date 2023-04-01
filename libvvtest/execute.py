@@ -8,7 +8,7 @@ from __future__ import division
 import os, sys
 import time
 
-from . import tty
+from . import logger
 from . import utesthooks
 from . import pathutil
 from .printinfo import TestInformationPrinter
@@ -30,12 +30,12 @@ class TestListRunner:
         self.plat = plat
         self.total_timeout = total_timeout
         self.show_progress_bar = show_progress_bar
-        self.current_log_level = tty.get_level()
+        self.current_log_level = logger.get_level()
 
     def setup(self):
         ""
         self.starttime = time.time()
-        tty.info("Start time: {0}".format(time.ctime()))
+        logger.info("Start time: {0}".format(time.ctime()))
 
         rfile = self.tlist.initializeResultsFile( **(self.rtinfo.asDict()) )
         self.perms.apply( os.path.abspath( rfile ) )
@@ -46,7 +46,7 @@ class TestListRunner:
         ""
         if self.total_timeout and self.total_timeout > 0:
             if time.time() - self.starttime > self.total_timeout:
-                tty.warn('\ntotal timeout expired: {0}'.format(self.total_timeout))
+                logger.warn('\ntotal timeout expired: {0}'.format(self.total_timeout))
                 return True
         return False
 
@@ -80,7 +80,7 @@ class BatchRunner( TestListRunner ):
         self.qsleep = int( os.environ.get( 'VVTEST_BATCH_SLEEP_LENGTH', 15 ) )
         self.info = TestInformationPrinter( sys.stdout, self.tlist, self.batch )
 
-        tty.info('Maximum concurrent batch jobs: {0}'.format(self.batch.getMaxJobs()))
+        logger.info('Maximum concurrent batch jobs: {0}'.format(self.batch.getMaxJobs()))
 
     def run(self):
         ""
@@ -89,10 +89,10 @@ class BatchRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'batch' )
 
         try:
-            save_log_level = tty.get_level()
+            save_log_level = logger.get_level()
             if self.show_progress_bar:
                 # skip any information messages so that only the progress bar is shown
-                tty.set_level(tty.WARN)
+                logger.set_level(logger.WARN)
 
             while True:
 
@@ -122,7 +122,7 @@ class BatchRunner( TestListRunner ):
             NS, NF, nrL = self.batch.flush()
 
         finally:
-            tty.set_level(save_log_level)
+            logger.set_level(save_log_level)
             self.batch.shutdown()
 
         self.finishup( NS, NF, nrL )
@@ -133,10 +133,10 @@ class BatchRunner( TestListRunner ):
         ""
         if len(qidL) > 0:
             ids = ' '.join( [ str(qid) for qid in qidL ] )
-            tty.info('Finished batch IDS: {0}'.format(ids))
+            logger.info('Finished batch IDS: {0}'.format(ids))
         for tcase in doneL:
             ts = XstatusString( tcase, self.test_dir, self.cwd )
-            tty.info("Finished: {0}".format(ts))
+            logger.info("Finished: {0}".format(ts))
 
     def print_progress(self, doneL):
         ""
@@ -150,10 +150,10 @@ class BatchRunner( TestListRunner ):
         dt = time.time() - self.starttime
         fmt = "jobs running={0} completed={1}, tests {2}/{3} = {4:.1f}%, time = {5}"
         args = [nprog_batch, ndone_batch, ndone_test, ntot_test, pct, pretty_time(dt)]
-        tty.info("Progress: " + fmt.format(*args))
+        logger.info("Progress: " + fmt.format(*args))
         if self.show_progress_bar:
             line = progress_bar(ntot_test, ndone_test, dt, width=30)
-            tty.emit(line)
+            logger.emit(line)
 
     def sleep_with_info_check(self):
         ""
@@ -164,13 +164,13 @@ class BatchRunner( TestListRunner ):
     def finishup(self, NS, NF, nrL):
         ""
         if len(NS)+len(NF)+len(nrL) > 0:
-            tty.emit("\n")
+            logger.emit("\n")
         if len(NS) > 0:
-            tty.warn(
+            logger.warn(
                 "these batch numbers did not seem to start: {0}".format(' '.join(NS))
             )
         if len(NF) > 0:
-            tty.warn(
+            logger.warn(
                 "these batch numbers did not seem to finish: {0}".format(' '.join(NF))
             )
 
@@ -208,10 +208,10 @@ class DirectRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'run', self.batch_id )
 
         try:
-            save_log_level = tty.get_level()
+            save_log_level = logger.get_level()
             if self.show_progress_bar:
                 # skip any information messages so that only the progress bar is shown
-                tty.set_level(tty.WARN)
+                logger.set_level(logger.WARN)
             while True:
 
                 tnext = self.xlist.popNext( self.plat.sizeAvailable() )
@@ -239,7 +239,7 @@ class DirectRunner( TestListRunner ):
             nrL = self.xlist.popRemaining()  # these tests cannot be run
 
         finally:
-            tty.set_level(save_log_level)
+            logger.set_level(save_log_level)
             self.tlist.writeFinished()
 
         self.finishup( nrL )
@@ -249,7 +249,7 @@ class DirectRunner( TestListRunner ):
     def start_next(self, texec):
         ""
         tcase = texec.getTestCase()
-        tty.info('Starting: {0}'.format(exec_path( tcase, self.test_dir)))
+        logger.info('Starting: {0}'.format(exec_path( tcase, self.test_dir)))
         start_test( self.handler, texec, self.plat )
         self.tlist.appendTestResult( tcase )
 
@@ -263,7 +263,7 @@ class DirectRunner( TestListRunner ):
                 self.handler.finishExecution( texec )
             if texec.isDone():
                 xs = XstatusString( tcase, self.test_dir, self.cwd )
-                tty.info("Finished: {0}".format(xs))
+                logger.info("Finished: {0}".format(xs))
                 self.xlist.testDone( texec )
                 showprogress = True
 
@@ -276,20 +276,20 @@ class DirectRunner( TestListRunner ):
         pct = 100 * float(ndone) / float(ntot)
         div = str(ndone)+'/'+str(ntot)
         dt = pretty_time( time.time() - self.starttime )
-        tty.info("Progress: {0} {1:.1f}, time = {2}".format(div, pct, dt))
+        logger.info("Progress: {0} {1:.1f}, time = {2}".format(div, pct, dt))
         if self.show_progress_bar:
             line = progress_bar(ntot, ndone, time.time() - self.starttime, width=30)
-            tty.emit(line)
+            logger.emit(line)
 
     def finishup(self, nrL):
         ""
         if len(nrL) > 0:
-            tty.emit("\n")
+            logger.emit("\n")
         print_notrun_reasons( [ (tc,tc.getBlockedReason()) for tc in nrL ] )
 
 
 def progress_bar(num_test, num_done, duration, width=30):
-    bar = tty.progress_bar(num_test, num_done, width)
+    bar = logger.progress_bar(num_test, num_done, width)
     pct = 100 * num_done / float(num_test)
     ave = None if not num_done else duration / num_done
     togo = None if ave is None else ave * (num_test - num_done)
@@ -314,7 +314,7 @@ def print_notrun_reasons( notrunlist ):
     for tcase,reason in notrunlist:
         xdir = tcase.getSpec().getDisplayString()
         # magic: reason = tcase.getBlockedReason()
-        tty.warn("test {0!r} notrun due to dependency: {1}".format(xdir, reason))
+        logger.warn("test {0!r} notrun due to dependency: {1}".format(xdir, reason))
 
 
 def exec_path( tcase, test_dir ):
@@ -351,20 +351,20 @@ def run_baseline( xlist, plat ):
 
             if texec.isDone():
                 if tstat.passed():
-                    tty.info("done")
+                    logger.info("done")
                 else:
                     failures = True
-                    tty.info("FAILED")
+                    logger.info("FAILED")
                 break
 
         if not tstat.isDone():
             if texec.killJob():
                 handler.finishExecution( texec )
             failures = True
-            tty.info("TIMED OUT")
+            logger.info("TIMED OUT")
 
     if failures:
-        tty.emit("\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n")
+        logger.emit("\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n")
 
 
 def start_test( handler, texec, platform, is_baseline=False ):

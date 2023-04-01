@@ -463,7 +463,7 @@ def need_console_output( opts ):
     ""
     if information_mode( opts ):
         if opts.html or opts.junit or opts.gitlab or \
-           opts.save_results or opts.cdash:
+           opts.save_results or opts.cdash or opts.json:
             return False
 
     return True
@@ -490,6 +490,10 @@ def construct_results_writers( rtdata, opts, optD ):
             junitobj = construct_junit_writer( rtdata.testdir, opts, optD,
                                                rtdata.perms )
             writers.addWriter( junitobj )
+
+        if opts.json:
+            jsonobj = construct_json_writer(rtdata.testdir, opts, optD, rtdata.perms)
+            writers.addWriter(jsonobj)
 
         if opts.gitlab:
             wr = construct_gitlab_writer( rtdata.testdir, opts, optD,
@@ -540,6 +544,15 @@ def construct_junit_writer( test_dir, opts, optD, perms ):
     junitobj.setOutputDate( opts.results_date )
 
     return junitobj
+
+
+def construct_json_writer(test_dir, opts, optD, perms):
+    ""
+    import libvvtest.jsonwriter as jsonwriter
+
+    jsonobj = jsonwriter.JsonWriter(perms, opts.json, test_dir)
+    jsonobj.setOutputDate(opts.results_date)
+    return jsonobj
 
 
 def construct_gitlab_writer( test_dir, opts, optD, perms ):

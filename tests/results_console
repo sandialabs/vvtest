@@ -314,6 +314,9 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '-i --junit ju.xml' )
         assert vrun.countLines( 'difftest' ) == 0
 
+        vrun = vtu.runvvtest( '-i --json results.json' )
+        assert vrun.countLines( 'difftest' ) == 0
+
         vrun = vtu.runvvtest( '-i --gitlab .' )
         assert vrun.countLines( 'difftest' ) == 0
 

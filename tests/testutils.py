@@ -684,6 +684,13 @@ def list_all_directories( rootpath ):
     return pL
 
 
+def read_json_file( filename ):
+    ""
+    import json
+    with open(filename) as fh:
+        return json.load(fh)
+
+
 def read_xml_file( filename ):
     ""
     import xml.etree.ElementTree as ET

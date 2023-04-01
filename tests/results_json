@@ -1,0 +1,161 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST: vvtest
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import base64
+import zlib
+import os
+import time
+
+import vvtestutils as vtu
+import testutils as util
+
+
+class json_output_format_tests( vtu.vvtestTestCase ):
+
+    def test_producing_a_json_results_file(self):
+        ""
+        write_three_test_files()
+        time.sleep(1)
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
+
+        vrun = vtu.runvvtest( '-i --json=../results.json', chdir=vrun.resultsDir() )
+        time.sleep(1)
+
+        data = util.read_json_file( 'results.json' )
+        self.assert_json_test_names( data )
+        self.assert_output_for_diff_and_fail_tests( data )
+
+    def test_producing_a_json_results_file_as_part_of_the_execution(self):
+        ""
+        write_three_test_files()
+        time.sleep(1)
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( '--json results.json', batch=batch )
+            vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
+
+            data = util.read_json_file( 'results.json' )
+            self.assert_json_test_names( data )
+
+    def assert_json_test_names(self, data):
+        ""
+        info = []
+        for case in data["vvtest"]["tests"]["cases"]:
+            info.append((case.get('case'), case["endtime"] - case["starttime"]) )
+        info.sort()
+        expected_names = [
+            'DiffTest.np=1',
+            'DiffTest.np=2',
+            'FailTest',
+            'param.hello=mars',
+            'param.hello=world'
+        ]
+        for i, item in enumerate(info):
+            assert item[0] == expected_names[i]
+
+        fac = [4, 4, 3, 2, 2]
+        for i, item in enumerate(info):
+            assert abs(int(item[1]) - fac[i] ) <= 2, "{0} - {1} > 2".format(item[1], fac[i])
+
+    def assert_output_for_diff_and_fail_tests(self, data):
+        ""
+        for case in data["vvtest"]["tests"]["cases"]:
+            if case['name'].startswith('DiffTest'):
+                assert 'fake difference of 29' in expand64(case["log"])
+            elif case['name'].startswith('FailTest'):
+                assert 'pitch a fake exception' in expand64(case["log"])
+
+    def test_no_tests_to_run_still_produces_a_json_file(self):
+        ""
+        util.writefile( "subdir/param.vvt", """
+            # error on purpose so vvtest skips this test
+            #VVT: parameterize : hello
+            pass
+            """ )
+        time.sleep(1)
+
+        for batch in [False, True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( '--json results.json' )
+            vrun.assertCounts( total=0 )
+
+            assert os.path.exists( 'results.json' )
+            data = util.read_json_file( 'results.json' )
+            assert len(data["vvtest"]["tests"]["cases"]) == 0
+
+    def test_execute_log_output_for_staged_tests(self):
+        ""
+        util.writefile( "subdir/foo.vvt", """
+            #VVT: parameterize (staged): bar = A B
+
+            import vvtest_util as vvt
+            from script_util import exit_diff
+            print ( 'bar='+vvt.bar+' stage='+vvt.stage )
+            exit_diff()
+            """ )
+
+        vrun = vtu.runvvtest( '--json results.json subdir' )
+        vrun.assertCounts( total=2, diff=2 )
+
+        data = util.read_json_file( 'results.json' )
+        flg = 0
+        for case in data["vvtest"]["tests"]["cases"]:
+            if 'stage=1' in case["case"]:
+                txt = expand64(case["log"])
+                assert 'bar=A stage=1' in txt
+                flg += 1
+            elif 'stage=2' in case["case"]:
+                txt = expand64(case["log"])
+                assert 'bar=B stage=2' in txt
+                flg += 100
+        assert flg == 101
+
+
+def write_three_test_files():
+    ""
+    util.writefile( "subdir/param.vvt", """
+        #VVT: parameterize : hello = world mars
+        import time
+        time.sleep(1)
+        """ )
+    util.writefile( "FailTest.vvt", """
+        import os, sys, time
+        import vvtest_util as vvt
+        time.sleep(2)
+        raise Exception( 'pitch a fake exception' )
+        """)
+    util.writefile( "DiffTest.xml", """
+        <rtest name="DiffTest">
+            <parameterize np="1 2"/>
+            <execute>
+                sleep 3
+                echo "fake difference of 29"
+                set have_diff = yes
+            </execute>
+        </rtest>""")
+
+
+def expand64(raw):
+    bytes_str = base64.b64decode(raw.encode("utf-8"))
+    hex_str = bytes_str.hex()
+    s = zlib.decompress(bytes.fromhex(hex_str))
+    return s.decode("utf-8")
+
+############################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

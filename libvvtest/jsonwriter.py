@@ -65,6 +65,7 @@ class JsonWriter:
         ]
       }
     """
+
     def __init__(self, permsetter, output_filename, results_test_dir):
         """"""
         self.permsetter = permsetter
@@ -184,7 +185,6 @@ class JsonWriter:
         stat = testcase.getStat()
         result = stat.getResultStatus()
         logfile = outpututils.get_log_file_path(self.testdir, spec)
-        test_path = os.path.dirname(logfile)
         if logfile is None or not os.path.exists(logfile):
             log = "Log file {0} not found!".format(logfile)
         else:

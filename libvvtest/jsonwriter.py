@@ -151,9 +151,11 @@ class JsonWriter:
         result = stat.getResultStatus()
         notrun = result in ("notrun", "skip", "notdone")
         if notrun:
-            command = None
+            command = compressed_log = None
         else:
             command = outpututils.get_test_command_line(logfile)
+            kb_to_keep = 2 if result == "passed" else 300
+            compressed_log = self.compress_logfile(logfile, kb_to_keep)
         skip = bool(stat.skipTest())
         parameters = spec.getParameters()
         processors = int(parameters.get("np", 1))
@@ -172,7 +174,7 @@ class JsonWriter:
             "endtime": endtime,
             "returncode": stat.getAttr("xvalue", None),
             "result": result,
-            "log": None if notrun else self.get_compressed_log(testcase),
+            "log": compressed_log,
             "timeout": stat.getAttr("timeout", None),
         }
         if skip:
@@ -180,16 +182,12 @@ class JsonWriter:
             test["skip_reason"] = stat.getReasonForSkipTest()
         return test
 
-    def get_compressed_log(self, testcase):
-        spec = testcase.getSpec()
-        stat = testcase.getStat()
-        result = stat.getResultStatus()
-        logfile = outpututils.get_log_file_path(self.testdir, spec)
+    @staticmethod
+    def compress_logfile(logfile, kb_to_keep):
         if logfile is None or not os.path.exists(logfile):
             log = "Log file {0} not found!".format(logfile)
         else:
             log = open(logfile, errors="ignore").read()
-        kb_to_keep = 2 if result == "passed" else 300
         kb = 1024
         bytes_to_keep = kb_to_keep * kb
         if len(log) > bytes_to_keep:

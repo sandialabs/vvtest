@@ -94,6 +94,8 @@ class BatchRunner( TestListRunner ):
                 # skip any information messages so that only the progress bar is shown
                 logger.set_level(logger.WARN)
 
+            done_count = 0
+
             while True:
 
                 qid = self.batch.checkstart()
@@ -113,7 +115,9 @@ class BatchRunner( TestListRunner ):
 
                 self.results_writer.midrun( self.tlist, self.rtinfo )
 
-                self.print_progress( doneL )
+                done_count += len(doneL)
+                if len(doneL) > 0:
+                    self.print_progress( done_count )
 
                 if self.total_time_expired():
                     break
@@ -138,13 +142,10 @@ class BatchRunner( TestListRunner ):
             ts = XstatusString( tcase, self.test_dir, self.cwd )
             logger.info("Finished: {0}".format(ts))
 
-    def print_progress(self, doneL):
+    def print_progress(self, ndone_test):
         ""
-        if len(doneL) <= 0:
-            return
         ndone_batch = self.batch.getNumDone()
         nprog_batch = self.batch.numInProgress()
-        ndone_test = self.xlist.numDone()
         ntot_test = self.tlist.numActive()
         pct = 100 * float(ndone_test) / float(ntot_test)
         dt = time.time() - self.starttime

@@ -88,7 +88,7 @@ class InformationPrinter( vtu.vvtestTestCase ):
         ""
         sio = StringIO()
         batch = make_fake_Batcher( self.tlist )
-        obj = printinfo.TestInformationPrinter( sio, self.xlist, batch )
+        obj = printinfo.TestInformationPrinter( sio, self.xlist, False, batch )
 
         time.sleep(2)
 

@@ -85,7 +85,7 @@ class Batcher:
     def checkstart(self):
         """
         Launches a new batch job if possible.  If it does, the batch id is
-        returned.
+        returned, else None.
         """
         if self.jobhandler.numSubmitted() < self.maxjobs:
             for bjob in self.jobhandler.getNotStarted():
@@ -166,7 +166,13 @@ class Batcher:
         ""
         self._write_job( bjob )
         self.results.addResultsInclude( bjob )
-        self.jobhandler.startJob( bjob )
+
+        jobid,out = self.jobhandler.startJob( bjob )
+
+        if jobid is None:
+            logger.error( out )
+        else:
+            logger.info( out )
 
     def _write_job(self, bjob):
         ""

@@ -12,7 +12,7 @@ from . import logger
 from . import utesthooks
 from . import pathutil
 from .printinfo import TestInformationPrinter
-from .outpututils import XstatusString, pretty_time
+from .outpututils import XstatusString
 
 
 class TestListRunner:
@@ -46,7 +46,7 @@ class TestListRunner:
         ""
         if self.total_timeout and self.total_timeout > 0:
             if time.time() - self.starttime > self.total_timeout:
-                logger.warn('\ntotal timeout expired: {0}'.format(self.total_timeout))
+                logger.warn('total timeout expired: {0}s'.format(self.total_timeout))
                 return True
         return False
 
@@ -78,7 +78,7 @@ class BatchRunner( TestListRunner ):
         self.batch.constructBatchJobs()
 
         self.qsleep = int( os.environ.get( 'VVTEST_BATCH_SLEEP_LENGTH', 15 ) )
-        self.info = TestInformationPrinter( sys.stdout, self.tlist, self.batch )
+        self.info = TestInformationPrinter( sys.stdout, self.tlist, self.show_progress_bar, self.batch )
 
         logger.info('Maximum concurrent batch jobs: {0}'.format(self.batch.getMaxJobs()))
 
@@ -117,7 +117,7 @@ class BatchRunner( TestListRunner ):
 
                 done_count += len(doneL)
                 if len(doneL) > 0:
-                    self.print_progress( done_count )
+                    self.info.printBatchProgress( done_count )
 
                 if self.total_time_expired():
                     break
@@ -141,20 +141,6 @@ class BatchRunner( TestListRunner ):
         for tcase in doneL:
             ts = XstatusString( tcase, self.test_dir, self.cwd )
             logger.info("Finished: {0}".format(ts))
-
-    def print_progress(self, ndone_test):
-        ""
-        ndone_batch = self.batch.getNumDone()
-        nprog_batch = self.batch.numInProgress()
-        ntot_test = self.tlist.numActive()
-        pct = 100 * float(ndone_test) / float(ntot_test)
-        dt = time.time() - self.starttime
-        fmt = "jobs running={0} completed={1}, tests {2}/{3} = {4:.1f}%, time = {5}"
-        args = [nprog_batch, ndone_batch, ndone_test, ntot_test, pct, pretty_time(dt)]
-        logger.info("Progress: " + fmt.format(*args))
-        if self.show_progress_bar:
-            line = progress_bar(ntot_test, ndone_test, dt, width=30)
-            logger.emit(line)
 
     def sleep_with_info_check(self):
         ""
@@ -200,7 +186,7 @@ class DirectRunner( TestListRunner ):
 
         self.plat.display()
 
-        self.info = TestInformationPrinter( sys.stdout, self.xlist )
+        self.info = TestInformationPrinter( sys.stdout, self.xlist, self.show_progress_bar )
 
     def run(self):
         ""
@@ -232,7 +218,7 @@ class DirectRunner( TestListRunner ):
                 self.results_writer.midrun( self.tlist, self.rtinfo )
 
                 if showprogress:
-                    self.print_progress()
+                    self.info.printProgress( self.tlist.numActive() )
 
                 if self.total_time_expired():
                     break
@@ -270,44 +256,11 @@ class DirectRunner( TestListRunner ):
 
         return showprogress
 
-    def print_progress(self):
-        ""
-        ndone = self.xlist.numDone()
-        ntot = self.tlist.numActive()
-        pct = 100 * float(ndone) / float(ntot)
-        div = str(ndone)+'/'+str(ntot)
-        dt = pretty_time( time.time() - self.starttime )
-        logger.info("Progress: {0} {1:.1f}, time = {2}".format(div, pct, dt))
-        if self.show_progress_bar:
-            line = progress_bar(ntot, ndone, time.time() - self.starttime, width=30)
-            logger.emit(line)
-
     def finishup(self, nrL):
         ""
         if len(nrL) > 0:
             logger.emit("\n")
         print_notrun_reasons( [ (tc,tc.getBlockedReason()) for tc in nrL ] )
-
-
-def progress_bar(num_test, num_done, duration, width=30):
-    bar = logger.progress_bar(num_test, num_done, width)
-    pct = 100 * num_done / float(num_test)
-    ave = None if not num_done else duration / num_done
-    togo = None if ave is None else ave * (num_test - num_done)
-    w = len(str(num_test))
-    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6}]   ".format(
-        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), hhmmss(ave), w
-    )
-    return line
-
-
-def hhmmss(arg):
-    if arg is None:
-        return "--:--:--"
-    seconds = int(arg)
-    minutes = seconds // 60
-    hours = minutes // 60
-    return "%02d:%02d:%02d" % (hours, minutes % 60, seconds % 60)
 
 
 def print_notrun_reasons( notrunlist ):

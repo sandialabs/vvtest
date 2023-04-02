@@ -17,7 +17,7 @@ from .batchfactory import construct_batch_system
 
 class BatchQueueInterface:
 
-    def __init__(self, node_size, attrs={}, envD={}, logger=None):
+    def __init__(self, node_size, attrs={}, envD={}):
         """
         The 'attrs' must have a "batchsys" key with one of these values:
 
@@ -28,7 +28,6 @@ class BatchQueueInterface:
             pbs      : standard PBS system
             subprocs : simulate batch processing with subprocesses
         """
-        self.logger = logger or default_logger
         self.batch = None
         self.attrs = dict( attrs )
         self.envD = dict( envD )
@@ -111,7 +110,10 @@ class BatchQueueInterface:
             fp.write( '\n'.join( bufL ) + '\n' )
 
     def submitJob(self, workdir, outfile, scriptname):
-        ""
+        """
+        returns batch system jobid and info string if successful, or None
+        and an error message if unsuccessful
+        """
         cwd = os.getcwd()
         os.chdir( workdir )
         try:
@@ -120,16 +122,12 @@ class BatchQueueInterface:
             os.chdir( cwd )
 
         if jobid is None:
-            self.logger.error("{0}\n{1}".format(cmd, out))
-            self.logger.error(
-                "Batch submission failed or could not parse output to get job id"
-            )
+            out = "{0}\n{1}\n{2}".format( cmd, out,
+                "Batch submission failed or could not parse output to get job id" )
         else:
-            self.logger.info(
-                "Job script {0} submitted with id {1}".format(scriptname, jobid)
-            )
+            out = "Job script {0} submitted with id {1}".format(scriptname, jobid)
 
-        return jobid
+        return jobid,out
 
     def queryJobs(self, jobidL):
         """
@@ -150,11 +148,10 @@ class BatchQueueInterface:
 
     def cancelJobs(self, jobidL):
         ""
-        if hasattr( self.batch, 'cancel' ):
-            self.logger.emit(
-                "\nCancelling jobs: {0}".format(" ".join(str(_) for _ in jobidL))
-            )
-            for jid in jobidL:
+        jids = list( filter( lambda jid: jid is not None, jobidL ) )
+        if len(jids) > 0 and hasattr( self.batch, 'cancel' ):
+            print ( "\nCancelling jobs: {0}".format(" ".join(str(_) for _ in jids)) )
+            for jid in jids:
                 self.batch.cancel( jid )
 
 
@@ -167,18 +164,3 @@ def extract_non_None_job_ids( jobidL ):
             non_None.append( jobid )
 
     return non_None
-
-
-class default_logger:
-    @staticmethod
-    def emit(message, stream=None, end="\n"):
-        stream = stream or sys.stdout
-        stream.write("{0}{1}".format(message, end))
-
-    @staticmethod
-    def error(message):
-        default_logger.emit("*** Error: {0}".format(message), stream=sys.stderr)
-
-    @staticmethod
-    def info(message):
-        default_logger.emit(message)

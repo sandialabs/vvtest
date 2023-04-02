@@ -20,7 +20,6 @@ except Exception:
     from pipes import quote
 
 
-import libvvtest.logger
 from libvvtest.execlist import TestExecList
 from libvvtest.exechandler import ExecutionHandler
 import libvvtest.pathutil as pathutil
@@ -1125,8 +1124,7 @@ def create_Batcher( opts, optD, rtdata, namer,
 
     batchitf = BatchQueueInterface( plat.getNodeSize(),
                                     plat.getAttributes(),
-                                    plat.getEnvironment(),
-                                    logger=libvvtest.logger)
+                                    plat.getEnvironment() )
 
     batchlimit = opts.batch_limit
     if batchlimit == None:

@@ -113,7 +113,7 @@ class failure_modes( vtu.vvtestTestCase ):
                                   '--platopt ppn=4', batch=True )
 
         vrun.assertCounts( total=1, notrun=1 )
-        assert vrun.grepLines('*** Batch submission failed')
+        assert vrun.grepLines('Batch submission failed')
         assert vrun.grepLines('fake submit exception')
 
     def test_total_timeout(self):
@@ -127,7 +127,7 @@ class failure_modes( vtu.vvtestTestCase ):
             vrun = vtu.runvvtest( '--total-timeout=5', batch=True )
 
         vrun.assertCounts( total=1, notdone=1 )
-        assert vrun.grepLines('*** vvtest: total timeout expired')
+        assert vrun.grepLines('total timeout expired')
 
 
 ########## subprocs.py

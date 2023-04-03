@@ -60,6 +60,7 @@ class TestExec:
     def setResourceObject(self, obj):
         ""
         self.resource_obj = obj
+        self.tcase.resource_obj = obj
 
     def getResourceObject(self):
         ""

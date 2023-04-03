@@ -16,6 +16,7 @@ class TestCase:
         self.deps = []
         self.depdirs = {}  # xdir -> match pattern
         self.has_dependent = False
+        self.resource_obj = None
 
     def getSpec(self):
         ""

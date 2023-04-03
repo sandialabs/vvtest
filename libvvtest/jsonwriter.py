@@ -54,6 +54,7 @@ class JsonWriter:
             "path": str,
             "command": str,
             "keywords": list[str],
+            "parameters": dict,
             "processors": int,
             "starttime": float,
             "endtime": float,
@@ -99,7 +100,12 @@ class JsonWriter:
         TestExec objects), then writes a file in json format
 
         """
+        data = {}
         meta = rtinfo.asDict()
+        for var in (
+            "PYTHONPATH", "PATH", "LOADEDMODULES", "platform", "hostname", "python"
+        ):
+            meta.pop(var, None)
         meta["starttime"] = meta.pop("startepoch", -1)
         meta["endtime"] = meta.pop("finishepoch", -1)
         meta["enddate"] = meta.pop("finishdate", None)
@@ -107,8 +113,28 @@ class JsonWriter:
             meta["duration"] = meta["endtime"] - meta["starttime"]
         else:
             meta["duration"] = -1
-        meta["system"] = os.getenv("SNLSYSTEM", sys.platform)
-        data = {"meta": meta}
+        data["meta"] = meta
+
+        uname = os.uname()
+        data["machine"] = {
+            "platform": sys.platform,
+            "system": uname[0],
+            "nodename": uname[1],
+            "release": uname[2],
+            "version": uname[3],
+            "arch": uname[4],
+            "SNLSYSTEM": os.getenv("SNLSYSTEM"),
+            "SNLCLUSTER": os.getenv("SNLCLUSTER"),
+        }
+
+        data["python"] = {
+            "executable": sys.executable,
+            "version": sys.version,
+            "version info": sys.version_info,
+        }
+
+        data["environment"] = os.environ.copy()
+
         testcases = atestlist.getActiveTests()
         print3(
             "Writing {0}, tests to Json file {1}".format(len(testcases), self.filename)
@@ -149,6 +175,46 @@ class JsonWriter:
         stat = testcase.getStat()
         logfile = outpututils.get_log_file_path(self.testdir, spec)
         result = stat.getResultStatus()
+        skip = bool(stat.skipTest())
+        starttime = stat.getStartDate(None) or -1
+        duration = stat.getRuntime(None) or -1
+        endtime = -1 if (starttime < 0 or duration < 0) else starttime + duration
+        test = {
+            "name": spec.getName(),
+            "case": os.path.basename(spec.getDisplayString()),
+            "id": spec.getTestID().computeMatchString(),
+            "root": spec.getRootpath(),
+            "path": spec.getFilepath(),
+            "keywords": spec.getKeywords(include_implicit=False),
+            "parameters": spec.getParameters(typed=True),
+            "starttime": starttime,
+            "endtime": endtime,
+            "returncode": stat.getAttr("xvalue", None),
+            "result": result,
+            "timeout": stat.getAttr("timeout", None),
+        }
+        if spec.isAnalyze():
+            test["parameter set"] = spec.getParameterSet().getParameters(typed=True)
+
+        resources = test.setdefault("resources", {})
+        resources["processors"] = 0
+        resources["processor ids"] = []
+        resources["total processors"] = 0
+        resources["devices"] = 0
+        resources["device ids"] = []
+        resources["total devices"] = 0
+        if testcase.resource_obj:
+            resource = testcase.resource_obj
+            resources["processors"] = len(resource.procs)
+            resources["processor ids"] = resource.procs
+            resources["total processors"] = resource.maxprocs
+            if resource.devices:
+                resources["devices"] = len(resource.devices)
+                resources["device ids"] = resource.devices
+                resources["total devices"] = resource.maxdevices
+        if skip:
+            test["skip"] = True
+            test["skip_reason"] = stat.getReasonForSkipTest()
         notrun = result in ("notrun", "skip", "notdone")
         if notrun:
             command = compressed_log = None
@@ -156,30 +222,8 @@ class JsonWriter:
             command = outpututils.get_test_command_line(logfile)
             kb_to_keep = 2 if result == "passed" else 300
             compressed_log = self.compress_logfile(logfile, kb_to_keep)
-        skip = bool(stat.skipTest())
-        parameters = spec.getParameters()
-        processors = int(parameters.get("np", 1))
-        starttime = stat.getStartDate(None) or -1
-        duration = stat.getRuntime(None) or -1
-        endtime = -1 if (starttime < 0 or duration < 0) else starttime + duration
-        test = {
-            "name": spec.getName(),
-            "case": os.path.basename(spec.getDisplayString()),
-            "root": spec.getRootpath(),
-            "path": spec.getFilepath(),
-            "command": command,
-            "keywords": spec.getKeywords(include_implicit=False),
-            "processors": processors,
-            "starttime": starttime,
-            "endtime": endtime,
-            "returncode": stat.getAttr("xvalue", None),
-            "result": result,
-            "log": compressed_log,
-            "timeout": stat.getAttr("timeout", None),
-        }
-        if skip:
-            test["skip"] = True
-            test["skip_reason"] = stat.getReasonForSkipTest()
+        test["log"] = compressed_log
+        test["command"] = command
         return test
 
     @staticmethod

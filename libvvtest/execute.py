@@ -11,7 +11,7 @@ import time
 from . import logger
 from . import utesthooks
 from . import pathutil
-from .printinfo import TestInformationPrinter
+from .printinfo import DirectInfoPrinter, BatchInfoPrinter
 from .outpututils import XstatusString
 
 
@@ -78,7 +78,7 @@ class BatchRunner( TestListRunner ):
         self.batch.constructBatchJobs()
 
         self.qsleep = int( os.environ.get( 'VVTEST_BATCH_SLEEP_LENGTH', 15 ) )
-        self.info = TestInformationPrinter( sys.stdout, self.tlist, self.show_progress_bar, self.batch )
+        self.info = BatchInfoPrinter( self.tlist, self.batch, self.show_progress_bar )
 
         logger.info('Maximum concurrent batch jobs: {0}'.format(self.batch.getMaxJobs()))
 
@@ -93,8 +93,6 @@ class BatchRunner( TestListRunner ):
             if self.show_progress_bar:
                 # skip any information messages so that only the progress bar is shown
                 logger.set_level(logger.WARN)
-
-            done_count = 0
 
             while True:
 
@@ -115,9 +113,7 @@ class BatchRunner( TestListRunner ):
 
                 self.results_writer.midrun( self.tlist, self.rtinfo )
 
-                done_count += len(doneL)
-                if len(doneL) > 0:
-                    self.info.printBatchProgress( done_count )
+                self.info.printProgress( len(doneL) )
 
                 if self.total_time_expired():
                     break
@@ -186,7 +182,7 @@ class DirectRunner( TestListRunner ):
 
         self.plat.display()
 
-        self.info = TestInformationPrinter( sys.stdout, self.xlist, self.show_progress_bar )
+        self.info = DirectInfoPrinter( self.xlist, self.tlist.numActive(), self.show_progress_bar )
 
     def run(self):
         ""
@@ -211,14 +207,13 @@ class DirectRunner( TestListRunner ):
                     self.info.checkPrint()
                     time.sleep(1)
 
-                showprogress = self.print_finished()
+                done_count = self.process_finished()
 
                 uthook.check( self.xlist.numRunning(), self.xlist.numDone() )
 
                 self.results_writer.midrun( self.tlist, self.rtinfo )
 
-                if showprogress:
-                    self.info.printProgress( self.tlist.numActive() )
+                self.info.printProgress( done_count )
 
                 if self.total_time_expired():
                     break
@@ -240,9 +235,9 @@ class DirectRunner( TestListRunner ):
         start_test( self.handler, texec, self.plat )
         self.tlist.appendTestResult( tcase )
 
-    def print_finished(self):
+    def process_finished(self):
         ""
-        showprogress = False
+        ndone = 0
 
         for texec in list( self.xlist.getRunning() ):
             tcase = texec.getTestCase()
@@ -252,9 +247,9 @@ class DirectRunner( TestListRunner ):
                 xs = XstatusString( tcase, self.test_dir, self.cwd )
                 logger.info("Finished: {0}".format(xs))
                 self.xlist.testDone( texec )
-                showprogress = True
+                ndone += 1
 
-        return showprogress
+        return ndone
 
     def finishup(self, nrL):
         ""

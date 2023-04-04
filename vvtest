@@ -1100,15 +1100,14 @@ def construct_direct_runner( rtdata, tlist, xlist, batch_id, totaltime, show_pog
 
 def construct_batch_runner( rtdata, tlist, xlist, totaltime, opts, optD, show_progress ):
     ""
-    brun = execute.BatchRunner( rtdata.testdir, tlist, xlist, rtdata.perms,
-                                rtdata.rtinfo, rtdata.results_writer,
-                                rtdata.plat, totaltime, show_progress )
-
     namer = rtdata.tlm.getFileNamer()
     batch = create_Batcher( opts, optD, rtdata, namer,
                             tlist, xlist,
                             rtdata.plat, rtdata.perms )
-    brun.setBatcher( batch )
+
+    brun = execute.BatchRunner( batch, rtdata.testdir, tlist, xlist, rtdata.perms,
+                                rtdata.rtinfo, rtdata.results_writer,
+                                rtdata.plat, totaltime, show_progress )
 
     return brun
 

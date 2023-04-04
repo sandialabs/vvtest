@@ -4,6 +4,8 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
+from __future__ import division
+
 import os, sys
 import time
 import datetime
@@ -11,15 +13,17 @@ import select
 import platform
 
 from . import logger
-from .outpututils import pretty_time
+from .outpututils import pretty_time, XstatusString
+from . import pathutil
 
 not_windows = not platform.uname()[0].lower().startswith('win')
 
 
 class TestInformationPrinter:
 
-    def __init__(self, total_num_tests, show_progress_bar):
+    def __init__(self, test_dir, total_num_tests, show_progress_bar):
         ""
+        self.test_dir = test_dir
         self.ntotal = total_num_tests
         self.ndone = 0
 
@@ -28,6 +32,14 @@ class TestInformationPrinter:
         self.starttime = time.time()
 
         self._check_input = standard_in_has_data
+
+        self.cwd = os.getcwd()
+
+    def printFinished(self, done_list):
+        ""
+        for tcase in done_list:
+            ts = XstatusString( tcase, self.test_dir, self.cwd )
+            logger.info("Finished: {0}".format(ts))
 
     def printProgress(self, ndone_test):
         ""
@@ -57,10 +69,14 @@ class TestInformationPrinter:
 
 class DirectInfoPrinter( TestInformationPrinter ):
 
-    def __init__(self, xlist, total_num_tests, show_progress_bar=False):
+    def __init__(self, test_dir, xlist, total_num_tests, show_progress_bar=False):
         ""
-        TestInformationPrinter.__init__( self, total_num_tests, show_progress_bar )
+        TestInformationPrinter.__init__( self, test_dir, total_num_tests, show_progress_bar )
         self.xlist = xlist
+
+    def printStarting(self, tcase):
+        ""
+        logger.info('Starting: {0}'.format(exec_path( tcase, self.test_dir)))
 
     def writeProgressInfo(self):
         ""
@@ -86,12 +102,18 @@ class DirectInfoPrinter( TestInformationPrinter ):
             xdir = tspec.getDisplayString()
             logger.info( "    *", xdir, '({0} elapsed)'.format(duration) )
 
+    def printRemainders(self, not_run_list):
+        ""
+        if len(not_run_list) > 0:
+            logger.emit("\n")
+        print_notrun_reasons( [ (tc,tc.getBlockedReason()) for tc in not_run_list ] )
+
 
 class BatchInfoPrinter( TestInformationPrinter ):
 
-    def __init__(self, tlist, batcher, show_progress_bar=False):
+    def __init__(self, test_dir, tlist, batcher, show_progress_bar=False):
         ""
-        TestInformationPrinter.__init__( self, tlist.numActive(), show_progress_bar )
+        TestInformationPrinter.__init__( self, test_dir, tlist.numActive(), show_progress_bar )
         self.batcher = batcher
 
     def writeProgressInfo(self):
@@ -108,6 +130,12 @@ class BatchInfoPrinter( TestInformationPrinter ):
             line = progress_bar(self.ntotal, self.ndone, dt, width=30)
             logger.emit(line)
 
+    def printFinishedBatches(self, qidL):
+        ""
+        if len(qidL) > 0:
+            ids = ' '.join( [ str(qid) for qid in qidL ] )
+            logger.info('Finished batch IDS: {0}'.format(ids))
+
     def writeTestListInfo(self, now):
         ""
         logger.info( '  *', self.batcher.numInProgress(),
@@ -122,6 +150,23 @@ class BatchInfoPrinter( TestInformationPrinter ):
                 xdir = tcase.getSpec().getDisplayString()
                 logger.info( '      *', xdir )
 
+    def printBatchRemainders(self, not_started_qids, not_finished_qids, notrun_list):
+        ""
+        if len(not_started_qids)+len(not_finished_qids) > 0:
+            logger.emit("\n")
+
+        if len(not_started_qids) > 0:
+            logger.warn(
+                "these batch numbers did not seem to start: {0}".format(' '.join(not_started_qids))
+            )
+
+        if len(not_finished_qids) > 0:
+            logger.warn(
+                "these batch numbers did not seem to finish: {0}".format(' '.join(not_finished_qids))
+            )
+
+        print_notrun_reasons( notrun_list )
+
 
 def standard_in_has_data():
     ""
@@ -131,6 +176,12 @@ def standard_in_has_data():
             return True
 
     return False
+
+
+def exec_path( tcase, test_dir ):
+    ""
+    xdir = tcase.getSpec().getDisplayString()
+    return pathutil.relative_execute_directory( xdir, test_dir, os.getcwd() )
 
 
 def progress_bar(num_test, num_done, duration, width=30):
@@ -152,3 +203,10 @@ def hhmmss(arg):
     minutes = seconds // 60
     hours = minutes // 60
     return "%02d:%02d:%02d" % (hours, minutes % 60, seconds % 60)
+
+
+def print_notrun_reasons( notrunlist ):
+    ""
+    for tcase,reason in notrunlist:
+        xdir = tcase.getSpec().getDisplayString()
+        logger.warn("test {0!r} notrun due to dependency: {1}".format(xdir, reason))

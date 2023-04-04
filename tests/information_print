@@ -42,10 +42,11 @@ class InformationPrinter( vtu.vvtestTestCase ):
         vtu.vvtestTestCase.setUp( self, cleanout=False )
 
         self.tlist, self.xlist = make_fake_TestExecList()
+        self.testdir = os.getcwd()
 
     def test_print_list_information(self):
         ""
-        obj = printinfo.DirectInfoPrinter( self.xlist, self.tlist.numActive() )
+        obj = printinfo.DirectInfoPrinter( self.testdir, self.xlist, self.tlist.numActive() )
 
         time.sleep(2)
         rtn,out,err = util.call_capture_output( obj.writeInfo )
@@ -71,7 +72,7 @@ class InformationPrinter( vtu.vvtestTestCase ):
     def test_print_batch_information(self):
         ""
         batch = make_fake_Batcher( self.tlist )
-        obj = printinfo.BatchInfoPrinter( self.tlist, batch )
+        obj = printinfo.BatchInfoPrinter( self.testdir, self.tlist, batch )
 
         time.sleep(2)
 
@@ -100,13 +101,13 @@ class InformationPrinter( vtu.vvtestTestCase ):
         def fake_input_check():
             return True
 
-        obj = printinfo.DirectInfoPrinter( self.xlist, self.tlist.numActive() )
+        obj = printinfo.DirectInfoPrinter( self.testdir, self.xlist, self.tlist.numActive() )
         obj.setInputChecker( fake_input_check )
         rtn,out,err = util.call_capture_output( obj.checkPrint )
         assert 'Information:' in out
 
         batch = make_fake_Batcher( self.tlist )
-        obj = printinfo.BatchInfoPrinter( self.tlist, batch )
+        obj = printinfo.BatchInfoPrinter( self.testdir, self.tlist, batch )
         obj.setInputChecker( fake_input_check )
         rtn,out,err = util.call_capture_output( obj.checkPrint )
         assert 'Information:' in out

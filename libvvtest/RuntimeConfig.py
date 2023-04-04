@@ -62,6 +62,9 @@ class RuntimeConfig:
         for k,v in kwargs.items():
             self.setAttr( k, v )
 
+    def asDict(self):
+        return vars(self)
+
     def setAttr(self, name, value):
         """
         Set the value of an attribute name (which must be known).

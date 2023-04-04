@@ -42,7 +42,7 @@ class ConsoleWriter:
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         if atestlist.numActive() > 0:
             level = 1 + self.verbose

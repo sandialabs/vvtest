@@ -105,6 +105,9 @@ def run_vvtest( rtdata, opts, optD ):
     ""
     exitstat = 0
 
+    # let applications know if they are being called in a vvtest context
+    os.environ["VVTEST_CONTEXT"] = "1"
+
     if information_mode( opts ):
         if opts.show_times:
             output_timings( opts, optD, rtdata )
@@ -1092,7 +1095,7 @@ def run_test_exec_list( opts, optD, rtdata ):
 
     print3()
     rtdata.rtinfo.setInfo( finishepoch=time.time() )
-    rtdata.results_writer.postrun( tlist, rtdata.rtinfo )
+    rtdata.results_writer.postrun( tlist, rtdata.rtinfo, rtconfig=rtdata.rtconfig )
 
     return xstat
 

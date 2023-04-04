@@ -65,7 +65,7 @@ class GitLabWriter:
             self._dispatch_submission( atestlist, rtinfo )
             self.tlast = time.time()
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         if self.outurl:
             self._dispatch_submission( atestlist, rtinfo )

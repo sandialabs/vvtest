@@ -62,7 +62,7 @@ class ListWriter:
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         if atestlist.numActive() > 0:
             self.writeList( atestlist, rtinfo )

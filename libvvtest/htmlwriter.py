@@ -27,7 +27,7 @@ class HTMLWriter:
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         self.writeDocument( atestlist, rtinfo )
 

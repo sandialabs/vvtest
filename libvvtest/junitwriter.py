@@ -34,7 +34,7 @@ class JUnitWriter:
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinf, rtconfig=None):
         ""
         self.writeFile( atestlist, rtinfo )
 

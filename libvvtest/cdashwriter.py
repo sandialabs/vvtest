@@ -59,7 +59,7 @@ class CDashWriter:
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         self._create_and_fill_formatter( atestlist, rtinfo )
         self._write_data( self.fmtr, rtinfo )

@@ -25,10 +25,10 @@ class ResultsWriters:
         for wr in self.writers:
             wr.midrun( atestlist, rtinfo )
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         for wr in self.writers:
-            wr.postrun( atestlist, rtinfo )
+            wr.postrun( atestlist, rtinfo, rtconfig=rtconfig )
 
     def info(self, atestlist, rtinfo):
         ""

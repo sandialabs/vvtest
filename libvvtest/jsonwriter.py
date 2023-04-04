@@ -86,34 +86,39 @@ class JsonWriter:
         """"""
         pass
 
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist, rtinfo, rtconfig=None):
         """"""
-        self.writeFile(atestlist, rtinfo)
+        self.writeFile(atestlist, rtinfo, rtconfig=rtconfig)
 
     def info(self, atestlist, rtinfo):
         """"""
         self.writeFile(atestlist, rtinfo)
 
-    def writeFile(self, atestlist, rtinfo):
+    def writeFile(self, atestlist, rtinfo, rtconfig=None):
         """
         This collects information from the given test list (a python list of
         TestExec objects), then writes a file in json format
 
         """
         data = {}
-        meta = rtinfo.asDict()
+        top = rtinfo.asDict()
         for var in (
             "PYTHONPATH", "PATH", "LOADEDMODULES", "platform", "hostname", "python"
         ):
-            meta.pop(var, None)
-        meta["starttime"] = meta.pop("startepoch", -1)
-        meta["endtime"] = meta.pop("finishepoch", -1)
-        meta["enddate"] = meta.pop("finishdate", None)
-        if meta["starttime"] > 0 and meta["endtime"] > 0:
-            meta["duration"] = meta["endtime"] - meta["starttime"]
+            top.pop(var, None)
+        top["starttime"] = top.pop("startepoch", -1)
+        top["endtime"] = top.pop("finishepoch", -1)
+        top["enddate"] = top.pop("finishdate", None)
+        if top["starttime"] > 0 and top["endtime"] > 0:
+            top["duration"] = top["endtime"] - top["starttime"]
         else:
-            meta["duration"] = -1
-        data["meta"] = meta
+            top["duration"] = -1
+        data.update(top)
+
+        if rtconfig is not None:
+            data["config"] = {}
+            for attr in rtconfig.attr_init:
+                data["config"][attr] = rtconfig.getAttr(attr)
 
         uname = os.uname()
         data["machine"] = {

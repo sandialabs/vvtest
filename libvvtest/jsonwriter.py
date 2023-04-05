@@ -116,9 +116,7 @@ class JsonWriter:
         data.update(top)
 
         if rtconfig is not None:
-            data["config"] = {}
-            for attr in rtconfig.attr_init:
-                data["config"][attr] = rtconfig.getAttr(attr)
+            data["config"] = rtconfig.asDict()
 
         uname = os.uname()
         data["machine"] = {
@@ -227,8 +225,11 @@ class JsonWriter:
             command = outpututils.get_test_command_line(logfile)
             kb_to_keep = 2 if result == "passed" else 300
             compressed_log = self.compress_logfile(logfile, kb_to_keep)
-        test["log"] = compressed_log
         test["command"] = command
+        test["log"] = compressed_log
+        user_file = os.path.join(os.path.dirname(logfile), "test-out.json")
+        if os.path.exists(user_file):
+            test["additional data"] = json.load(open(user_file))
         return test
 
     @staticmethod

@@ -122,11 +122,9 @@ class timing_output_tests( vtu.vvtestTestCase ):
         class MockTestList:
             def getTests(self): return tL
 
-        sio = StringIO()
-        conwr = consolewriter.ConsoleWriter( sio, os.getcwd() )
-        conwr.timings( MockTestList() )
+        conwr = consolewriter.ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr.timings, MockTestList() )
 
-        out = sio.getvalue()
         print3( out )
 
         gold = textwrap.dedent( """\

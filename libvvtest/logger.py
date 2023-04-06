@@ -5,12 +5,14 @@ except NameError:
     uchr = chr
 
 
-TRACE = 50
-DEBUG = 40
-INFO = 30
-WARN = 20
-ERROR = 10
-CRITICAL = 0
+TRACE    = 50
+DEBUG    = 40
+INFO     = 30
+QUIET    = 25
+WARN     = 20
+ERROR    = 10
+CRITICAL =  0
+
 _level = INFO
 
 
@@ -51,6 +53,16 @@ def debug(*args, **kwargs):
 
 def info(*args, **kwargs):
     if _level >= INFO:
+        kwargs["end"] = kwargs.pop("end", "\n")
+        emit(*args, **kwargs)
+
+
+def xinfo(*args, **kwargs):
+    """
+    execution loop information; issued from within a test execution loop
+    (as opposed to before the loop starts or after it finishes)
+    """
+    if _level >= QUIET:
         kwargs["end"] = kwargs.pop("end", "\n")
         emit(*args, **kwargs)
 

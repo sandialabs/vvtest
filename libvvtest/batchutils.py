@@ -172,7 +172,7 @@ class Batcher:
         if jobid is None:
             logger.error( out )
         else:
-            logger.info( out )
+            logger.xinfo( out )
 
     def _write_job(self, bjob):
         ""
@@ -282,7 +282,7 @@ class Batcher:
     def _remove_batch_directories(self):
         ""
         for d in self.namer.globBatchDirectories():
-            logger.emit('rm -rf {0}'.format(d), end="\n")
+            logger.info( 'rm -rf {0}'.format(d) )
             pathutil.fault_tolerant_remove( d )
 
 

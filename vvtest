@@ -515,7 +515,7 @@ def construct_console_writer( test_dir, opts, optD ):
 
     verb = get_output_verbosity_integer( opts.dash_v )
 
-    conobj = consolewriter.ConsoleWriter( sys.stdout, test_dir, verb )
+    conobj = consolewriter.ConsoleWriter( test_dir, verb )
 
     conobj.setSortingSpecification( optD['sort_letters'] )
 

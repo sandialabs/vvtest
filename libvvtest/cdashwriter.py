@@ -94,15 +94,12 @@ class CDashWriter:
                         'project='+self.dspecs.project )
                 self.subm.send( fname )
 
-                logger.emit("\n")
-
             except Exception as e:
                 logger.warn('error submitting CDash results: {0}'.format(e))
 
         else:
             logger.info( 'Writing CDash submission file:', self.dspecs.file )
             self._write_file( fmtr, self.dspecs.file )
-            logger.emit("\n")
 
     def _write_file(self, fmtr, filename):
         ""

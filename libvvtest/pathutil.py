@@ -10,6 +10,8 @@ import random
 import time
 import shutil
 
+from . import logger
+
 
 def compute_relative_path(d1, d2):
     """
@@ -83,14 +85,13 @@ def is_subdir( parent_dir, subdir ):
 
 def remove_directory_contents( path ):
     ""
-    sys.stdout.write( 'rm -rf ' + path + '/* ...' )
-    sys.stdout.flush()
+    logger.info( 'rm -rf', path+'/* ...', end='' )
 
     for f in os.listdir(path):
         df = os.path.join( path, f )
         fault_tolerant_remove( df )
 
-    print3( 'done' )
+    logger.info( 'done' )
 
 
 def random_string( numchars=8 ):
@@ -148,8 +149,3 @@ class change_directory:
     def __exit__(self, type, value, traceback):
         ""
         os.chdir( self.cwd )
-
-
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()

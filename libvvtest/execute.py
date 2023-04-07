@@ -16,7 +16,7 @@ class TestListRunner:
 
     def __init__(self, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout, show_progress_bar=False):
+                       total_timeout ):
         ""
         self.tlist = tlist
         self.xlist = xlist
@@ -25,8 +25,6 @@ class TestListRunner:
         self.results_writer = results_writer
         self.plat = plat
         self.total_timeout = total_timeout
-        self.show_progress_bar = show_progress_bar
-        self.current_log_level = logger.get_level()
 
     def setup(self):
         ""
@@ -49,13 +47,12 @@ class BatchRunner( TestListRunner ):
 
     def __init__(self, batch, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout, show_progress_bar=False):
+                       total_timeout ):
         ""
         TestListRunner.__init__( self, tlist, xlist, perms,
-                                 rtinfo, results_writer, plat, total_timeout,
-                                 show_progress_bar=show_progress_bar)
+                                 rtinfo, results_writer, plat, total_timeout )
         self.batch = batch
-        self.info = BatchInfoPrinter( test_dir, tlist, batch, show_progress_bar )
+        self.info = BatchInfoPrinter( test_dir, tlist, batch )
 
     def startup(self):
         ""
@@ -79,10 +76,6 @@ class BatchRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'batch' )
 
         try:
-            save_log_level = logger.get_level()
-            if self.show_progress_bar:
-                # skip any information messages so that only the progress bar is shown
-                logger.set_level(logger.WARN)
 
             while True:
 
@@ -113,7 +106,6 @@ class BatchRunner( TestListRunner ):
             NS, NF, nrL = self.batch.flush()
 
         finally:
-            logger.set_level(save_log_level)
             self.batch.shutdown()
 
         self.info.printBatchRemainders( NS, NF, nrL )
@@ -131,14 +123,13 @@ class DirectRunner( TestListRunner ):
 
     def __init__(self, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout, show_progress_bar=False):
+                       total_timeout ):
         ""
         TestListRunner.__init__( self, tlist, xlist, perms,
-                                 rtinfo, results_writer, plat, total_timeout,
-                                 show_progress_bar=show_progress_bar )
+                                 rtinfo, results_writer, plat, total_timeout )
         self.batch_id = None
         self.handler = xlist.getExecutionHandler()
-        self.info = DirectInfoPrinter( test_dir, xlist, tlist.numActive(), show_progress_bar )
+        self.info = DirectInfoPrinter( test_dir, xlist, tlist.numActive() )
 
     def setBatchID(self, batch_id):
         ""
@@ -156,10 +147,6 @@ class DirectRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'run', self.batch_id )
 
         try:
-            save_log_level = logger.get_level()
-            if self.show_progress_bar:
-                # skip any information messages so that only the progress bar is shown
-                logger.set_level(logger.WARN)
             while True:
 
                 tnext = self.xlist.popNext( self.plat.sizeAvailable() )
@@ -188,7 +175,6 @@ class DirectRunner( TestListRunner ):
             nrL = self.xlist.popRemaining()  # these tests cannot be run
 
         finally:
-            logger.set_level(save_log_level)
             self.tlist.writeFinished()
 
         self.info.printRemainders( nrL )
@@ -258,7 +244,7 @@ def run_baseline( xlist, plat ):
             logger.info("TIMED OUT")
 
     if failures:
-        logger.emit("\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n")
+        logger.warn( "\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n" )
 
 
 def start_test( handler, texec, platform, is_baseline=False ):

@@ -18,7 +18,7 @@ _level = INFO
 
 def set_level(arg):
     global _level
-    assert arg in (TRACE, DEBUG, INFO, WARN, ERROR)
+    assert arg in (TRACE, DEBUG, INFO, QUIET, WARN, ERROR)
     _level = arg
 
 
@@ -52,7 +52,7 @@ def debug(*args, **kwargs):
 
 
 def info(*args, **kwargs):
-    if _level >= INFO:
+    if _level >= QUIET:
         kwargs["end"] = kwargs.pop("end", "\n")
         emit(*args, **kwargs)
 
@@ -62,7 +62,7 @@ def xinfo(*args, **kwargs):
     execution loop information; issued from within a test execution loop
     (as opposed to before the loop starts or after it finishes)
     """
-    if _level >= QUIET:
+    if _level >= INFO:
         kwargs["end"] = kwargs.pop("end", "\n")
         emit(*args, **kwargs)
 

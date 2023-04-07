@@ -56,8 +56,7 @@ class TestInformationPrinter:
     def writeProgressBar(self):
         ""
         if logger.get_level() <= logger.QUIET:
-            line = progress_bar(self.ntotal, self.ndone, time.time()-self.starttime, width=30)
-            logger.emit(line)
+            print_progress_bar(self.ntotal, self.ndone, time.time()-self.starttime, width=30)
 
     def writeInfo(self):
         ""
@@ -183,17 +182,50 @@ def exec_path( tcase, test_dir ):
     return pathutil.relative_execute_directory( xdir, test_dir, os.getcwd() )
 
 
-def progress_bar(num_test, num_done, duration, width=30):
+def unicode_chars_supported(*uchars):
     ""
-    bar = logger.progress_bar(num_test, num_done, width)
+    try:
+        if sys.stdout.encoding:
+            [_.encode(sys.stdout.encoding) for _ in uchars]
+        else:
+            [_.encode() for _ in uchars]
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
+if sys.version_info[0] < 3:
+    _progress_bar_charset = [" ", unichr(0x2588), unichr(0x2591), ""]
+else:
+    _progress_bar_charset = [" ", chr(0x2588), chr(0x2591), ""]
+
+if not unicode_chars_supported(*_progress_bar_charset):
+    _progress_bar_charset = ["|", "#", "-", "|"]
+
+
+def progress_bar(total, complete, width):
+    ""
+    lbar, bar, xbar, rbar = _progress_bar_charset
+    frac = complete / total
+    nbar = int(frac * width)
+    bars = bar * nbar
+    if nbar < width:
+        bars += xbar * (width - nbar)
+    return lbar+bars+rbar
+
+
+def print_progress_bar(num_test, num_done, duration, width=30):
+    ""
+    bar = progress_bar( num_test, num_done, width )
     pct = 100 * num_done / float(num_test)
     ave = None if not num_done else duration / num_done
     togo = None if ave is None else ave * (num_test - num_done)
     w = len(str(num_test))
-    line = "\r{0} {1:{7}d}/{2} {3:5.1f}% [elapsed: {4} left: {5} ave: {6}]   ".format(
-        bar, num_done, num_test, pct, hhmmss(duration), hhmmss(togo), hhmmss(ave), w
+    line = " {0:{6}d}/{1} {2:5.1f}% [elapsed: {3} left: {4} ave: {5}]   ".format(
+        num_done, num_test, pct, hhmmss(duration), hhmmss(togo), hhmmss(ave), w
     )
-    return line
+    sys.stdout.write( '\r'+bar+line )
+    sys.stdout.flush()
 
 
 def hhmmss(arg):

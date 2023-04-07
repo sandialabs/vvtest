@@ -1,9 +1,9 @@
-import sys
-try:
-    uchr = unichr
-except NameError:
-    uchr = chr
 
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+import sys
 
 TRACE    = 50
 DEBUG    = 40
@@ -94,25 +94,3 @@ def critical(*args, **kwargs):
 def die(*args, **kwargs):
     critical(*args, **kwargs)
     sys.exit(1)
-
-
-def unicode_chars_supported(*uchars):
-    try:
-        [_.encode(sys.stdout.encoding) for _ in uchars]
-        return True
-    except UnicodeEncodeError:
-        return False
-
-
-def progress_bar(total, complete, width):
-    # charset = [_chr(0x2523), _chr(0x2501), _chr(0x2578), _chr(0x252B)]
-    charset = [" ", uchr(0x2588), uchr(0x2591), ""]
-    if not unicode_chars_supported(*charset):
-        charset = ["|", "-", ".", "|"]
-    lbar, bar, xbar, rbar = charset
-    frac = complete / total
-    nbar = int(frac * width)
-    bars = bar * nbar
-    if nbar < width:
-        bars += xbar * (width - nbar)
-    return "{0}{1}{2}".format(lbar, bars, rbar)

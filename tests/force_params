@@ -153,13 +153,13 @@ class force_params( vtu.vvtestTestCase ):
             """ )
 
         parser = parsevvt.ScriptTestParser( 'blue.vvt' )
-        pset = parser.parseParameterSet( 'blue' )
+        pset,_ = parser.parseParameterSet( 'blue' )
         tmap = pset.getParameterTypeMap()
         assert tmap['foo'] == int
 
         parser = parsevvt.ScriptTestParser( 'blue.vvt',
                                             force_params={'foo':['2','9']} )
-        pset = parser.parseParameterSet( 'blue' )
+        pset,_ = parser.parseParameterSet( 'blue' )
         assert_equal_params( pset, [{'foo': '2'}, {'foo': '9'}] )
         tmap = pset.getParameterTypeMap()
         assert tmap['foo'] == int
@@ -169,7 +169,7 @@ class force_params( vtu.vvtestTestCase ):
         self.assertRaises( TestSpecError, parser.parseParameterSet, 'blue' )
 
         parser = parsevvt.ScriptTestParser( 'pink.vvt' )
-        pset = parser.parseParameterSet( 'pink' )
+        pset,_ = parser.parseParameterSet( 'pink' )
         assert_equal_params( pset, [{'foo': '1'}, {'foo': '8'}] )
         tmap = pset.getParameterTypeMap()
         assert tmap['foo'] == int
@@ -177,7 +177,7 @@ class force_params( vtu.vvtestTestCase ):
         # for good or bad, the autotype uses the forced parameters to determine type
         parser = parsevvt.ScriptTestParser( 'pink.vvt',
                                             force_params={'foo':['2','8.5']} )
-        pset = parser.parseParameterSet( 'pink' )
+        pset,_ = parser.parseParameterSet( 'pink' )
         assert_equal_params( pset, [{'foo': '2'}, {'foo': '8.5'}] )
         tmap = pset.getParameterTypeMap()
         assert tmap['foo'] == float
@@ -225,7 +225,7 @@ class force_params( vtu.vvtestTestCase ):
 
         psr = parsevvt.ScriptTestParser( 'atest.vvt',
                                          force_params={'A':['4','5','6']} )
-        pset = psr.parse_parameterize( 'atest' )
+        pset,_ = psr.parse_parameterize( 'atest' )
         self.assertEqual( pset.getInstances(), [{'A':'4'}, {'A':'5'},{'A':'6'}] )
         self.assertEqual( pset.getParameterTypeMap(), {'A':int} )
 

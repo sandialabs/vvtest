@@ -447,12 +447,12 @@ class parameter_tests( vtu.vvtestTestCase ):
 
         # duplicates are now silently removed [Apr 2022]
         parser = parsevvt.ScriptTestParser( 'err4.vvt' )
-        pset = parser.parseParameterSet( 'err4' )
+        pset,_ = parser.parseParameterSet( 'err4' )
         self.assertEqual( pset.getParameters(), {('animal',): [['dog'], ['cat']]} )
 
         # duplicates are now silently removed [Apr 2022]
         parser = parsevvt.ScriptTestParser( 'err4b.vvt' )
-        pset = parser.parseParameterSet( 'err4b' )
+        pset,_ = parser.parseParameterSet( 'err4b' )
         self.assertEqual( pset.getParameters(),
             {('thing1', 'thing2'): [['dog', 'cat'], ['pig', 'cat']]} )
 

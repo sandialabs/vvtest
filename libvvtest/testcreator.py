@@ -131,7 +131,7 @@ class TestMaker:
         tname = tspec.getName()
 
         old_pset = tspec.getParameterSet()
-        new_pset = self.parser.parseParameterSet( tname )
+        new_pset,depmap = self.parser.parseParameterSet( tname )
         new_pset.intersectionFilter( old_pset.getInstances() )
         tspec.setParameterSet( new_pset )
 
@@ -146,7 +146,7 @@ class TestMaker:
 
     def create_test_list(self, tname):
         ""
-        pset = self.parser.parseParameterSet( tname )
+        pset,depmap = self.parser.parseParameterSet( tname )
 
         testL = self.generate_test_objects( tname, pset )
 

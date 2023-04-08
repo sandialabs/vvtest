@@ -27,6 +27,7 @@ from libvvtest.errors import FatalError
 import libvvtest.location as location
 import libvvtest.execute as execute
 import libvvtest.TestList as TestList
+import libvvtest.logger as logger
 
 
 version = '1.5'
@@ -97,6 +98,8 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     construct_test_selector( rtdata )
     construct_test_time_handler( rtdata, opts )
     construct_test_list_manager( rtdata )
+
+    set_logger_level( opts.dash_v, opts.dash_q )
 
     return rtdata, opts, optD
 
@@ -367,8 +370,8 @@ def import_plugin_module( rtdata ):
     plugmod,err = userplugin.import_user_plugin( USER_PLUGIN_MODULE_NAME )
 
     if err:
-        print ( '\n'+err.strip() )
-        print ( '\n*** user plugin disabled due to error in user plugin module\n' )
+        logger.warn( err.strip(),
+            '\n*** user plugin disabled due to error in user plugin module\n' )
 
     plug = userplugin.UserPluginBridge( rtdata.rtconfig, plugmod )
 
@@ -515,7 +518,7 @@ def construct_console_writer( test_dir, opts, optD ):
 
     verb = get_output_verbosity_integer( opts.dash_v )
 
-    conobj = consolewriter.ConsoleWriter( sys.stdout, test_dir, verb )
+    conobj = consolewriter.ConsoleWriter( test_dir, verb )
 
     conobj.setSortingSpecification( optD['sort_letters'] )
 
@@ -687,7 +690,7 @@ def generate_test_list( opts, optD, rtdata ):
     rtdata.tlm.writeTestList()
 
     rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
-    print3()
+    logger.info()
 
     handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
                                 rtdata.plat, rtdata.plugin,
@@ -699,7 +702,7 @@ def generate_test_list( opts, optD, rtdata ):
     xlist = TestExecList( tlist, handler )
     xlist.createExecutionDirectories()
 
-    print3( "\nTest directory:", basename( rtdata.testdir ) )
+    logger.info( "\nTest directory:", basename( rtdata.testdir ) )
 
 
 def extract_test_files( param_dict, target_dir, rtdata ):
@@ -744,7 +747,7 @@ def run_tests( opts, optD, rtdata ):
 
     xstat = run_test_exec_list( opts, optD, rtdata )
 
-    print3( "Test directory:", basename( rtdata.testdir ) )
+    logger.info( "Test directory:", basename( rtdata.testdir ) )
 
     rtdata.plugin.callEpilogue( rtdata.testdir, tlist.getTests() )
 
@@ -803,7 +806,7 @@ def baseline_tests( opts, optD, rtdata ):
     tlist.connectDependencies( check_dependencies=False )
 
     rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
-    print3()
+    logger.info()
 
     if tlist.numActive() > 0:
 
@@ -842,8 +845,8 @@ def information_output( opts, optD, rtdata ):
         rtdata.rtinfo.setInfo( **attrs )
 
     else:
-        print3( 'WARNING: previous test results directory not found,',
-                rtdata.testdir )
+        logger.warn( 'WARNING: previous test results directory not found,',
+                     rtdata.testdir )
 
     rtdata.selector.applyRuntimeFilters( tlist, remove_new_skips=True )
     rtdata.scanner.completeTestParsing( tlist )
@@ -1007,25 +1010,45 @@ def get_output_verbosity_integer( dash_v ):
     return verb
 
 
+def set_logger_level( dash_v, dash_q ):
+    ""
+    if dash_v:
+        cnt = dash_v
+    else:
+        cnt = 0
+
+    if dash_q:
+        cnt -= 1
+
+    if cnt < 0:
+        logger.set_level( logger.QUIET )
+    elif cnt == 0:
+        logger.set_level( logger.INFO )
+    elif cnt == 1:
+        logger.set_level( logger.DEBUG )
+    else:
+        logger.set_level( logger.TRACE )
+
+
 def print_keyword_union( tlist ):
     ""
     from libvvtest.teststatus import RESULTS_KEYWORDS
 
-    print3( "\nresults keywords:", ' '.join( RESULTS_KEYWORDS ) )
+    logger.info( "\nresults keywords:", ' '.join( RESULTS_KEYWORDS ) )
     kd = {}
     for tcase in tlist.getActiveTests():
         for k in tcase.getSpec().getKeywords( include_implicit=False ):
             kd[k] = None
     L = list( kd.keys() )
     L.sort()
-    print3( "\ntest keywords: " )
+    logger.info( "\ntest keywords: " )
     while len(L) > 0:
         k1 = L.pop(0)
         if len(L) > 0: k2 = L.pop(0)
         else:          k2 = ''
         if len(L) > 0: k3 = L.pop(0)
         else:          k3 = ''
-        print3( "  %-20s %-20s %-20s" % (k1,k2,k3) )
+        logger.info( "  %-20s %-20s %-20s" % (k1,k2,k3) )
 
 
 def print_test_files( tlist ):
@@ -1037,7 +1060,7 @@ def print_test_files( tlist ):
     L = list( D.keys() )
     L.sort()
     for d in L:
-        print3( d )
+        logger.info( d )
 
 
 def run_test_exec_list( opts, optD, rtdata ):
@@ -1047,7 +1070,7 @@ def run_test_exec_list( opts, optD, rtdata ):
     tlist.connectDependencies( check_dependencies=(opts.batch_id is None) )
 
     rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=0 )
-    print3()
+    logger.info()
 
     xstat = 0
 
@@ -1070,14 +1093,15 @@ def run_test_exec_list( opts, optD, rtdata ):
 
         if not opts.batch:
             tlrun = construct_direct_runner( rtdata, tlist, xlist,
-                                             opts.batch_id, totaltime )
+                                             opts.batch_id,
+                                             totaltime )
         else:
             tlrun = construct_batch_runner( rtdata, tlist, xlist, totaltime,
                                             opts, optD )
 
         xstat = tlrun.run()
 
-    print3()
+    logger.info()
     rtdata.rtinfo.setInfo( finishepoch=time.time() )
     rtdata.results_writer.postrun( tlist, rtdata.rtinfo )
 
@@ -1098,15 +1122,14 @@ def construct_direct_runner( rtdata, tlist, xlist, batch_id, totaltime ):
 
 def construct_batch_runner( rtdata, tlist, xlist, totaltime, opts, optD ):
     ""
-    brun = execute.BatchRunner( rtdata.testdir, tlist, xlist, rtdata.perms,
-                                rtdata.rtinfo, rtdata.results_writer,
-                                rtdata.plat, totaltime )
-
     namer = rtdata.tlm.getFileNamer()
     batch = create_Batcher( opts, optD, rtdata, namer,
                             tlist, xlist,
                             rtdata.plat, rtdata.perms )
-    brun.setBatcher( batch )
+
+    brun = execute.BatchRunner( batch, rtdata.testdir, tlist, xlist, rtdata.perms,
+                                rtdata.rtinfo, rtdata.results_writer,
+                                rtdata.plat, totaltime )
 
     return brun
 
@@ -1219,12 +1242,6 @@ def insert_configdirs_into_sys_path( configdirs ):
 
 
 ##############################################################################
-
-def print3( *args ):
-    ""
-    sys.stdout.write( ' '.join( [ str(x) for x in args ] ) + os.linesep )
-    sys.stdout.flush()
-
 
 def get_vvtest_directory():
     ""

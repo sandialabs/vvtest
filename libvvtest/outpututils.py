@@ -192,11 +192,6 @@ def pretty_time( nseconds ):
     return ss
 
 
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()
-
-
 def capture_traceback( excinfo ):
     """
     This should be called in an except block of a try/except, and the argument

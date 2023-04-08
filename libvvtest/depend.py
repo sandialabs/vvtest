@@ -7,6 +7,8 @@
 import os, sys
 import fnmatch
 
+from . import logger
+
 
 class DependencyPattern:
     """
@@ -372,8 +374,8 @@ def check_connect_dependencies( tcase, testcasemap, strict=True ):
 
         if depL is None:
             if strict:
-                print ( '*** Warning: test "'+tspec.getDisplayString()+'" '+\
-                        'will not be run due to dependency:'+str(reason) )
+                logger.warn( 'test', repr(tspec.getDisplayString()),
+                             'will not be run due to dependency:', reason )
             connect_failed_dependency( tcase, reason )
         else:
             for dep in depL:

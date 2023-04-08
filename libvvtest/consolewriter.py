@@ -7,14 +7,14 @@
 import os, sys
 import time
 
+from . import logger
 from . import outpututils
 
 
 class ConsoleWriter:
 
-    def __init__(self, output_file_obj, results_test_dir, verbose=0):
+    def __init__(self, results_test_dir, verbose=0):
         ""
-        self.fileobj = output_file_obj
         self.testdir = results_test_dir
 
         self.verbose = verbose
@@ -49,7 +49,7 @@ class ConsoleWriter:
             self._write_test_list_results( atestlist, level )
             self._write_summary( atestlist, 'Summary:' )
 
-        self.write( make_finish_info_string( rtinfo ) )
+        logger.info( make_finish_info_string( rtinfo ) )
 
     def info(self, atestlist, rtinfo):
         ""
@@ -64,15 +64,15 @@ class ConsoleWriter:
         tosum,tL = collect_timing_list( atestlist, self.testdir, cwd )
 
         fmt = '%8s %8s %s'
-        self.write( fmt % ('TIMEOUT','RUNTIME','TEST') )
+        logger.info( fmt % ('TIMEOUT','RUNTIME','TEST') )
         for to,rt,ds in tL:
-            self.write( fmt % (to, rt, ds) )
+            logger.info( fmt % (to, rt, ds) )
 
-        self.write( 'TIMEOUT SUM =', outpututils.colon_separated_time(tosum) )
+        logger.info( 'TIMEOUT SUM =', outpututils.colon_separated_time(tosum) )
 
     def _write_summary(self, atestlist, label):
         ""
-        self.write( label )
+        logger.info( label )
 
         tcaseL = atestlist.getTests()
         parts = outpututils.partition_tests_by_result( tcaseL )
@@ -145,7 +145,7 @@ class ConsoleWriter:
             tcaseL = atestlist.getTests()
 
         if len( tcaseL ) > 0:
-            self.write( "==================================================" )
+            logger.info( "==================================================" )
 
         numwritten = 0
 
@@ -158,7 +158,7 @@ class ConsoleWriter:
             numwritten = len( tcaseL )
 
         if numwritten > 0:
-            self.write( "==================================================" )
+            logger.info( "==================================================" )
 
     def _adjust_detail_level_by_verbose(self, level):
         ""
@@ -182,8 +182,8 @@ class ConsoleWriter:
                 numnonpass += 1
 
         if numwritten < numnonpass:
-            self.write( '... non-pass list too long'
-                        ' (add -v for full list or run again with -iv)' )
+            logger.info( '... non-pass list too long'
+                         ' (add -v for full list or run again with -iv)' )
 
         return numwritten
 
@@ -198,19 +198,14 @@ class ConsoleWriter:
 
         return False
 
-    def write(self, *args):
-        ""
-        self.fileobj.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-        self.fileobj.flush()
-
     def iwrite(self, *args):
         ""
-        self.write( '   ', *args )
+        logger.info( '   ', *args )
 
     def writeTest(self, tcase, cwd):
         ""
         astr = outpututils.XstatusString( tcase, self.testdir, cwd )
-        self.write( astr )
+        logger.info( astr )
 
 
 def make_finish_info_string( rtinfo ):

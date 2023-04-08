@@ -8,9 +8,9 @@ import os, sys
 from os.path import dirname
 import time
 
+from . import logger
 from . import outpututils
 from . import fmtresults
-print3 = outpututils.print3
 
 
 class ListWriter:
@@ -99,7 +99,7 @@ class ListWriter:
 
         try:
             tcaseL = atestlist.getActiveTests()
-            print3( "Writing results of", len(tcaseL), "tests to", tofile )
+            logger.info( "Writing results of", len(tcaseL), "tests to", tofile )
             self.writeTestResults( tcaseL, tofile, rtinfo, inprogress )
 
         finally:
@@ -165,11 +165,11 @@ def scp_file_to_remote( scpexe, fromdir, fname, destdir ):
 
     cmd = scpexe + ' -p '+pipes.quote(fromfile)+' '+pipes.quote(tofile)
 
-    print3( cmd )
+    logger.info( cmd )
     sys.stdout.flush() ; sys.stderr.flush()
 
     x = subprocess.call( cmd, shell=True )
 
     if x != 0:
         sys.stdout.flush() ; sys.stderr.flush()
-        print3( '\n*** vvtest warning: scp seems to have failed\n' )
+        logger.warn( '\n*** vvtest warning: scp seems to have failed\n' )

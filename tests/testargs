@@ -28,8 +28,7 @@ class test_arguments( vtu.vvtestTestCase ):
                 echo "script args $argv"
               </execute>
             </rtest>""" )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             #VVT: parameterize : planet=earth mars
             import sys
             print ( 'script args '+' '.join( sys.argv[1:] ) )

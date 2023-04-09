@@ -229,8 +229,7 @@ class slurm_tests( vtu.vvtestTestCase ):
 
     def test_submit_error(self):
         ""
-        util.writescript( 'bin/sbatch', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'bin/sbatch', """
             raise Exception( 'fake exception' )
             """ )
 
@@ -544,8 +543,7 @@ def write_mock_helpers():
 
 def write_mock_script( filename, print_this, execute_this=None ):
     ""
-    lines = [ '#!'+sys.executable,
-              'import os, sys, subprocess',
+    lines = [ 'import os, sys, subprocess',
               'from mockutils import get_header_option_value, run_in_background' ]
 
     # a file is always written that contains the script arguments
@@ -562,7 +560,7 @@ def write_mock_script( filename, print_this, execute_this=None ):
             dedent( print_this ).strip(),
             "''' )" ] )
 
-    util.writescript( filename, '\n'.join(lines)+'\n' )
+    util.write_py_script( filename, '\n'.join(lines)+'\n' )
 
 
 def prepended_PATH( path ):

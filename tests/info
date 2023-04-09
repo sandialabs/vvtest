@@ -391,26 +391,22 @@ class info_tests( vtu.vvtestTestCase ):
         ""
         maxprocs = 4
 
-        util.writescript( 'atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'atest.vvt', """
             #VVT: parameterize : np=1
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             #VVT: parameterize : np="""+str(maxprocs)+"""
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'ctest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ctest.vvt', """
             #VVT: parameterize : np="""+str(maxprocs+1)+"""
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'dtest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'dtest.vvt', """
             #VVT: parameterize : np="""+str(maxprocs+2)+"""
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )

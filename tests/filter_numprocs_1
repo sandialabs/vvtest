@@ -24,19 +24,16 @@ class filter_and_num_processors( vtu.vvtestTestCase ):
 
     def test_filter_out_tests_exceeding_max_num_procs(self):
         ""
-        util.writescript( 'atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'atest.vvt', """
             import vvtest_util as vvt
             print ( 'executing test' )
             """ )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             #VVT: parameterize : np = 1 2 4
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'ctest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ctest.vvt', """
             #VVT: parameterize : np = 1 2 4
             #VVT: analyze : --analyze
             import sys

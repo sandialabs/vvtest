@@ -224,9 +224,9 @@ def writescript( fname, content ):
 
 def write_py_script( fname, content ):
     ""
-    writescript( fname,
-                 '#!/usr/bin/env '+basename(sys.executable)+'\n' + \
-                 dedent(content) )
+    return writescript( fname,
+                    '#!/usr/bin/env '+basename(sys.executable)+'\n' + \
+                    dedent(content) )
 
 
 def runcmd( cmd, chdir=None, raise_on_error=True, verbose=1 ):

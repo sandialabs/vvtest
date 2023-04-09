@@ -30,28 +30,24 @@ class script_tests( vtu.vvtestTestCase ):
 
     def test_header_specification_comment_variations(self):
         ""
-        util.writescript( 'tst1.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst1.vvt', """
 
             #VVT: name=test1
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst2.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst2.vvt', """
             # 
             #VVT: name=test2
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst3.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst3.vvt', """
             import vvtest_util as vvt
             #VVT: name=test3
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst4.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst4.vvt', """
             #VVT: name=test4a
 
             #VVT: name=test4b
@@ -59,8 +55,7 @@ class script_tests( vtu.vvtestTestCase ):
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst5.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst5.vvt', """
             # regular comments can be interleaved
             #VVT: name=test5a
 
@@ -92,56 +87,47 @@ class script_tests( vtu.vvtestTestCase ):
 
     def test_incorrect_specification_syntax(self):
         ""
-        util.writescript( 'tst1.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst1.vvt', """
             #VVT: =junk
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst2.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst2.vvt', """
             #VVT: keywords (testname=tst2) foo : bar
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst2b.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst2b.vvt', """
             #VVT: keywords (testname=tst2b) foo
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst2c.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst2c.vvt', """
             #VVT: keywords (testname=tst2c) (testname=tst2b)
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst3.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst3.vvt', """
             #VVT: keywords (testname=tst3) : junk
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst4.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst4.vvt', """
             #VVT::
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst5.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst5.vvt', """
             #VVT: keywords (=tst5) : foo bar
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst6.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst6.vvt', """
             #VVT: keywords (foo=bar,=) : foo bar
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        util.writescript( 'tst7.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tst7.vvt', """
             #VVT: keywords (foo=bar : foo bar
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )

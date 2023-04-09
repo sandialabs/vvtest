@@ -21,8 +21,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_the_dependency_dirs_are_available(self):
         ""
-        util.writescript( 'testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testX.vvt', """
             #VVT: depends on : testY
             import os
             import vvtest_util as vvt
@@ -31,8 +30,7 @@ class dependency_information( vtu.vvtestTestCase ):
             yfile = os.path.join( vvt.DEPDIRS[0], 'Y.out' )
             assert os.path.exists( yfile )
             """ )
-        util.writescript( 'testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testY.vvt', """
             fp = open( 'Y.out', 'w' )
             fp.close()
             """ )
@@ -68,8 +66,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_multiple_depdirs(self):
         ""
-        util.writescript( 'testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testX.vvt', """
             #VVT: depends on : te*Y t*tZ
             import os, glob
             import vvtest_util as vvt
@@ -91,13 +88,11 @@ class dependency_information( vtu.vvtestTestCase ):
             assert vvt.DEPDIRMAP['te*Y'][0] == vvt.DEPDIRS[0]
             assert vvt.DEPDIRMAP['t*tZ'][0] == vvt.DEPDIRS[1]
             """ )
-        util.writescript( 'testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testY.vvt', """
             fp = open( 'Y.out', 'w' )
             fp.close()
             """ )
-        util.writescript( 'testZ.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testZ.vvt', """
             fp = open( 'Z.out', 'w' )
             fp.close()
             """ )

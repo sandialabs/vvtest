@@ -21,13 +21,11 @@ class runtimes_and_tsum( vtu.vvtestTestCase ):
 
     def test_using_tsum_will_run_parameterize_analyze_tests(self):
         ""
-        util.writescript( "tests/AA.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "tests/AA.vvt", """
             import os, sys, time
             time.sleep(6)
             """ )
-        util.writescript( "tests/BB.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "tests/BB.vvt", """
             #VVT: parameterize : planet=mercury mars venus
             #VVT: analyze : --analyze
             import os, sys, time
@@ -42,8 +40,7 @@ class runtimes_and_tsum( vtu.vvtestTestCase ):
             else:
                 pass  # the analyze test
             """ )
-        util.writescript( "tests/CC.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "tests/CC.vvt", """
             import os, sys, time
             time.sleep(6)
             """ )

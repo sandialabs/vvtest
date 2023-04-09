@@ -1622,8 +1622,7 @@ def write_git_wrapper():
     touchfile = abspath( 'touchfile.txt' )
     fname = 'mygit/gitwrapper'
 
-    util.writescript( fname, """
-        #!"""+sys.executable+"""
+    util.write_py_script( fname, """
         import os, sys, subprocess
 
         with open( '"""+touchfile+"""', 'w' ) as fp:

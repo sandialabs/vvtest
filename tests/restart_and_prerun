@@ -56,8 +56,7 @@ class restart_tests( vtu.vvtestTestCase ):
 
     def test_prerun_file_cleanout_with_a_script_test(self):
         ""
-        util.writescript( "clean.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "clean.vvt", """
             import os
             for f in os.listdir('.'):
                 print ( 'existing file = '+f )

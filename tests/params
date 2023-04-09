@@ -320,27 +320,23 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_using_parameterize_with_script_test(self):
         ""
-        util.writescript( 'params1.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params1.vvt', """
             #VVT: parameterize : animal = dog cat
             import os
             print ( "hello from "+os.path.basename(os.getcwd()) )
             """ )
-        util.writescript( 'params2.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params2.vvt', """
             #VVT: parameterize : A = dog cat
             #VVT: parameterize : V = carrot celery
             import os
             print ( "hello from "+os.path.basename(os.getcwd()) )
             """ )
-        util.writescript( 'params3.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params3.vvt', """
             #VVT: parameterize : B,X = dog,carrot cat,celery
             import os
             print ( "hello from "+os.path.basename(os.getcwd()) )
             """ )
-        util.writescript( 'params4.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params4.vvt', """
             #VVT: parameterize : C, Y, Z = 1 ,2,3  4,5,6
             #VVT::                         7 , 8 , 9   10, 11,12
             import os

@@ -24,8 +24,7 @@ class bindir_tests( vtu.vvtestTestCase ):
         # just to make sure an auto bin dir search is not done
         os.mkdir( 'bin' )
 
-        util.writescript( 'mybin/myprog', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'mybin/myprog', """
             print ( 'running myprog' )
             """ )
         util.writefile( 'testA.vvt', """

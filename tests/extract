@@ -162,8 +162,7 @@ class extract_use_cases( vtu.vvtestTestCase ):
 
     def test_extract_with_script_specification_file(self):
         ""
-        util.writescript( 'orig/atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'orig/atest.vvt', """
             #VVT: copy : file1.txt
             #VVT: link : file2.txt
             #VVT: baseline : file3.txt, file3.txt
@@ -202,8 +201,7 @@ class extract_use_cases( vtu.vvtestTestCase ):
 
     def test_script_specification_with_analyze_file(self):
         ""
-        util.writescript( 'orig/atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'orig/atest.vvt', """
             #VVT: parameterize : P = 1 2
             #VVT: analyze : atest_analyze.py
             import vvtest_util as vvt
@@ -212,8 +210,7 @@ class extract_use_cases( vtu.vvtestTestCase ):
             fp.close()
             """ )
 
-        util.writescript( "orig/atest_analyze.py", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "orig/atest_analyze.py", """
             import os
             import vvtest_util as vvt
             for P in vvt.PARAM_P:
@@ -234,8 +231,7 @@ class extract_use_cases( vtu.vvtestTestCase ):
         util.writefile( 'orig/auxdir/file1.txt', "file contents" )
         time.sleep(1)
 
-        util.writescript( 'orig/atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'orig/atest.vvt', """
             #VVT: copy : auxdir
             import os
             import glob

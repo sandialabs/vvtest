@@ -66,12 +66,10 @@ class suite( vtu.vvtestTestCase ):
         pyfile = util.writefile( 'pyfile', """
             print ( 'hello from pyfile' )
             """ )
-        pyscr = util.writescript( 'pyscript', """
-            #!"""+sys.executable+"""
+        pyscr = util.write_py_script( 'pyscript', """
             print ( 'hello from pyscript' )
             """ )
-        util.writescript( 'src/pyscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'src/pyscript', """
             print ( 'hello from src/pyscript' )
             """ )
         util.writefile( 'pyfail', """
@@ -102,8 +100,7 @@ class suite( vtu.vvtestTestCase ):
 
     def test_generate_parameters_function(self):
         ""
-        util.writescript( 'ascript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ascript', """
             from json import dumps
             print ( dumps( [ {'p1':10,'p2':3.5}, {'p1':20,'p2':5.5} ] ) )
             """ )
@@ -229,8 +226,7 @@ class suite( vtu.vvtestTestCase ):
         util.writefile( 'a1test.vvt', """
             #VVT: parameterize (generator) : myscript
             """ )
-        util.writescript( 'myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'myscript', """
             import os, sys
             from json import dumps
             if sys.argv[1:] == ['--foo']:
@@ -279,8 +275,7 @@ class suite( vtu.vvtestTestCase ):
 
     def test_invalid_special_parameter_values_from_generator(self):
         ""
-        util.writescript( 'myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'myscript', """
             import os, sys
             from json import dumps
             if sys.argv[1:] == ['--np']:
@@ -341,8 +336,7 @@ class suite( vtu.vvtestTestCase ):
             import vvtest_util as vvt
             assert type(vvt.PARAM_DICT['A']) == int
             """ )
-        util.writescript( 'myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'myscript', """
             import sys
             from json import dumps
             if int(sys.argv[-1]) == 1:

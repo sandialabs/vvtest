@@ -231,16 +231,13 @@ def check_ticket_cache_and_remove_it( filename ):
 
 def make_fake_keytab_programs():
     ""
-    util.writescript( 'fakeprogs/ktutil', """
-        #!"""+sys.executable+"""
+    util.write_py_script( 'fakeprogs/ktutil', """
         pass
         """ )
-    util.writescript( 'fakeprogs/kinit', """
-        #!"""+sys.executable+"""
+    util.write_py_script( 'fakeprogs/kinit', """
         pass
         """ )
-    util.writescript( 'fakeprogs/kdestroy', """
-        #!"""+sys.executable+"""
+    util.write_py_script( 'fakeprogs/kdestroy', """
         pass
         """ )
 

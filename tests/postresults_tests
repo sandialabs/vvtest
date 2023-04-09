@@ -44,8 +44,7 @@ class the_tests( unittest.TestCase ):
         ""
         os.mkdir( 'testarea' )
 
-        util.writescript( 'fakevvtest', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'fakevvtest', """
             import os, sys, getopt
 
             assert os.path.samefile( os.getcwd(),

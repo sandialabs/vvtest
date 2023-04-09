@@ -100,8 +100,7 @@ class filtering_by_file_search( vtu.vvtestTestCase ):
               <execute> echo "solar ran" </execute>
               <link_files> solar.inp </link_files>
             </rtest>""" )
-        util.writescript( 'extrasolar.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'extrasolar.vvt', """
             #VVT: link : solar.inp
             import os
             print ( "extrasolar ran" )

@@ -40,14 +40,12 @@ class tdd_tests( vtu.vvtestTestCase ):
                 <keywords> gold </keywords>
                 <execute> sleep 1 </execute>
             </rtest>""" )
-        util.writescript( 'testthree.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
             time.sleep(1)
             """ )
-        util.writescript( 'testfour.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testfour.vvt', """
             #VVT: keywords = blue TDD
             import time
             time.sleep(1)
@@ -166,14 +164,12 @@ class tdd_tests( vtu.vvtestTestCase ):
                 <keywords> gold </keywords>
                 <execute> sleep 1 </execute>
             </rtest>""" )
-        util.writescript( 'testthree.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
             time.sleep(1)
             """ )
-        util.writescript( 'testfour.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testfour.vvt', """
             #VVT: keywords = blue TDD
             import time
             time.sleep(1)
@@ -207,14 +203,12 @@ class tdd_tests( vtu.vvtestTestCase ):
                 <keywords> gold </keywords>
                 <execute> sleep 1 </execute>
             </rtest>""" )
-        util.writescript( 'testthree.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
             time.sleep(1)
             """ )
-        util.writescript( 'testfour.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testfour.vvt', """
             #VVT: keywords = blue TDD
             import time
             time.sleep(1)

@@ -32,8 +32,7 @@ class postclean_tests( vtu.vvtestTestCase ):
                 </execute>
             </rtest>""" )
         
-        util.writescript( 'ana.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ana.vvt', """
             #VVT: parameterize : P = 1 2
             #VVT: analyze : ana.py
             import vvtest_util as vvt
@@ -41,8 +40,7 @@ class postclean_tests( vtu.vvtestTestCase ):
             fp.write( 'param P='+vvt.P+'\\n' )
             fp.close()
             """ )
-        util.writescript( "ana.py", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "ana.py", """
             import os
             import vvtest_util as vvt
             for P in vvt.PARAM_P:

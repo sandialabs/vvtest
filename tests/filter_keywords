@@ -224,13 +224,11 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def test_script_test_filter_by_keyword_expression(self):
         ""
-        util.writescript( 'solar.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'solar.vvt', """
             #VVT: keywords : earth mars
             print ( 'solar ran' )
             """ )
-        util.writescript( 'galaxy.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'galaxy.vvt', """
             #VVT: parameterize : foo = bar baz
             #VVT: keywords (parameter="foo=bar"): earth
             #VVT: keywords (parameter="foo=baz"): mars
@@ -260,16 +258,13 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def test_script_test_filter_by_testname_and_keyword_simultaneously(self):
         ""
-        util.writescript( 'atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'atest.vvt', """
             print ( 'executing test' )
             """ )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             raise Exception( 'fake failure' )
             """ )
-        util.writescript( 'ctest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ctest.vvt', """
             print ( 'executing test' )
             """ )
 

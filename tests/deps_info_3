@@ -21,8 +21,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_analyze_only_restart(self):
         ""
-        util.writescript( 'testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testX.vvt', """
             #VVT: depends on : testY testZ
             import os, glob
             import vvtest_util as vvt
@@ -34,13 +33,11 @@ class dependency_information( vtu.vvtestTestCase ):
             fL = glob.glob( os.path.join( vvt.DEPDIRS[1], '*.out' ) )
             assert len(fL) == 1
             """ )
-        util.writescript( 'sub1/testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'sub1/testY.vvt', """
             fp = open( 'Y.out', 'w' )
             fp.close()
             """ )
-        util.writescript( 'sub2/testZ.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'sub2/testZ.vvt', """
             fp = open( 'Z.out', 'w' )
             fp.close()
             """ )
@@ -59,8 +56,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_restart_dependent_and_one_dependency(self):
         ""
-        util.writescript( 'testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testX.vvt', """
             #VVT: depends on : testY testZ
             import os, glob
             import vvtest_util as vvt
@@ -78,8 +74,7 @@ class dependency_information( vtu.vvtestTestCase ):
             fp = open( fL[0], 'r' ) ; Zout = fp.read() ; fp.close()
             assert 'testZ says goodbye' in Zout
             """ )
-        util.writescript( 'sub1/testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'sub1/testY.vvt', """
             import os, sys, time
             import vvtest_util as vvt
             time.sleep(3)
@@ -88,8 +83,7 @@ class dependency_information( vtu.vvtestTestCase ):
             fp.close()
             sys.exit( vvt.diff_exit_status )
             """ )
-        util.writescript( 'sub2/testZ.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'sub2/testZ.vvt', """
             import os, time
             time.sleep(3)
             fp = open( 'Z.out', 'w' )
@@ -100,8 +94,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
         for batch in [False,True]:
 
-            util.writescript( 'sub1/testY.vvt', """
-                #!"""+sys.executable+"""
+            util.write_py_script( 'sub1/testY.vvt', """
                 import os, sys, time
                 import vvtest_util as vvt
                 time.sleep(3)
@@ -117,8 +110,7 @@ class dependency_information( vtu.vvtestTestCase ):
             vrun.assertCounts( total=3, npass=1, diff=1, fail=1 )
 
             # "fix" the test
-            util.writescript( 'sub1/testY.vvt', """
-                #!"""+sys.executable+"""
+            util.write_py_script( 'sub1/testY.vvt', """
                 import os, time
                 fp = open( 'Y.out', 'w' )
                 fp.write( 'testY says hello'+os.linesep )

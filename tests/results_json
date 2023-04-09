@@ -4,9 +4,10 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+# RUNTEST: vvtest
 
 import sys
+
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import base64
@@ -18,128 +19,299 @@ import vvtestutils as vtu
 import testutils as util
 
 
-class json_output_format_tests( vtu.vvtestTestCase ):
-
+class json_output_format_tests(vtu.vvtestTestCase):
     def test_producing_a_json_results_file(self):
-        ""
+        """"""
         write_three_test_files()
         time.sleep(1)
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
+        vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
 
-        vrun = vtu.runvvtest( '-i --json=../results.json', chdir=vrun.resultsDir() )
+        vrun = vtu.runvvtest("-i --json=../results.json", chdir=vrun.resultsDir())
         time.sleep(1)
 
-        data = util.read_json_file( 'results.json' )
-        self.assert_json_test_names( data )
-        self.assert_output_for_diff_and_fail_tests( data )
+        data = util.read_json_file("results.json")
+        self.assert_json_test_names(data)
+        self.assert_output_for_diff_and_fail_tests(data)
 
     def test_producing_a_json_results_file_as_part_of_the_execution(self):
-        ""
+        """"""
         write_three_test_files()
-        time.sleep(1)
-
-        for batch in [False,True]:
-
-            vtu.remove_results()
-
-            vrun = vtu.runvvtest( '--json results.json', batch=batch )
-            vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
-
-            data = util.read_json_file( 'results.json' )
-            self.assert_json_test_names( data )
-
-    def assert_json_test_names(self, data):
-        ""
-        info = []
-        for case in data["vvtest"]["tests"]["cases"]:
-            info.append((case.get('case'), case["endtime"] - case["starttime"]) )
-        info.sort()
-        expected_names = [
-            'DiffTest.np=1',
-            'DiffTest.np=2',
-            'FailTest',
-            'param.hello=mars',
-            'param.hello=world'
-        ]
-        for i, item in enumerate(info):
-            assert item[0] == expected_names[i]
-
-        fac = [4, 4, 3, 2, 2]
-        for i, item in enumerate(info):
-            assert abs(int(item[1]) - fac[i] ) <= 2, "{0} - {1} > 2".format(item[1], fac[i])
-
-    def assert_output_for_diff_and_fail_tests(self, data):
-        ""
-        for case in data["vvtest"]["tests"]["cases"]:
-            if case['name'].startswith('DiffTest'):
-                assert 'fake difference of 29' in expand64(case["log"])
-            elif case['name'].startswith('FailTest'):
-                assert 'pitch a fake exception' in expand64(case["log"])
-
-    def test_no_tests_to_run_still_produces_a_json_file(self):
-        ""
-        util.writefile( "subdir/param.vvt", """
-            # error on purpose so vvtest skips this test
-            #VVT: parameterize : hello
-            pass
-            """ )
         time.sleep(1)
 
         for batch in [False, True]:
 
             vtu.remove_results()
 
-            vrun = vtu.runvvtest( '--json results.json' )
-            vrun.assertCounts( total=0 )
+            vrun = vtu.runvvtest("--json results.json", batch=batch)
+            vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
 
-            assert os.path.exists( 'results.json' )
-            data = util.read_json_file( 'results.json' )
+            data = util.read_json_file("results.json")
+            self.assert_json_test_names(data)
+
+    def assert_json_test_names(self, data):
+        """"""
+        info = []
+        for case in data["vvtest"]["tests"]["cases"]:
+            info.append((case.get("case"), case["endtime"] - case["starttime"]))
+        info.sort()
+        expected_names = [
+            "DiffTest.np=1",
+            "DiffTest.np=2",
+            "FailTest",
+            "param.hello=mars",
+            "param.hello=world",
+        ]
+        for i, item in enumerate(info):
+            assert item[0] == expected_names[i]
+
+        fac = [4, 4, 3, 2, 2]
+        for i, item in enumerate(info):
+            assert abs(int(item[1]) - fac[i]) <= 2, "{0} - {1} > 2".format(
+                item[1], fac[i]
+            )
+
+    def assert_output_for_diff_and_fail_tests(self, data):
+        """"""
+        for case in data["vvtest"]["tests"]["cases"]:
+            if case["name"].startswith("DiffTest"):
+                assert "fake difference of 29" in expand64(case["log"])
+            elif case["name"].startswith("FailTest"):
+                assert "pitch a fake exception" in expand64(case["log"])
+
+    def test_no_tests_to_run_still_produces_a_json_file(self):
+        """"""
+        util.writefile(
+            "subdir/param.vvt",
+            """
+            # error on purpose so vvtest skips this test
+            #VVT: parameterize : hello
+            pass
+            """,
+        )
+        time.sleep(1)
+
+        for batch in [False, True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest("--json results.json")
+            vrun.assertCounts(total=0)
+
+            assert os.path.exists("results.json")
+            data = util.read_json_file("results.json")
             assert len(data["vvtest"]["tests"]["cases"]) == 0
 
     def test_execute_log_output_for_staged_tests(self):
-        ""
-        util.writefile( "subdir/foo.vvt", """
+        """"""
+        util.writefile(
+            "subdir/foo.vvt",
+            """
             #VVT: parameterize (staged): bar = A B
 
             import vvtest_util as vvt
             from script_util import exit_diff
             print ( 'bar='+vvt.bar+' stage='+vvt.stage )
             exit_diff()
-            """ )
+            """,
+        )
 
-        vrun = vtu.runvvtest( '--json results.json subdir' )
-        vrun.assertCounts( total=2, diff=2 )
+        vrun = vtu.runvvtest("--json results.json subdir")
+        vrun.assertCounts(total=2, diff=2)
 
-        data = util.read_json_file( 'results.json' )
+        data = util.read_json_file("results.json")
         flg = 0
         for case in data["vvtest"]["tests"]["cases"]:
-            if 'stage=1' in case["case"]:
+            if "stage=1" in case["case"]:
                 txt = expand64(case["log"])
-                assert 'bar=A stage=1' in txt
+                assert "bar=A stage=1" in txt
                 flg += 1
-            elif 'stage=2' in case["case"]:
+            elif "stage=2" in case["case"]:
                 txt = expand64(case["log"])
-                assert 'bar=B stage=2' in txt
+                assert "bar=B stage=2" in txt
                 flg += 100
         assert flg == 101
 
+    def test_output_schema(self):
+        """Test that guarantees the contracted output schema does not change"""
+        write_three_test_files()
+        time.sleep(1)
+        for batch in [False, True]:
+            vtu.remove_results()
+            vrun = vtu.runvvtest("--json results.json", batch=batch)
+            vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
+            data = util.read_json_file("results.json")
+            validate_output(data)
+
+
+def validate_type(name, value, expected_type):
+    if expected_type in primitive_types:
+        if not isinstance(value, expected_type):
+            raise AssertionError(
+                "Expected {0}={1} to be of type {2}".format(name, value, expected_type)
+            )
+        else:
+            # will throw if not valid
+            try:
+                expected_type(value)
+            except AssertionError:
+                raise AssertionError(
+                    "Cannot cast {0}={1} to {2}".format(name, value, expected_type)
+                )
+
+
+def validate_output(arg):
+    first_level_keys = list(arg.keys())
+    assert first_level_keys == ["vvtest"]
+    for parent_key in json_output_schema["vvtest"]:
+        assert parent_key in arg["vvtest"]
+        if parent_key in ("config", "machine", "config", "tests"):
+            for child, value2 in arg["vvtest"][parent_key].items():
+                expected_type = json_output_schema["vvtest"][parent_key][child]
+                validate_type(
+                    "{0}:{1}".format(parent_key, child), value2, expected_type
+                )
+        else:
+            value = arg["vvtest"][parent_key]
+            expected_type = json_output_schema["vvtest"][parent_key]
+            validate_type(parent_key, value, expected_type)
+
+
+class list_of:
+    item_type = None
+
+    def __init__(self, arg):
+        assert isinstance(arg, list)
+        for item in arg:
+            assert isinstance(item, self.item_type)
+        self.arg = arg
+
+
+class list_of_str(list_of):
+    item_type = str
+
+
+class list_of_int(list_of):
+    item_type = int
+
+
+class list_of_testcases:
+    def __init__(self, arg):
+        assert isinstance(arg, list)
+        for item in arg:
+            assert isinstance(item, dict)
+            assert isinstance(item.pop("name"), str)
+            assert isinstance(item.pop("case"), str)
+            assert isinstance(item.pop("id"), str)
+            assert isinstance(item.pop("root"), str)
+            assert isinstance(item.pop("path"), str)
+            assert isinstance(list_of_str(item.pop("keywords")), list_of_str)
+            assert isinstance(item.pop("parameters"), dict)
+            assert isinstance(item.pop("starttime"), float)
+            assert isinstance(item.pop("endtime"), float)
+            assert isinstance(item.pop("returncode"), int)
+            assert isinstance(item.pop("result"), str)
+            assert isinstance(item.pop("timeout"), int)
+            assert isinstance(item.pop("resources"), dict)
+            resources = item["resources"]
+            assert isinstance(resources.pop("processors"), int)
+            assert isinstance(list_of_int(resources.pop("processor ids")), list_of_int)
+            assert isinstance(resources.pop("total processors"), int)
+            assert isinstance(resources.pop("devices"), int)
+            assert isinstance(list_of_int(resources.pop("device ids")), list_of_int)
+            assert isinstance(resources.pop("total devices"), int)
+            assert isinstance(item.pop("command"), dict)
+            assert isinstance(item.pop("log"), dict)
+            assert not item
+
+
+class str_or_none:
+    def __init__(self, arg):
+        if arg is not None:
+            assert isinstance(arg, str)
+        self.arg = arg
+
+
+primitive_types = (str, float, list, dict, bool, int)
+
+
+json_output_schema = {
+    "vvtest": {
+        "curdir": str,
+        "startdate": str,
+        "cmdline": list_of_str,
+        "vvtestdir": str,
+        "compiler": str_or_none,
+        "rundir": str,
+        "starttime": float,
+        "endtime": float,
+        "enddate": str,
+        "duration": float,
+        "config": {
+            "vvtestdir": str,
+            "configdir": list_of_str,
+            "exepath": str_or_none,
+            "onopts": list_of_str,
+            "offopts": list_of_str,
+            "preclean": bool,
+            "postclean": bool,
+            "analyze": bool,
+            "logfile": bool,
+            "testargs": list_of_str,
+        },
+        "machine": {
+            "platform": str,
+            "system": str,
+            "nodename": str,
+            "release": str,
+            "version": str,
+            "arch": str,
+            "SNLSYSTEM": str_or_none,
+            "SNLCLUSTER": str_or_none,
+        },
+        "python": {
+            "executable": str,
+            "version": str,
+            "version info": list,
+        },
+        "environment": dict,
+        "tests": {
+            "tests": int,
+            "pass": int,
+            "notdone": int,
+            "notrun": int,
+            "diff": int,
+            "fail": int,
+            "timeout": int,
+            "cases": list_of_testcases,
+        },
+    }
+}
+
 
 def write_three_test_files():
-    ""
-    util.writefile( "subdir/param.vvt", """
+    """"""
+    util.writefile(
+        "subdir/param.vvt",
+        """
         #VVT: parameterize : hello = world mars
         import time
         time.sleep(1)
-        """ )
-    util.writefile( "FailTest.vvt", """
+        """,
+    )
+    util.writefile(
+        "FailTest.vvt",
+        """
         import os, sys, time
         import vvtest_util as vvt
         time.sleep(2)
         raise Exception( 'pitch a fake exception' )
-        """)
-    util.writefile( "DiffTest.xml", """
+        """,
+    )
+    util.writefile(
+        "DiffTest.xml",
+        """
         <rtest name="DiffTest">
             <parameterize np="1 2"/>
             <execute>
@@ -147,7 +319,8 @@ def write_three_test_files():
                 echo "fake difference of 29"
                 set have_diff = yes
             </execute>
-        </rtest>""")
+        </rtest>""",
+    )
 
 
 def expand64(raw):
@@ -156,6 +329,7 @@ def expand64(raw):
     s = zlib.decompress(bytes.fromhex(hex_str))
     return s.decode("utf-8")
 
+
 ############################################################################
 
-util.run_test_cases( sys.argv, sys.modules[__name__] )
+util.run_test_cases(sys.argv, sys.modules[__name__])

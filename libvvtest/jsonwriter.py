@@ -16,55 +16,10 @@ print3 = outpututils.print3
 
 
 class JsonWriter:
-    """Write test results to a json database.  The schema for the database is
+    """Write test results to a json database.
 
-    "vvtest": {
-      "meta": {
-        "hostname" str,
-        "curdir": str,
-        "python": str,
-        "PYTHONPATH": str,
-        "PATH": str,
-        "LOADEDMODULES": str,
-        "cmdline": list[str],
-        "vvtestdir": str,
-        "platforma": str,
-        "system": str,
-        "compiler": str,
-        "rundir": str,
-        "starttime": float,
-        "startdate": str,
-        "endtime": float,
-        "enddate": str,
-        "duration": float
-      },
-      "tests": {
-        "tests": int,
-        "pass": int,
-        "notdone": int,
-        "notrun": int,
-        "diff": int,
-        "fail": int,
-        "timeout": int
-        "cases": [
-          {
-            "name": str,
-            "case": str,
-            "root": str,
-            "path": str,
-            "command": str,
-            "keywords": list[str],
-            "parameters": dict,
-            "processors": int,
-            "starttime": float,
-            "endtime": float,
-            timeout: int,
-            "returncode": int,
-            "result": str,
-            "log": str
-          }
-        ]
-      }
+    See tested schema in tests/results_json for the promised output schema.
+
     """
 
     def __init__(self, permsetter, output_filename, results_test_dir):

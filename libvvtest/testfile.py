@@ -79,6 +79,10 @@ class TestFile:
         else:
             self.enabled = False
 
+    def isSkipped(self):
+        ""
+        return self.skip_reason is not None
+
     def setSkippedReason(self, reason):
         ""
         self.skip_reason = reason

@@ -260,18 +260,18 @@ def find_tests_by_pattern( srcdir, pattern, testcasemap ):
     for tid,tcase in testcasemap.items():
 
         tspec = tcase.getSpec()
-        displ = tspec.getTestID().computeMatchString()
+        mat = tspec.getTestID().computeMatchString()
 
-        if fnmatch.fnmatch( displ, pat1 ):
+        if fnmatch.fnmatch( mat, pat1 ):
             L1.append( tid )
 
-        if fnmatch.fnmatch( displ, pat2 ):
+        if fnmatch.fnmatch( mat, pat2 ):
             L2.append( tid )
 
-        if fnmatch.fnmatch( displ, pat3 ):
+        if fnmatch.fnmatch( mat, pat3 ):
             L3.append( tid )
 
-        if fnmatch.fnmatch( displ, pat4 ):
+        if fnmatch.fnmatch( mat, pat4 ):
             L4.append( tid )
 
     for L in [ L1, L2, L3, L4 ]:

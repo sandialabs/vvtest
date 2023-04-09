@@ -389,7 +389,6 @@ class suite( vtu.vvtestTestCase ):
     def test_dependency_list_checker(self):
         ""
         chdep = parsevvt.check_deplist
-        chdep( None, 1, 0 )
         chdep( ['pat*',None,{'aname':{'p':'val'}}], 3, 0 )
 
         self.assertRaises( TestSpecError, chdep, {'foo':'bar'}, 1, 0 )
@@ -399,28 +398,76 @@ class suite( vtu.vvtestTestCase ):
         self.assertRaises( TestSpecError, chdep, [{'A':'a'}], 1, 0 )
         self.assertRaises( TestSpecError, chdep, [{'A':{2:'b'}}], 1, 0 )
         self.assertRaises( TestSpecError, chdep, [['A','B']], 1, 0 )
+        self.assertRaises( TestSpecError, chdep, [{'A':{'p':[]}}], 1, 0 )
+        self.assertRaises( TestSpecError, chdep, [{'A':{'a b':'g'}}], 1, 0 )
 
-    def test_magic(self):
+    def test_creating_dependency_map(self):
         ""
-        util.writefile( 'atest.vvt', """
-            #VVT: parameterize (generator) : myscript
-            import vvtest_util as vvt
-            print ( 'DEPDIRS = '+str(vvt.DEPDIRS) )
-            #assert type(vvt.PARAM_DICT['p1']) == int
+        creat = parsevvt.create_dependency_map
+
+        dmap = creat( 'atest', [{'A':'a'}], [{'btest':{'B':'b'}}], 0 )
+        self.assertEqual( dmap, {('atest', ('A', 'a')): {'btest': {'B': 'b'}}} )
+
+        dmap = creat( 'atest', [{'A':'a','B':2}], ['btest*'], 0 )
+        self.assertEqual( dmap, {('atest', ('A', 'a'), ('B', '2')): 'btest*'} )
+
+        dmap = creat( 'atest', [{'A':'a'},{'B':2}], [None,{'C':{}}], 0 )
+        self.assertEqual( dmap, {('atest', ('B', '2')): {'C': {}}} )
+
+    def test_adding_generator_dependencies(self):
+        ""
+        util.writefile( 'A.vvt', """
+            #VVT: parameterize (generator) : genscript
             """ )
-        util.writefile( 'btest.vvt', """
+        util.writefile( 'B.vvt', """
             #VVT: parameterize : bar = 3 9
-            pass
             """ )
-        util.writescript( 'myscript', """
-            #!"""+sys.executable+"""
+        util.writefile( 'genscript', """
+            import sys
+            from json import dumps
+            print ( dumps( [ {'foo':3}, {'foo':9} ] ) )
+            print ( dumps( [ {'B':{'bar':3}}, 'B.bar=9' ] ) )
+            """ )
+
+        tlist = vtu.create_testlist_from_test_files( 'A.vvt', 'B.vvt' )
+        tlist.connectDependencies()
+
+        dep = get_single_dependency( tlist, 'A', foo='3' )
+        assert dep.getName() == 'B' and dep.getParameters() == {'bar':'3'}
+
+        dep = get_single_dependency( tlist, 'A', foo='9' )
+        assert dep.getName() == 'B' and dep.getParameters() == {'bar':'9'}
+
+    def test_integration_test_of_generator_specified_dependencies(self):
+        ""
+        util.writefile( 'sub1/atest.vvt', """
+            #VVT: parameterize (generator) : myscript
+            import os
+            import vvtest_util as vvt
+            assert len(vvt.DEPDIRS) == 1
+            if vvt.foo == 3:
+                assert vvt.DEPDIRS[0].endswith('bar=3')
+                assert os.path.exists( vvt.DEPDIRS[0]+'/bfile.txt' )
+            else:
+                assert vvt.foo == 9
+                assert vvt.DEPDIRS[0].endswith('bar=9')
+                assert os.path.exists( vvt.DEPDIRS[0]+'/bfile.txt' )
+            """ )
+        util.writefile( 'sub2/btest.vvt', """
+            #VVT: parameterize : bar = 3 9
+            import os, time
+            time.sleep(1)
+            with open('bfile.txt','wt') as fp:
+                fp.write( 'hello'+os.linesep )
+            """ )
+        util.writefile( 'sub1/myscript', """
             import sys
             from json import dumps
             print ( dumps( [ {'foo':3}, {'foo':9} ] ) )
             print ( dumps( [ {'btest':{'bar':3}}, {'btest':{'bar':9}} ] ) )
             """ )
 
-        vrun = vtu.runvvtest()
+        vtu.runvvtest().assertCounts( total=4, npass=4 )
 
 
 def prepended_PATH( path ):
@@ -429,6 +476,39 @@ def prepended_PATH( path ):
         return abspath(path)+':'+os.environ['PATH']
     else:
         return abspath(path)
+
+
+def find_test_by_name_and_params( tlist, testname, **params ):
+    ""
+    for tc in tlist.getTests():
+        ts = tc.getSpec()
+        if ts.getName() == testname:
+            if ts.getParameters() == params:
+                return tc
+    return None
+
+
+def find_test_by_id( tlist, testid ):
+    ""
+    for tc in tlist.getTests():
+        ts = tc.getSpec()
+        if tc.getSpec().getID() == testid:
+            return tc
+
+    return tc
+
+
+def get_single_dependency( tlist, testname, **params ):
+    ""
+    tc = find_test_by_name_and_params( tlist, testname, **params )
+
+    deps = tc.getDependencies()
+    assert len(deps) == 1
+
+    dep = find_test_by_id( tlist, deps[0].getTestID() ).getSpec()
+    assert dep is not None
+
+    return dep
 
 
 ########################################################################

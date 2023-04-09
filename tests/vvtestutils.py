@@ -755,6 +755,17 @@ def parse_single_test_file( filename, optionlist=[] ):
     return tL[0].getSpec()
 
 
+def create_testlist_from_test_files( *filenames ):
+    ""
+    tlist = TestList( TestCaseFactory() )
+
+    for fn in filenames:
+        for t in create_tests_from_file( fn ):
+            tlist.addTest(t)
+
+    return tlist
+
+
 def make_fake_TestSpec( name='atest', keywords=['key1','key2'], idflags=None ):
     ""
     if idflags is not None:

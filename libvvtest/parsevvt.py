@@ -16,6 +16,7 @@ from .errors import TestSpecError
 from . import timehandler
 from .testspec import TestSpec
 from .depend import DependencyPattern
+from .testid import TestID
 
 from .ScriptReader import ScriptReader, check_parse_attributes_section
 
@@ -140,10 +141,17 @@ class ScriptTestParser:
             #VVT: parameterize (int,float) : foo,bar = 1,2 8,5
             #VVT: parameterize (float) : A,B = 1,2 3,4
             #VVT: parameterize (str,float,str) : X,Y,Z = 1,2,3 4,5,6
+
+        Returns a ParameterSet instance and, in the case of a generator, a
+        dependency map whose keys are
+            ( test name, param dict as a list of tuples with key & values always str )
+        and values are
+            { dependency test name: dependency param dict with key & values always str }
         """
         pset = ParameterSet()
-        tmap = {}
         depmap = None
+
+        tmap = {}
 
         for spec in self.itr_specs( testname, 'parameterize' ):
 
@@ -631,13 +639,13 @@ def generate_parameters( testfile, gencmd, testname, platname, lineno ):
     plist,deplist = parse_generator_output( out, lineno )
 
     check_for_rectangular_matrix( plist, lineno )
-    check_deplist( deplist, len(plist), lineno )
+    depmap = create_dependency_map( testname, plist, deplist, lineno )
 
     nameL, valL = make_names_and_value_lists( plist, lineno )
 
     check_special_parameters( nameL, valL, lineno )
 
-    return nameL,valL,None
+    return nameL,valL,depmap
 
 
 def parse_generator_output( out, lineno ):
@@ -703,7 +711,9 @@ def unicode2str( obj ):
 
 
 def types_and_forced_values( nameL, valL, force_params, lineno ):
-    ""
+    """
+    note that the values are changed into strings here, if necessary
+    """
     typmap = {}
     for i,n in enumerate(nameL):
         typ = type( valL[0][i] )  # representative value
@@ -718,12 +728,7 @@ def types_and_forced_values( nameL, valL, force_params, lineno ):
 
     new_valL = []
     for tup in valL:
-        new_tup = []
-        for v in tup:
-            if type(v) != str:
-                v = repr(v)
-            new_tup.append(v)
-        new_valL.append( new_tup )
+        new_valL.append( [ to_str(v) for v in tup ] )
 
     return new_valL,typmap
 
@@ -774,15 +779,12 @@ def check_for_rectangular_matrix( plist, lineno ):
         raiseError( errmsg, line=lineno )
 
 
-def check_deplist( deplist, reqred_len, lineno ):
+def check_deplist( deplist, required_length, lineno ):
     ""
-    if deplist is None:
-        return
-
     if type(deplist) != list:
         raiseError( 'second generator object must be a list', line=lineno )
 
-    if len(deplist) != reqred_len:
+    if len(deplist) != required_length:
         raiseError( 'second generator list must have the same length as the first', line=lineno )
 
     for obj in deplist:
@@ -803,8 +805,71 @@ def check_deplist( deplist, reqred_len, lineno ):
                         if type(k2) != str:
                             raiseError( 'dependency list: malformed test name to '
                                 ' param dict,', v, line=lineno )
+                        if not allowable_variable(k2):
+                            raiseError( 'dependency list: invalid parameter name:',
+                                        repr(k2), line=lineno )
+                        if type(v2) not in [str,int,float]:
+                            raiseError( 'dependency list: invalid param value:',
+                                        v2, line=lineno )
         else:
             raiseError( 'invalid dependency list object,', type(obj), line=lineno )
+
+
+def to_str( obj ):
+    ""
+    if type(obj) == str:
+        return obj
+    else:
+        return repr(obj)
+
+
+def test_id_tuple( testname, test_params ):
+    ""
+    L = [testname]
+    for k,v in test_params.items():
+        L.append( (k,to_str(v)) )
+    return tuple(L)
+
+
+def create_dependency_map( testname, plist, deplist, lineno ):
+    ""
+    if deplist is None:
+        return None
+
+    check_deplist( deplist, len(plist), lineno )
+
+    depmap = {}
+
+    for i,params in enumerate(plist):
+        depobj = deplist[i]
+        key = test_id_tuple( testname, params )
+        if depobj is None:
+            pass  # skip
+        elif type(depobj) == str:
+            depmap[key] = depobj
+        else:
+            # depobj is testname to param dict
+            depname,pdict = list( depobj.items() )[0]
+            D = dict( [ (k,to_str(v)) for k,v in pdict.items() ] )
+            depmap[key] = { depname:D }
+
+    return depmap
+
+
+def add_generator_dependencies( tspec, depmap ):
+    ""
+    if depmap:
+
+        key = test_id_tuple( tspec.getName(), tspec.getParameters() )
+        pat = depmap.get( key, None )
+        if pat:
+            if type(pat) == str:
+                tspec.addDependencyPattern( DependencyPattern(pat) )
+            else:
+                dname,dparams = list( pat.items() )[0]
+                tid = TestID( dname, '', dparams, [], tspec.getIDTraits() )
+                mat = os.path.basename( tid.computeMatchString() )
+                tspec.addDependencyPattern( DependencyPattern(mat) )
 
 
 def make_names_and_value_lists( plist, lineno ):
@@ -861,7 +926,7 @@ def check_generator_value_types( name, vals, lineno ):
     ""
     ns = ni = nf = 0
     for v in vals:
-        if type(v) == type(''):
+        if type(v) == str:
             ns += 1
         elif type(v) == int:
             ni += 1

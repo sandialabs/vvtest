@@ -9,7 +9,7 @@ import platform
 
 from .errors import TestSpecError
 from .staging import mark_staged_tests
-from .parsevvt import ScriptTestParser
+from .parsevvt import ScriptTestParser, add_generator_dependencies
 from .parsexml import XMLTestParser
 
 
@@ -143,6 +143,7 @@ class TestMaker:
             tspec.setAnalyzeScript( analyze_spec )
 
         self.parser.parseTestInstance( tspec )
+        add_generator_dependencies( tspec, depmap )
 
     def create_test_list(self, tname):
         ""
@@ -157,6 +158,7 @@ class TestMaker:
 
         for t in testL:
             self.parser.parseTestInstance( t )
+            add_generator_dependencies( t, depmap )
 
         return testL
 

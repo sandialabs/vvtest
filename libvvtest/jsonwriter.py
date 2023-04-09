@@ -179,7 +179,7 @@ class JsonWriter:
         else:
             command = outpututils.get_test_command_line(logfile)
             kb_to_keep = 2 if result == "passed" else 300
-            compressed_log = self.compress_logfile(logfile, kb_to_keep)
+            compressed_log = self.compress_logfile(spec.getName(), logfile, kb_to_keep)
         test["command"] = command
         test["log"] = compressed_log
         user_file = os.path.join(os.path.dirname(logfile), "test-out.json")
@@ -188,11 +188,23 @@ class JsonWriter:
         return test
 
     @staticmethod
-    def compress_logfile(logfile, kb_to_keep):
+    def compress_logfile(name, logfile, kb_to_keep):
         if logfile is None or not os.path.exists(logfile):
-            log = "Log file {0} not found!".format(logfile)
+            log = ["Log file {0} not found!".format(logfile)]
         else:
-            log = open(logfile, errors="ignore").read()
+            log = open(logfile, errors="ignore").readlines()
+        # Attempt to reconstruct the log file
+        test_path = os.path.dirname(logfile)
+        confile = os.path.join(test_path, name + ".con")
+        if os.path.exists(confile):
+            con = open(confile, errors="ignore").readlines()
+            for (i, line) in enumerate(log):
+                if line.startswith("==> Starting"):
+                    log = log[: i + 2] + con + log[i + 2 :]
+                    break
+            else:
+                log.extend(con)
+        log = "".join(log)
         kb = 1024
         bytes_to_keep = kb_to_keep * kb
         if len(log) > bytes_to_keep:

@@ -79,9 +79,13 @@ class TestFile:
         else:
             self.enabled = False
 
-    def setSkipped(self, reason):
+    def setSkippedReason(self, reason):
         ""
         self.skip_reason = reason
+
+    def getSkippedReason(self):
+        ""
+        return self.skip_reason
 
     def setEnablePlatformExpression(self, word_expression):
         ""

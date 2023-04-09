@@ -525,7 +525,7 @@ class ScriptTestParser:
                 )
             if skip:
                 reason = reason or "{0} evaluated to True".format(spec.value)
-                tspec.setSkipped(reason)
+                tspec.setSkippedReason(reason)
 
     def parse_preload_label(self, tspec):
         """

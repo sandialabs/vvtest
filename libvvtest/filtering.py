@@ -43,9 +43,10 @@ class TestFilter:
     def checkSkipped(self, tcase):
         ""
         tspec = tcase.getSpec()
-        ok = tspec.skip_reason is None
+        skip_reason = tspec.getSkippedReason()
+        ok = skip_reason is None
         if not ok:
-            tcase.getStat().markSkipped(tspec.skip_reason)
+            tcase.getStat().markSkipped(skip_reason)
         self._record_skipped_tests( ok, tcase )
         return ok
 

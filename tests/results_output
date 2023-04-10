@@ -231,8 +231,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
     def test_writing_testlist_results_file_to_remote_machine(self):
         ""
-        util.writescript( 'fakescp', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'fakescp', """
             import sys, subprocess
             dest = sys.argv[-1].split(':',1)[1] + '.scp'
             argv = [ 'cp' ] + sys.argv[1:-1] + [ dest ]

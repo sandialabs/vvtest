@@ -8,6 +8,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+from os.path import dirname, basename
 import getopt
 import subprocess
 import time
@@ -105,7 +106,7 @@ def main():
 
         if run_file( fname, keywords ):
 
-            tname = os.path.basename( fname )
+            tname = basename( fname )
             if len(argL) == 0 or tname in argL:
 
                 popt,sopt = get_test_runtime_options( fname )
@@ -195,6 +196,12 @@ class BackgroundJob:
 
         os.environ['TESTUTILS_RUNDIR'] = os.path.join( cwd, rdir )
 
+        # make sure the directory containing python is in PATH
+        save_path = os.environ.get('PATH',None)
+        pyd,pyf = os.path.split( cmd.split()[0] )
+        if pyf.startswith('python'):
+            os.environ['PATH'] = pyd+':'+os.environ.get('PATH','/usr/bin')
+
         self.tstart = time.time()
 
         log = os.path.join( cwd, testid+'.out' )
@@ -205,6 +212,7 @@ class BackgroundJob:
                                       stderr=subprocess.STDOUT )
         self.logfp.close()
 
+        os.environ['PATH'] = save_path
         os.chdir(cwd)
 
     def poll(self):

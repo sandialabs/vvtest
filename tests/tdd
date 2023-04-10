@@ -30,24 +30,12 @@ class tdd_tests( vtu.vvtestTestCase ):
 
     def test_that_tests_marked_TDD_are_skipped_by_default(self):
         ""
-        util.writefile( "testone.xml", """
-            <rtest name="testone">
-                <keywords> junk TDD </keywords>
-                <execute> sleep 1 </execute>
-            </rtest>""" )
-        util.writefile( "testtwo.xml", """
-            <rtest name="testtwo">
-                <keywords> gold </keywords>
-                <execute> sleep 1 </execute>
-            </rtest>""" )
-        util.writescript( 'testthree.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
             time.sleep(1)
             """ )
-        util.writescript( 'testfour.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testfour.vvt', """
             #VVT: keywords = blue TDD
             import time
             time.sleep(1)
@@ -57,57 +45,48 @@ class tdd_tests( vtu.vvtestTestCase ):
         # by default, tests with TDD in keywords should not run
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == [ 'testthree', 'testtwo' ]
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == [ 'testthree' ]
 
         tdir = vrun.resultsDir()
 
         vrun = vtu.runvvtest( '-i -v' )
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == [ 'testthree', 'testtwo' ]
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == [ 'testthree' ]
 
         vrun = vtu.runvvtest( '-i -v', chdir=tdir )
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == [ 'testthree', 'testtwo' ]
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == [ 'testthree' ]
 
         vtu.remove_results()
 
         vrun = vtu.runvvtest( batch=True )
-        vrun.assertCounts( total=2, npass=2 )
+        vrun.assertCounts( total=1, npass=1 )
 
         vrun = vtu.runvvtest( '-R', chdir=tdir )
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == [ 'testthree', 'testtwo' ]
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == [ 'testthree' ]
 
         vtu.remove_results()
 
         # the --include-tdd option means run the tests with TDD
 
         vrun = vtu.runvvtest( '--include-tdd' )
-        vrun.assertCounts( total=4, npass=4 )
-        assert vrun.getTestIds() == [ 'testfour',
-                                      'testone',
-                                      'testthree',
-                                      'testtwo' ]
+        vrun.assertCounts( total=2, npass=2 )
+        assert vrun.getTestIds() == [ 'testfour', 'testthree' ]
 
         vrun = vtu.runvvtest( '-i -v' )
-        vrun.assertCounts( total=4, npass=4 )
-        assert vrun.getTestIds() == [ 'testfour',
-                                      'testone',
-                                      'testthree',
-                                      'testtwo' ]
+        vrun.assertCounts( total=2, npass=2 )
+        assert vrun.getTestIds() == [ 'testfour', 'testthree' ]
 
         vrun = vtu.runvvtest( '-i -v', chdir=tdir )
-        vrun.assertCounts( total=4, npass=4 )
-        assert vrun.getTestIds() == [ 'testfour',
-                                      'testone',
-                                      'testthree',
-                                      'testtwo' ]
+        vrun.assertCounts( total=2, npass=2 )
+        assert vrun.getTestIds() == [ 'testfour', 'testthree' ]
 
         vtu.remove_results()
 
         vrun = vtu.runvvtest( '--include-tdd', batch=True )
-        vrun.assertCounts( total=4, npass=4 )
+        vrun.assertCounts( total=2, npass=2 )
 
     def test_the_include_tdd_option_is_remembered_in_restart_mode(self):
         ""
@@ -166,14 +145,12 @@ class tdd_tests( vtu.vvtestTestCase ):
                 <keywords> gold </keywords>
                 <execute> sleep 1 </execute>
             </rtest>""" )
-        util.writescript( 'testthree.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
             time.sleep(1)
             """ )
-        util.writescript( 'testfour.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testfour.vvt', """
             #VVT: keywords = blue TDD
             import time
             time.sleep(1)
@@ -207,14 +184,12 @@ class tdd_tests( vtu.vvtestTestCase ):
                 <keywords> gold </keywords>
                 <execute> sleep 1 </execute>
             </rtest>""" )
-        util.writescript( 'testthree.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
             time.sleep(1)
             """ )
-        util.writescript( 'testfour.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testfour.vvt', """
             #VVT: keywords = blue TDD
             import time
             time.sleep(1)

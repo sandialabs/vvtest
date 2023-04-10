@@ -174,8 +174,7 @@ class rundir_usage( vtu.vvtestTestCase ):
 
 def write_unit_test_files():
     ""
-    util.writescript( 'testX.vvt', """
-        #!"""+sys.executable+"""
+    util.write_py_script( 'testX.vvt', """
         #VVT: link = auxfile.txt
         import os, sys
         import vvtest_util as vvt
@@ -184,13 +183,12 @@ def write_unit_test_files():
         sys.stdout.flush()
         fp.close()
         """ )
-    util.writefile( "testY.xml", """
-        <rtest name="testY">
-          <link_files> auxfile.txt </link_files>
-          <execute>
-            cat auxfile.txt
-          </execute>
-        </rtest>""" )
+    util.writefile( 'testY.vvt', """
+        #VVT: link : auxfile.txt
+        with open( 'auxfile.txt', 'rt' ) as fp:
+            print ( fp.read() )
+        """ )
+
     util.writefile( "auxfile.txt", """
         <rtest name="testY">
           <execute>

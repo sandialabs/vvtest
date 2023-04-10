@@ -22,165 +22,71 @@ class parameterize_analyze_logic( vtu.vvtestTestCase ):
 
     def test_analyze_with_dep_that_fails_then_passes(self):
         ""
-        good_xml = """
-            <rtest name="good">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                touch afile.$timestep
-              </execute>
-              <analyze>
-                 ls ../good.timestep=1/afile.1 || exit 1
-                 ls ../good.timestep=2/afile.2 || exit 1
-              </analyze>
-            </rtest>"""
-        bad_xml = """
-            <rtest name="bad">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                if ( "$timestep" == 2 ) then
-                  echo "fake failure"
-                  exit 1
-                else
-                  touch bfile.$timestep
-                endif
-              </execute>
-              <analyze>
-                 ls ../bad.timestep=1/bfile.1 || exit 1
-                 ls ../bad.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>"""
-        fixed_xml = """
-            <rtest name="bad">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                touch bfile.$timestep
-              </execute>
-              <analyze>
-                 ls ../bad.timestep=1/bfile.1 || exit 1
-                 ls ../bad.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>"""
+        good_vvt = """
+            #VVT: keywords : fast medium
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                with open( 'afile.'+vvt.timestep, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../good.timestep=1/afile.1' )
+                assert os.path.exists( '../good.timestep=2/afile.2' )
+            """
+        bad_vvt = """
+            #VVT: keywords : fast medium
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                if vvt.timestep == '2':
+                    raise Exception( "fake failure" )
+                else:
+                    with open( 'bfile.'+vvt.timestep, 'wt' ):
+                        pass
+            else:
+                assert os.path.exists( '../bad.timestep=1/bfile.1' )
+                assert os.path.exists( '../bad.timestep=2/bfile.2' )
+            """
+        fixed_vvt = """
+            #VVT: keywords : fast medium
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                with open( 'bfile.'+vvt.timestep, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../bad.timestep=1/bfile.1' )
+                assert os.path.exists( '../bad.timestep=2/bfile.2' )
+            """
 
-        util.writefile( 'parentchild/good.xml', good_xml )
-        time.sleep(1)
+        util.writefile( 'parentchild/good.vvt', good_vvt )
 
         for batch in [False,True]:
 
             vtu.remove_results()
 
-            util.writefile( 'parentchild/bad.xml', bad_xml )
+            util.writefile( 'parentchild/bad.vvt', bad_vvt )
             time.sleep(1)
 
             vrun = vtu.runvvtest( '-k bad parentchild', batch=batch )
             vrun.assertCounts( total=3, npass=1, fail=1, notrun=1 )
 
             # "fix" the bad test
-            util.writefile( 'parentchild/bad.xml', fixed_xml )
+            util.writefile( 'parentchild/bad.vvt', fixed_vvt )
             time.sleep(1)
 
             vrun = vtu.runvvtest( '-R -k notdone/notrun/fail',
                                   '-k bad parentchild', batch=batch )
             vrun.assertCounts( total=2, npass=2 )
 
-    def test_not_sure_what_this_tests(self):
-        ""
-        util.writefile( 'top/param_analyze.xml', """
-            <rtest name="param_analyze">
-              <keywords> fast medium </keywords>
-              <parameterize keywords="fast"     np="1"/>
-              <parameterize not_keywords="fast" np="2 4"/>
-              <link_files> $NAME.inp </link_files>
-              <execute>
-                 touch execute_file.np=$np || exit 1
-                 ls $NAME.inp || exit 1
-              </execute>
-              <analyze keywords="fast">
-                 ls ../param_analyze.np=1/execute_file.np=1 || exit 1
-              </analyze>
-              <analyze not_keywords="fast">
-                 ls ../param_analyze.np=2/execute_file.np=2 || exit 1
-                 ls ../param_analyze.np=4/execute_file.np=4 || exit 1
-              </analyze>
-            </rtest>""" )
-
-        util.writefile( 'top/param_analyze.inp', """
-            some sort of input deck
-            """ )
-
-        util.writefile( 'parentchild/good.xml', """
-            <rtest name="good">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                touch afile.$timestep
-              </execute>
-              <analyze>
-                 ls ../good.timestep=1/afile.1 || exit 1
-                 ls ../good.timestep=2/afile.2 || exit 1
-              </analyze>
-            </rtest>""" )
-
-        bad_xml = """
-            <rtest name="bad">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                echo "fake failure"
-                exit 1
-              </execute>
-              <analyze>
-                 ls ../bad.timestep=1/bfile.1 || exit 1
-                 ls ../bad.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>"""
-
-        fix_bad_xml = """
-            <rtest name="bad">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                touch bfile.$timestep
-              </execute>
-              <analyze>
-                 ls ../bad.timestep=1/bfile.1 || exit 1
-                 ls ../bad.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>"""
-
-        time.sleep(1)
-
-        for batch in [False,True]:
-
-            vtu.remove_results()
-
-            util.writefile( 'parentchild/bad.xml', bad_xml )
-            time.sleep(1)
-
-            vrun = vtu.runvvtest( 'parentchild', batch=batch )
-            vrun.assertCounts( total=6, npass=3, fail=2, notrun=1 )
-
-            # "fix" the bad test
-            util.writefile( 'parentchild/bad.xml', fix_bad_xml )
-            time.sleep(1)
-
-            vrun = vtu.runvvtest( '-R -k notdone/notrun/fail',
-                                  'parentchild', batch=batch )
-            vrun.assertCounts( total=3, npass=3 )
-
     def test_a_test_with_analyze_must_have_parameterize(self):
         ""
-        util.writefile( 'noparam.xml', """
-            <rtest name="noparam">
-              <keywords> fast medium </keywords>
-              <execute> echo "exec standard" </execute>
-              <analyze>
-                echo "exec analyze"
-              </analyze>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'noparam.vvt', """
+            #VVT: analyze : --analyze
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=0 )
@@ -190,19 +96,19 @@ class parameterize_analyze_logic( vtu.vvtestTestCase ):
         """
         using testname filter with analyze
         """
-        util.writefile( 'multi.xml', """
-            <rtest name="multi">
-              <rtest name="multi2"/>
-              <parameterize param="one two"/>
-              <execute> echo "exec test $NAME param $param" </execute>
-              <analyze testname="multi">
-                echo "analyze test $NAME (multi)"
-              </analyze>
-              <analyze testname="multi2">
-                echo "analyze test $NAME (multi2)"
-              </analyze>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'multi.vvt', """
+            #VVT: testname = multi
+            #VVT: testname = multi2
+            #VVT: parameterize : param = one two
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                print ( 'exec test '+vvt.NAME+' param '+vvt.param )
+            elif vvt.NAME == 'multi':
+                print ( 'analyze test multi '+vvt.NAME )
+            else:
+                print ( 'analyze test multi2 '+vvt.NAME )
+            """ )
 
         for batch in [False,True]:
 
@@ -229,16 +135,17 @@ class parameterize_analyze_logic( vtu.vvtestTestCase ):
         """
         testname filter with analyze where one test does not have an analyze
         """
-        util.writefile( 'multi.xml', """
-            <rtest name="multi">
-              <rtest name="multi2"/>
-              <parameterize param="one two"/>
-              <execute> echo "exec test $NAME param $param" </execute>
-              <analyze testname="multi2">
-                echo "analyze test $NAME (multi2)"
-              </analyze>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'multi.vvt', """
+            #VVT: testname = multi
+            #VVT: testname = multi2
+            #VVT: parameterize : param = one two
+            #VVT: analyze (testname=multi2) : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                print ( 'exec test '+vvt.NAME+' param '+vvt.param )
+            else:
+                print ( 'analyze test '+vvt.NAME+' (multi2)' )
+            """ )
 
         for batch in [False,True]:
 
@@ -262,22 +169,22 @@ class parameterize_analyze_logic( vtu.vvtestTestCase ):
 
     def test_using_analyze_command_line_option(self):
         ""    
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize ival="1 2"/>
-              <execute>
-                echo "running touch"
-                touch afile.$ival
-              </execute>
-              <execute analyze="yes">
-                echo "running execute analyze"
-              </execute>
-              <analyze>
-                echo "running analyze"
-                ls ../atest.ival=1/afile.1 || exit 1
-                ls ../atest.ival=2/afile.2 || exit 1
-              </analyze>
-            </rtest>""" )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : ival = 1 2
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            import script_util as util
+            if '--analyze' not in sys.argv[1:]:
+                if not util.analyze_only():
+                    print ( 'running touch' )
+                    with open( 'afile.'+vvt.ival, 'wt' ):
+                        pass
+                print ( 'running execute analyze' )
+            else:
+                print ( 'running analyze' )
+                assert os.path.exists( '../atest.ival=1/afile.1' )
+                assert os.path.exists( '../atest.ival=2/afile.2' )
+            """ )
 
         for batch in [False,True]:
 

@@ -21,18 +21,15 @@ class runtimes_and_tmin_tmax( vtu.vvtestTestCase ):
 
     def test_if_tmax_filtered_out_a_test_then_its_not_rerun(self):
         ""
-        util.writescript( "tests/AA.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "tests/AA.vvt", """
             import os, sys, time
             time.sleep(1)
             """ )
-        util.writescript( "tests/BB.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "tests/BB.vvt", """
             import os, sys, time
             time.sleep(3)
             """ )
-        util.writescript( "tests/CC.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "tests/CC.vvt", """
             import os, sys, time
             time.sleep(7)
             """ )

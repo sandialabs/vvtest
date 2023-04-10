@@ -180,7 +180,7 @@ class XMLTestParser:
                       check_for_duplicate_parameter( L[1:], nd.getLineNumber() )
                       pset.addParameters( L[0], L[1:] )
 
-        return pset
+        return pset,None
 
     def parse_analyze(self, testname):
         """

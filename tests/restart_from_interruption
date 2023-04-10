@@ -22,28 +22,17 @@ class restart_tests( vtu.vvtestTestCase ):
 
     def test_that_notrun_or_notdone_get_run_upon_restart(self):
         ""
-        util.writefile( "param.xml", """
-            <rtest name="param">
-              <parameterize hello="world mars"/>
-              <execute>
-                sleep 1
-              </execute>
-            </rtest>""" )
-        util.writefile( "FailTest.xml", """
-            <rtest name="FailTest">
-              <execute>
-                sleep 1
-                exit 1
-              </execute>
-            </rtest>""")
-        util.writefile( "DiffTest.xml", """
-            <rtest name="DiffTest">
-              <execute>
-                sleep 1
-                set have_diff = yes
-              </execute>
-            </rtest>""")
-        time.sleep(1)
+        util.writefile( "param.vvt", """
+            #VVT: parameterize : hello = world mars
+            pass
+            """ )
+        util.writefile( "FailTest.vvt", """
+            raise Exception( 'fake failure' )
+            """)
+        util.writefile( "DiffTest.vvt", """
+            import sys, vvtest_util as vvt
+            sys.exit( vvt.diff_exit_status )
+            """)
 
         # run the test set but provide a false interruption
         vtu.interrupt_vvtest_run( '-n 2', count=1 )

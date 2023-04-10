@@ -111,7 +111,7 @@ class test_results_tests( vtu.vvtestTestCase ):
                 topdir='tsrc' )
 
         # remove a test
-        os.remove( 'tsrc/one/dog.xml' )
+        os.remove( 'tsrc/one/dog.vvt' )
 
         vrun = vtu.runvvtest( '-w tsrc' )
         vrun.assertCounts( total=2, npass=2 )

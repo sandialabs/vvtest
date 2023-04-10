@@ -23,11 +23,10 @@ class running_after_vvtest_is_killed( vtu.vvtestTestCase ):
 
     def test_vvtest_closes_files_ok_under_KeyboardInterrupt(self):
         ""
-        util.writefile( "sleeper.xml", """
-            <rtest name="sleeper">
-                <execute> sleep 10 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "sleeper.vvt", """
+            import time
+            time.sleep(10)
+            """ )
 
         for batch in [False,True]:
 
@@ -47,11 +46,10 @@ class running_after_vvtest_is_killed( vtu.vvtestTestCase ):
 
     def test_vvtest_fails_to_run_if_a_previous_run_was_killed(self):
         ""
-        util.writefile( "sleeper.xml", """
-            <rtest name="sleeper">
-                <execute> sleep 10 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "sleeper.vvt", """
+            import time
+            time.sleep(10)
+            """ )
 
         for batch in [False,True]:
 
@@ -70,11 +68,10 @@ class running_after_vvtest_is_killed( vtu.vvtestTestCase ):
 
     def test_running_vvtest_after_killed_but_in_TestResults_directory(self):
         ""
-        util.writefile( "sleeper.xml", """
-            <rtest name="sleeper">
-                <execute> sleep 10 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "sleeper.vvt", """
+            import time
+            time.sleep(10)
+            """ )
 
         out = vtu.launch_vvtest_then_terminate_it( addverbose=False )
         print3( out )
@@ -90,17 +87,16 @@ class running_after_vvtest_is_killed( vtu.vvtestTestCase ):
 
     def test_forcing_vvtest_to_run_after_previous_was_killed(self):
         ""
-        util.writefile( "sleeper1.xml", """
-            <rtest name="sleeper1">
-                <timeout value="20"/>
-                <execute> sleep 5 </execute>
-            </rtest>""" )
-        util.writefile( "sleeper2.xml", """
-            <rtest name="sleeper2">
-                <timeout value="20"/>
-                <execute> sleep 5 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "sleeper1.vvt", """
+            #VVT: timeout : 20
+            import time
+            time.sleep(5)
+            """ )
+        util.writefile( "sleeper2.vvt", """
+            #VVT: timeout : 20
+            import time
+            time.sleep(5)
+            """ )
 
         for batch in [False,True]:
 

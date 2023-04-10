@@ -107,19 +107,16 @@ class script_tests( vtu.vvtestTestCase ):
 
     def test_a_python_test_that_exits_with_a_diff_a_pass_and_a_fail(self):
         ""
-        util.writescript( 'tpass.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tpass.vvt', """
             import os, sys
             import vvtest_util as vvt
             """ )
-        util.writescript( 'tdiff.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tdiff.vvt', """
             import sys
             import vvtest_util as vvt
             sys.exit( vvt.diff_exit_status )
             """ )
-        util.writescript( 'tfail.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tfail.vvt', """
             import os, sys
             def myfunc():
                 raise Exception( "test failed" )
@@ -135,8 +132,7 @@ class script_tests( vtu.vvtestTestCase ):
 
     def test_multiple_tests_in_one_script_file(self):
         ""
-        util.writescript( 'multi.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'multi.vvt', """
             #VVT: name=multi
             #VVT: name=multi2
             import vvtest_util as vvt
@@ -166,8 +162,7 @@ class script_tests( vtu.vvtestTestCase ):
         util.writefile( 'file3.txt', """
             this is file three
             """ )
-        util.writescript( 'files.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'files.vvt', """
             #VVT: link : file1.txt file2.txt
             #VVT: copy : file3.txt
             #VVT: link (rename) : file1.txt, lfile1 file2.txt,lfile2
@@ -218,9 +213,7 @@ class script_tests( vtu.vvtestTestCase ):
         util.writefile( 'file5.txt', """
             this is file five
             """ )
-        util.writescript( 'files.vvt', """
-            #!"""+sys.executable+"""
-            
+        util.write_py_script( 'files.vvt', """
             #VVT: name = files
             #VVT: name = another
             #VVT: link (testname=files): file1.txt

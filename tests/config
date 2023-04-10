@@ -84,26 +84,22 @@ class config_tests( vtu.vvtestTestCase ):
 
     def test_get_max_num_processors_from_config(self):
         ""
-        util.writescript( 'atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'atest.vvt', """
             #VVT: parameterize : np=1
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             #VVT: parameterize : np=2
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'ctest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ctest.vvt', """
             #VVT: parameterize : np=3
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'dtest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'dtest.vvt', """
             #VVT: parameterize : np=4
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
@@ -156,8 +152,7 @@ class config_tests( vtu.vvtestTestCase ):
                 plat.setenv( 'MY_PLATFORM_VAR', 'my platform value' )
             """ )
 
-        util.writescript( 'pytest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'pytest.vvt', """
             import os, sys
             import vvtest_util as vvt
             vvt.apply_platform_variables()
@@ -276,8 +271,7 @@ class config_tests( vtu.vvtestTestCase ):
     def test_overriding_builtin_script_utils(self):
         ""
         cfg = os.path.abspath('config')
-        util.writescript( 'pytest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'pytest.vvt', """
             import os, sys
             import vvtest_util as vvt
             import script_util.standard_utilities as std
@@ -314,8 +308,7 @@ class config_tests( vtu.vvtestTestCase ):
     def test_adding_a_config_dir_to_script_utils(self):
         ""
         cfg = os.path.abspath('config')
-        util.writescript( 'pytest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'pytest.vvt', """
             import os, sys
             import vvtest_util as vvt
             import mystuff
@@ -351,8 +344,7 @@ class config_tests( vtu.vvtestTestCase ):
 
     def test_config_dirs_are_added_to_PATH(self):
         ""
-        util.writescript( 'myconfig/myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'myconfig/myscript', """
             print ( 'output from myscript' )
             """ )
         util.writefile( 'rundir/atest.vvt', """
@@ -368,24 +360,15 @@ class config_tests( vtu.vvtestTestCase ):
             myscript || exit 1
             type exprutil || exit 1
             """ )
-        util.writefile( 'rundir/ctest.xml', """
-            <rtest name="ctest">
-                <execute>
-                    myscript || exit 1
-                    ( which exprutil ) || exit 1
-                </execute>
-            </rtest>
-            """ )
 
         for batch in [False,True]:
 
             vrun = vtu.runvvtest( '-w --config ../myconfig',
                                   chdir='rundir', batch=batch )
-            vrun.assertCounts( total=3, npass=3 )
+            vrun.assertCounts( total=2, npass=2 )
 
             assert vrun.countGrepLogs( "output from myscript", 'atest' ) == 1
             assert vrun.countGrepLogs( "output from myscript", 'btest' ) == 1
-            assert vrun.countGrepLogs( "output from myscript", 'ctest' ) == 1
 
     def test_exercising_defaults_and_checking_in_the_idplatform_plugin(self):
         ""
@@ -703,12 +686,10 @@ class preload_tests( vtu.vvtestTestCase ):
         if the preload plugin returns non-None, then the execute bit is
         ignored and the returned script is used to launch the test
         """
-        util.writescript( "atest.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "atest.vvt", """
             print ( "running atest" )
             """ )
-        util.writescript( 'mybin/fakepython3', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'mybin/fakepython3', """
             import os, sys, subprocess
             print ( "Fake Python 3" )
             sys.stdout.flush() ; sys.stderr.flush()

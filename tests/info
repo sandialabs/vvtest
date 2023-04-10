@@ -26,30 +26,19 @@ class info_tests( vtu.vvtestTestCase ):
 
     def test_obtaining_keywords_and_test_files(self):
         ""
-        util.writefile( "param.xml", """
-            <rtest name="param">
-              <parameterize hello="world mars"/>
-              <execute>
-                sleep 1
-                echo "parm=$hello"
-              </execute>
-            </rtest>""" )
-        util.writefile( "FailTest.xml", """
-            <rtest name="FailTest">
-              <execute>
-                sleep 1
-                echo "Exiting with failure status"
-                exit 1
-              </execute>
-            </rtest>""")
-        util.writefile( "DiffTest.xml", """
-            <rtest name="DiffTest">
-              <execute>
-                sleep 1
-                echo "Exiting with diff status"
-                set have_diff = yes
-              </execute>
-            </rtest>""")
+        util.writefile( "param.vvt", """
+            #VVT: parameterize : hello = world mars
+            import vvtest_util as vvt
+            print ( 'parm='+vvt.hello )
+            """ )
+        util.writefile( "FailTest.vvt", """
+            raise Exception( 'Exiting with failure status' )
+            """)
+        util.writefile( "DiffTest.vvt", """
+            import sys
+            import vvtest_util as vvt
+            sys.exit( vvt.diff_exit_status )
+            """)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, npass=2, diff=1, fail=1 )
@@ -75,15 +64,11 @@ class info_tests( vtu.vvtestTestCase ):
 
         vtu.remove_results()
 
-        util.writefile( 'keys.xml', """
-              <rtest name="keys">
-                <keywords> hello world </keywords>
-              </rtest>
+        util.writefile( 'keys.vvt', """
+            #VVT: keywords : hello world
             """ )
-        util.writefile( 'sdir/skeys.xml', """
-              <rtest name="skeys">
-                <keywords> mars jupiter fast </keywords>
-              </rtest>
+        util.writefile( 'sdir/skeys.vvt', """
+            #VVT: keywords : mars jupiter fast
             """ )
         time.sleep(1)
 
@@ -91,15 +76,15 @@ class info_tests( vtu.vvtestTestCase ):
         assert_keywords( vrun, ['fast', 'hello', 'jupiter', 'mars', 'world'] )
 
         vrun = vtu.runvvtest( '--files' )
-        assert_files( vrun, [ 'DiffTest.xml', 'FailTest.xml', 'keys.xml',
-                              'param.xml', 'sdir/skeys.xml' ] )
+        assert_files( vrun, [ 'DiffTest.vvt', 'FailTest.vvt', 'keys.vvt',
+                              'param.vvt', 'sdir/skeys.vvt' ] )
 
         vrun = vtu.runvvtest( '-k fast --files' )
-        assert_files( vrun, [ 'sdir/skeys.xml'] )
+        assert_files( vrun, [ 'sdir/skeys.vvt'] )
 
         vrun = vtu.runvvtest( '-K fast -K medium -K long --files' )
-        assert_files( vrun, [ 'DiffTest.xml', 'FailTest.xml',
-                              'keys.xml', 'param.xml'] )
+        assert_files( vrun, [ 'DiffTest.vvt', 'FailTest.vvt',
+                              'keys.vvt', 'param.vvt'] )
 
         vrun = vtu.runvvtest()
         tdir = vrun.resultsDir()
@@ -111,8 +96,8 @@ class info_tests( vtu.vvtestTestCase ):
         assert_keywords( vrun, ['fast', 'hello', 'jupiter', 'mars', 'world'] )
 
         vrun = vtu.runvvtest( '-i --files' )
-        assert_files( vrun, [ 'DiffTest.xml', 'FailTest.xml', 'keys.xml',
-                              'param.xml', 'sdir/skeys.xml'] )
+        assert_files( vrun, [ 'DiffTest.vvt', 'FailTest.vvt', 'keys.vvt',
+                              'param.vvt', 'sdir/skeys.vvt'] )
 
         vrun = vtu.runvvtest( '-R --keys', chdir=tdir )
         assert_keywords( vrun, ['fast', 'hello', 'jupiter', 'mars', 'world'] )
@@ -121,8 +106,8 @@ class info_tests( vtu.vvtestTestCase ):
         assert_keywords( vrun, ['fast', 'hello', 'jupiter', 'mars', 'world'] )
 
         vrun = vtu.runvvtest( '-i --files', chdir=tdir )
-        assert_files( vrun, [ 'DiffTest.xml', 'FailTest.xml', 'keys.xml',
-                              'param.xml', 'sdir/skeys.xml'] )
+        assert_files( vrun, [ 'DiffTest.vvt', 'FailTest.vvt', 'keys.vvt',
+                              'param.vvt', 'sdir/skeys.vvt'] )
 
         vtu.runvvtest( '-i -v', chdir=tdir ).assertCounts( total=6 )
         vrun = vtu.runvvtest( '-i -v', chdir=tdir+'/sdir' )
@@ -136,7 +121,7 @@ class info_tests( vtu.vvtestTestCase ):
         assert_keywords( vrun, ['fast', 'jupiter', 'mars'] )
 
         vrun = vtu.runvvtest( '-i --files', chdir=tdir+'/sdir' )
-        assert_files( vrun, [ 'sdir/skeys.xml'] )
+        assert_files( vrun, [ 'sdir/skeys.vvt'] )
 
     def test_command_line_keyword_dump_does_not_include_parameters(self):
         ""
@@ -152,33 +137,24 @@ class info_tests( vtu.vvtestTestCase ):
 
     def test_sorting_the_test_listing(self):
         ""
-        util.writefile( "one/zebra.xml", """
-            <rtest name="zebra">
-              <execute>
-                sleep 1
-                exit 1
-              </execute>
-            </rtest>""" )
-        util.writefile( "one/marmot.xml", """
-            <rtest name="marmot">
-              <execute>
-                sleep 3
-                set have_diff=yes
-              </execute>
-            </rtest>""" )
-        util.writefile( "two/ardvark.xml", """
-            <rtest name="ardvark">
-              <execute>
-                sleep 5
-              </execute>
-            </rtest>""" )
-        util.writefile( "two/otter.xml", """
-            <rtest name="otter">
-              <execute>
-                sleep 20
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "one/zebra.vvt", """
+            import time
+            time.sleep(1)
+            raise Exception( 'fake exception' )
+            """ )
+        util.writefile( "one/marmot.vvt", """
+            import sys, time, vvtest_util as vvt
+            time.sleep(3)
+            sys.exit( vvt.diff_exit_status )
+            """ )
+        util.writefile( "two/ardvark.vvt", """
+            import sys, time, vvtest_util as vvt
+            time.sleep(5)
+            """ )
+        util.writefile( "two/otter.vvt", """
+            import sys, time, vvtest_util as vvt
+            time.sleep(20)
+            """ )
 
         vrun = vtu.runvvtest( '-T 10 -n 1' )
         vrun.assertCounts( total=4, npass=1, diff=1, fail=1, timeout=1 )
@@ -340,29 +316,6 @@ class info_tests( vtu.vvtestTestCase ):
         vrun.assertCounts( total=2, npass=2 )
         assert vrun.getTestIds() == ['both','ps']
 
-    def test_using_the_files_option_with_a_multi_test_xml_file(self):
-        ""
-        util.writefile( "multi.xml", """
-            <rtest name="zebra">
-              <rtest name="horse"/>
-              <keywords testname="zebra"> stripes </keywords>
-              <keywords testname="horse"> patchwork </keywords>
-              <execute> echo "hello world" </execute>
-            </rtest>""" )
-        time.sleep(1)
-
-        vrun = vtu.runvvtest( '--files' )
-        assert_files( vrun, [ 'multi.xml'] )
-
-        vrun = vtu.runvvtest( '--files -k stripes' )
-        assert_files( vrun, [ 'multi.xml'] )
-
-        vrun = vtu.runvvtest( '--files -k patchwork' )
-        assert_files( vrun, [ 'multi.xml'] )
-
-        vrun = vtu.runvvtest( '--files -k stripes -k patchwork' )
-        assert_files( vrun, [] )
-
     def test_using_the_files_option_with_a_multi_test_script_file(self):
         ""
         util.writescript( "multi.vvt", """
@@ -391,26 +344,22 @@ class info_tests( vtu.vvtestTestCase ):
         ""
         maxprocs = 4
 
-        util.writescript( 'atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'atest.vvt', """
             #VVT: parameterize : np=1
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             #VVT: parameterize : np="""+str(maxprocs)+"""
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'ctest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ctest.vvt', """
             #VVT: parameterize : np="""+str(maxprocs+1)+"""
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writescript( 'dtest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'dtest.vvt', """
             #VVT: parameterize : np="""+str(maxprocs+2)+"""
             import vvtest_util as vvt
             print ( 'executing test, np='+str(vvt.np) )

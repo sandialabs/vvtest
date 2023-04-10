@@ -58,8 +58,9 @@ class test_results_tests( vtu.vvtestTestCase ):
                     set have_diff = 1
                 </execute>
             </rtest>""" )
-        # also remove the dog test
-        os.remove( "one/dog.xml" )
+
+        os.remove( "one/cat.vvt" )
+        os.remove( "one/dog.vvt" )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-w' )
@@ -200,6 +201,7 @@ class test_results_tests( vtu.vvtestTestCase ):
                     sleep 4
                 </execute>
             </rtest>""" )
+        os.remove( 'tsrc/one/cat.vvt' )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-w -k cat' )
@@ -232,6 +234,7 @@ class test_results_tests( vtu.vvtestTestCase ):
                     sleep 1
                 </execute>
             </rtest>""" )
+        os.remove( 'tsrc/two/circle.vvt' )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-w' )

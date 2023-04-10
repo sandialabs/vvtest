@@ -12,8 +12,6 @@ import zlib
 
 from . import outpututils
 
-print3 = outpututils.print3
-
 
 class JsonWriter:
     """Write test results to a json database.
@@ -58,7 +56,12 @@ class JsonWriter:
         data = {}
         top = rtinfo.asDict()
         for var in (
-            "PYTHONPATH", "PATH", "LOADEDMODULES", "platform", "hostname", "python"
+            "PYTHONPATH",
+            "PATH",
+            "LOADEDMODULES",
+            "platform",
+            "hostname",
+            "python",
         ):
             top.pop(var, None)
         top["starttime"] = top.pop("startepoch", -1)
@@ -94,9 +97,7 @@ class JsonWriter:
         data["environment"] = os.environ.copy()
 
         testcases = atestlist.getActiveTests()
-        print3(
-            "Writing {0}, tests to Json file {1}".format(len(testcases), self.filename)
-        )
+        print("Writing {0}, tests to {1}".format(len(testcases), self.filename))
         counts = self.count_results(testcases)
         data["tests"] = {
             "tests": len(testcases),

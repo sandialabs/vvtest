@@ -40,6 +40,15 @@ class TestFilter:
         self._record_skipped_tests( ok, tcase )
         return ok
 
+    def checkSkipped(self, tcase):
+        ""
+        tspec = tcase.getSpec()
+        ok = not tspec.isSkipped()
+        if not ok:
+            tcase.getStat().markSkipped(tspec.getSkippedReason())
+        self._record_skipped_tests( ok, tcase )
+        return ok
+
     def checkPlatform(self, tcase):
         ""
         tspec = tcase.getSpec()
@@ -221,6 +230,7 @@ class TestFilter:
             self.checkParameters( tcase, permanent=True ) and \
                 self.checkKeywords( tcase, results_keywords=False ) and \
                 self.checkEnabled( tcase ) and \
+                self.checkSkipped( tcase ) and \
                 self.checkPlatform( tcase ) and \
                 self.checkOptions( tcase ) and \
                 self.checkTDD( tcase ) and \

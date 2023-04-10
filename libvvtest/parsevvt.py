@@ -11,6 +11,7 @@ import re
 import shlex
 import subprocess
 import json
+from contextlib import contextmanager
 
 from .errors import TestSpecError
 from . import timehandler
@@ -78,6 +79,7 @@ class ScriptTestParser:
     def parseTestInstance(self, tspec):
         ""
         self.parse_enable        ( tspec )
+        self.parse_skipif        ( tspec )
         self.parse_keywords      ( tspec )
         self.parse_working_files ( tspec )
         self.parse_timeouts      ( tspec )
@@ -503,6 +505,36 @@ class ScriptTestParser:
                 for depname in attrD.get( 'depends on', '' ).split():
                     dpat = DependencyPattern( depname, exp, wx )
                     tspec.addDependencyPattern( dpat )
+
+    def parse_skipif(self, tspec):
+        """
+        Parse syntax that will skip this test by python expression.
+
+            # VVT: skipif [(reason=text)] : <python_expression>
+
+            # VVT: skipif: True
+            # VVT: skipif: os.getenv("SNLSYSTEM") == "tlcc2"
+            # VVT: skipif: not importable("numpy")
+            # VVT: skipif (reason=some reason) : some_expression
+
+        """
+        testname = tspec.getName()
+        for spec in self.itr_specs(testname, "skipif"):
+            if not spec.value:
+                raiseError("no skipif expression at line", spec.lineno)
+            reason = None
+            if spec.attrs:
+                check_allowed_attrs(spec.attrs, spec.lineno, 'reason')
+                reason = spec.attrs.get("reason")
+            skip = evaluate_boolean_expression(spec.value)
+            if skip is None:
+                raiseError(
+                    "failed to evaluate the expression {0!r}".format(spec.value),
+                    spec.lineno,
+                )
+            if skip:
+                reason = reason or "{0} evaluated to True".format(spec.value)
+                tspec.setSkippedReason(reason)
 
     def parse_preload_label(self, tspec):
         """
@@ -1326,3 +1358,24 @@ def testname_ok( attrs, tname, lineno ):
                             line=lineno )
 
     return ok
+
+
+def importable(module):
+    try:
+        __import__(module)
+    except (ModuleNotFoundError, ImportError):
+        return False
+    return True
+
+
+def safe_eval(expression):
+    globals = {"os": os, "sys": sys, "importable": importable}
+    return eval(expression, globals, {})
+
+
+def evaluate_boolean_expression(expression):
+    try:
+        result = safe_eval(expression)
+    except Exception:
+        return None
+    return bool(result)

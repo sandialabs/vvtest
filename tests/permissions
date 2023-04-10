@@ -17,7 +17,6 @@ import pipes
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.permsetter import PermissionSetter, make_permission_specs
 from libvvtest.errors import FatalError
@@ -178,19 +177,18 @@ class integration_tests( vtu.vvtestTestCase ):
 
     def test_turn_off_group_and_world_permissions(self):
         ""
-        util.writefile( "one/cat.xml", """
-            <rtest name="cat">
-              <execute> sleep 1 </execute>
-            </rtest>""" )
-        util.writefile( "one/dog.xml", """
-            <rtest name="dog">
-              <execute> sleep 2 </execute>
-            </rtest>""" )
-        util.writefile( "two/circle.xml", """
-            <rtest name="circle">
-              <execute> sleep 3 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "one/cat.vvt", """
+            import time
+            time.sleep(1)
+            """ )
+        util.writefile( "one/dog.vvt", """
+            import time
+            time.sleep(2)
+            """ )
+        util.writefile( "two/circle.vvt", """
+            import time
+            time.sleep(3)
+            """ )
 
         for batch in [False,True]:
 
@@ -206,19 +204,18 @@ class integration_tests( vtu.vvtestTestCase ):
 
     def test_turn_on_group_and_world_permissions(self):
         ""
-        util.writefile( "one/cat.xml", """
-            <rtest name="cat">
-              <execute> sleep 1 </execute>
-            </rtest>""" )
-        util.writefile( "one/dog.xml", """
-            <rtest name="dog">
-              <execute> sleep 2 </execute>
-            </rtest>""" )
-        util.writefile( "two/circle.xml", """
-            <rtest name="circle">
-              <execute> sleep 3 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "one/cat.vvt", """
+            import time
+            time.sleep(1)
+            """ )
+        util.writefile( "one/dog.vvt", """
+            import time
+            time.sleep(2)
+            """ )
+        util.writefile( "two/circle.vvt", """
+            import time
+            time.sleep(3)
+            """ )
 
         for batch in [False,True]:
 
@@ -234,10 +231,6 @@ class integration_tests( vtu.vvtestTestCase ):
                 assert util.has_group_sticky(d)
                 assert util.has_group_execute(d)
                 assert util.has_world_execute(d)
-
-            # spot check a file that should have execute set
-            f = os.path.join( tdir, 'one', 'dog', 'runscript' )
-            assert util.has_group_execute(f) and util.has_world_execute(f)
 
             for p in util.list_all_paths( tdir ):
                 assert util.has_group_read(p) and util.has_group_write(p)

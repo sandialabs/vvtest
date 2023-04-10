@@ -29,65 +29,63 @@ class filtering_by_file_search( vtu.vvtestTestCase ):
             Line Two, then
             line thrEE""" )
 
-        util.writefile( 'ok46.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <link_files> regexfile.txt </link_files>
-            </rtest>""" )
+        util.writefile( 'ok46.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: link : regexfile.txt
+            """ )
 
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('One'), 2 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('three'), 2 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('line two'), 2 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('line one'), 0 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('LINE *THEN'), 0 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('LINE .*THEN'), 2 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('line $'), 2 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('line$'), 0 )
-        create_and_search_files( 'ok46.xml', ['*.nun','*.txt'], regexlist('LINE .*THEN'), 2 )
-        create_and_search_files( 'ok46.xml', ['*.nun','*.two'], regexlist('LINE .*THEN'), 0 )
-        create_and_search_files( 'ok46.xml', ['*.txt'], regexlist('nomatch','LINE .*THEN'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('One'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('three'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('line two'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('line one'), 0 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('LINE *THEN'), 0 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('LINE .*THEN'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('line $'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('line$'), 0 )
+        create_and_search_files( 'ok46.vvt', ['*.nun','*.txt'], regexlist('LINE .*THEN'), 2 )
+        create_and_search_files( 'ok46.vvt', ['*.nun','*.two'], regexlist('LINE .*THEN'), 0 )
+        create_and_search_files( 'ok46.vvt', ['*.txt'], regexlist('nomatch','LINE .*THEN'), 2 )
 
-        util.writefile( 'ok47.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <copy_files> regexfile.txt </copy_files>
-            </rtest>""" )
+        util.writefile( 'ok47.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: copy : regexfile.txt
+            """ )
 
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('One'), 2 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('three'), 2 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('line two'), 2 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('line one'), 0 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('LINE *THEN'), 0 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('LINE .*THEN'), 2 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('line $'), 2 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('line$'), 0 )
-        create_and_search_files( 'ok47.xml', ['*.nun','*.txt'], regexlist('LINE .*THEN'), 2 )
-        create_and_search_files( 'ok47.xml', ['*.nun','*.two'], regexlist('LINE .*THEN'), 0 )
-        create_and_search_files( 'ok47.xml', ['*.txt'], regexlist('nomatch','LINE .*THEN'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('One'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('three'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('line two'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('line one'), 0 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('LINE *THEN'), 0 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('LINE .*THEN'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('line $'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('line$'), 0 )
+        create_and_search_files( 'ok47.vvt', ['*.nun','*.txt'], regexlist('LINE .*THEN'), 2 )
+        create_and_search_files( 'ok47.vvt', ['*.nun','*.two'], regexlist('LINE .*THEN'), 0 )
+        create_and_search_files( 'ok47.vvt', ['*.txt'], regexlist('nomatch','LINE .*THEN'), 2 )
 
-        util.writefile( 'ok48.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <copy_files> noexist.txt </copy_files>
-            </rtest>""" )
+        util.writefile( 'ok48.vvt', """
+            #VVT: testname = atest
+            #VVT: parameterize : np = 1 4
+            #VVT: copy : noexist.txt
+            """ )
 
-        create_and_search_files( 'ok48.xml', ['*.txt'], regexlist('One'), 0 )
+        create_and_search_files( 'ok48.vvt', ['*.txt'], regexlist('One'), 0 )
 
-        util.writefile( 'ok49.xml', """
-            <rtest name="regexfile">
-              <parameterize np="1 4"/>
-              <copy_files> $NAME.txt </copy_files>
-            </rtest>""" )
+        util.writefile( 'ok49.vvt', """
+            #VVT: testname = regexfile
+            #VVT: parameterize : np = 1 4
+            #VVT: copy : $NAME.txt
+            """ )
 
-        create_and_search_files( 'ok49.xml', ['*.txt'], regexlist('One'), 2 )
+        create_and_search_files( 'ok49.vvt', ['*.txt'], regexlist('One'), 2 )
 
-        util.writefile( 'ok50.xml', """
-            <rtest name="regex">
-              <parameterize np="1 4"/>
-              <copy_files> ${NAME}file.txt </copy_files>
-            </rtest>""" )
+        util.writefile( 'ok50.vvt', """
+            #VVT: testname = regex
+            #VVT: parameterize : np = 1 4
+            #VVT: copy : ${NAME}file.txt
+            """ )
 
-        create_and_search_files( 'ok50.xml', ['*.txt'], regexlist('One'), 2 )
+        create_and_search_files( 'ok50.vvt', ['*.txt'], regexlist('One'), 2 )
 
     def test_filter_tests_by_input_file_search(self):
         ""
@@ -95,16 +93,11 @@ class filtering_by_file_search( vtu.vvtestTestCase ):
             foo and bar
             this and that
             """ )
-        util.writefile( 'solar.xml', """
-            <rtest name="solar">
-              <execute> echo "solar ran" </execute>
-              <link_files> solar.inp </link_files>
-            </rtest>""" )
-        util.write_py_script( 'extrasolar.vvt', """
+        util.writefile( 'solar.vvt', """
             #VVT: link : solar.inp
-            import os
-            print ( "extrasolar ran" )
+            print ( 'solar ran' )
             """ )
+
         time.sleep(1)
 
         for batch in [False,True]:
@@ -112,11 +105,11 @@ class filtering_by_file_search( vtu.vvtestTestCase ):
             vtu.remove_results()
 
             vrun = vtu.runvvtest( batch=batch )
-            vrun.assertCounts( total=2, npass=2 )
+            vrun.assertCounts( total=1, npass=1 )
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '--search foo', batch=batch )
-            vrun.assertCounts( total=2, npass=2 )
+            vrun.assertCounts( total=1, npass=1 )
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '--search aliensrock', batch=batch )
@@ -124,13 +117,13 @@ class filtering_by_file_search( vtu.vvtestTestCase ):
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '--search foo', batch=batch )
-            vrun.assertCounts( total=2, npass=2 )
+            vrun.assertCounts( total=1, npass=1 )
 
             vrun = vtu.runvvtest( '-R --search aliensrock', batch=batch )
             vrun.assertCounts( total=0 )
 
             vrun = vtu.runvvtest( '-R --search foo', batch=batch )
-            vrun.assertCounts( total=2, npass=2 )
+            vrun.assertCounts( total=1, npass=1 )
 
     def test_multiple_search_patterns(self):
         ""

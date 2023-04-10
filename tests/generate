@@ -22,10 +22,8 @@ class generate_tests( vtu.vvtestTestCase ):
 
     def test_simple_generate(self):
         ""
-        util.writefile( "null.xml", """
-            <rtest name="null">
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "null.vvt", """
+            """ )
 
         vtu.runvvtest( '-g' ).assertCounts( total=1, notrun=1 )
         self.grep_testlist( 'null', 1 )
@@ -78,18 +76,14 @@ class generate_tests( vtu.vvtestTestCase ):
         """
         a parameterized test
         """
-        util.writefile( "null.xml", """
-            <rtest name="null">
-            </rtest>""" )
-        util.writefile( "boom.xml", """
-            <rtest name="boom">
-              <parameterize hello="world mars"/>
-              <execute>
-            sleep 1
-            echo "parm=$hello"
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "null.vvt", """
+            """ )
+        util.writefile( "boom.vvt", """
+            #VVT: parameterize : hello = world mars
+            import time, vvtest_util as vvt
+            time.sleep(1)
+            print ( 'parm='+vvt.hello )
+            """ )
 
         vtu.runvvtest( '-g' ).assertCounts( total=3, notrun=3 )
         self.grep_testlist( 'null', 1 )
@@ -97,38 +91,33 @@ class generate_tests( vtu.vvtestTestCase ):
         self.grep_testlist( 'hello*world', 1 )
         self.grep_testlist( 'hello*mars', 1 )
 
-        util.writefile( "double.xml", """
-            <rtest name="double">
-              <parameterize one="val1 val2"/>
-              <parameterize two="spot skip gimp"/>
-            </rtest>""")
+        util.writefile( "double.vvt", """
+            #VVT: parameterize : one = val1 val2
+            #VVT: parameterize : two = spot skip gimp
+            """)
         time.sleep(1)
 
         vtu.runvvtest( '-g' ).assertCounts( total=9, notrun=9 )
         self.assert_9_testlist()
 
-    def test_when_xml_files_are_in_a_subdirectory(self):
+    def test_when_files_are_in_a_subdirectory(self):
         ""
-        util.writefile( "subdir/null.xml", """
-            <rtest name="null">
-            </rtest>""" )
-        util.writefile( "subdir/param.xml", """
-            <rtest name="boom">
-              <parameterize hello="world mars"/>
-              <execute>
-            sleep 1
-            echo "parm=$hello"
-              </execute>
-            </rtest>""" )
-        util.writefile( "subdir/double.xml", """
-            <rtest name="double">
-              <parameterize one="val1 val2"/>
-              <parameterize two="spot skip gimp"/>
-            </rtest>""")
         os.mkdir('temp1')
         os.mkdir('temp2')
         os.mkdir('temp3')
-        time.sleep(1)
+        util.writefile( "subdir/null.vvt", """
+            """ )
+        util.writefile( "subdir/param.vvt", """
+            #VVT: testname = boom
+            #VVT: parameterize : hello = world mars
+            import time, vvtest_util as vvt
+            time.sleep(1)
+            print ( 'parm='+vvt.hello )
+            """ )
+        util.writefile( "subdir/double.vvt", """
+            #VVT: parameterize : one = val1 val2
+            #VVT: parameterize : two = spot skip gimp
+            """)
 
         vtu.runvvtest( '-g' ).assertCounts( total=9, notrun=9 )
         self.assert_9_testlist()
@@ -175,19 +164,16 @@ class generate_tests( vtu.vvtestTestCase ):
 
     def test_that_TestResults_and_Build_directories_are_excluded_from_scans(self):
         ""
-        util.writefile( "one.xml", """
-            <rtest name="one">
-              <execute> echo "one ran" </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "one.vvt", """
+            print ( 'one ran' )
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=1, npass=1 )
 
-        util.writefile( vrun.resultsDir()+'/two.xml', """
-            <rtest name="two">
-              <execute> echo "two ran" </execute>
-            </rtest>""" )
+        util.writefile( vrun.resultsDir()+'/two.vvt', """
+            print ( 'two ran' )
+            """ )
         time.sleep(1)
 
         vtu.runvvtest().assertCounts( total=0 )
@@ -195,10 +181,9 @@ class generate_tests( vtu.vvtestTestCase ):
         vtu.runvvtest( '-R' ).assertCounts( total=1, npass=1 )
 
         os.mkdir( 'Build_gnu4_opt' )
-        util.writefile( "Build_gnu4_opt/three.xml", """
-            <rtest name="three">
-              <execute> echo "three ran" </execute>
-            </rtest>""" )
+        util.writefile( "Build_gnu4_opt/three.vvt", """
+            print ( 'three ran' )
+            """ )
         time.sleep(1)
 
         vtu.runvvtest().assertCounts( total=0 )
@@ -207,20 +192,17 @@ class generate_tests( vtu.vvtestTestCase ):
 
     def test_that_soft_links_are_followed(self):
         ""
-        util.writefile( "one/one.xml", """
-            <rtest name="one">
-              <execute> echo "one ran" </execute>
-            </rtest>""" )
-        util.writefile( "two/two.xml", """
-            <rtest name="two">
-              <execute> echo "two ran" </execute>
-            </rtest>""" )
-        util.writefile( "three/three.xml", """
-            <rtest name="three">
-              <execute> echo "three ran" </execute>
-            </rtest>""" )
+        util.writefile( "one/one.vvt", """
+            print ( 'one ran' )
+            """ )
+        util.writefile( "two/two.vvt", """
+            print ( 'two ran' )
+            """ )
+        util.writefile( "three/three.vvt", """
+            print ( 'three ran' )
+            """ )
 
-        os.symlink( '../two/two.xml', 'one/two.xml' )
+        os.symlink( '../two/two.vvt', 'one/two.vvt' )
 
         os.mkdir( 'subdir' )
         os.symlink( '../three', 'subdir/symthree' )
@@ -233,15 +215,15 @@ class generate_tests( vtu.vvtestTestCase ):
 
     def test_selection_by_keyword_when_multiple_tests_are_in_one_file(self):
         ""
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-              <rtest name="multi_2nd"/>
-              <keywords> common </keywords>
-              <keywords testname="multi"> justmulti </keywords>
-              <keywords testname="multi_2nd"> just2nd </keywords>
-              <execute> echo "test name ${NAME}XXX" </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "multi.vvt", """
+            #VVT: testname = multi
+            #VVT: testname = multi_2nd
+            #VVT: keywords : common
+            #VVT: keywords (testname=multi) : justmulti
+            #VVT: keywords (testname=multi_2nd) : just2nd
+            import vvtest_util as vvt
+            print ( 'test name '+vvt.NAME+'XXX' )
+            """ )
 
         vrun = vtu.runvvtest( '-k justmulti' )
         vrun.assertCounts( total=1, npass=1 )
@@ -260,14 +242,14 @@ class generate_tests( vtu.vvtestTestCase ):
 
     def test_parameters_that_depend_on_test_name(self):
         ""
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-              <rtest name="multi_2nd"/>
-              <parameterize testname="multi" paramA="one two"/>
-              <parameterize testname="multi_2nd" paramA="three four five"/>
-              <execute> echo "test name ${NAME}XXX" </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "multi.vvt", """
+            #VVT: testname = multi
+            #VVT: testname = multi_2nd
+            #VVT: parameterize (testname=multi) : paramA = one two
+            #VVT: parameterize (testname=multi_2nd) : paramA = three four five
+            import vvtest_util as vvt
+            print ( 'test name '+vvt.NAME+'XXX' )
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=5, npass=5 )
@@ -279,13 +261,14 @@ class generate_tests( vtu.vvtestTestCase ):
         assert vrun.countGrepLogs( 'test name multiXXX' ) == 2
         assert vrun.countGrepLogs( 'test name multi_2ndXXX' ) == 3
 
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-              <rtest name="multi_2nd"/>
-              <parameterize testname="multi" paramA="one two"/>
-              <parameterize testname="multi_2nd" paramB="three four five"/>
-              <execute> echo "test name ${NAME}XXX" </execute>
-            </rtest>""" )
+        util.writefile( "multi.vvt", """
+            #VVT: testname = multi
+            #VVT: testname = multi_2nd
+            #VVT: parameterize (testname=multi) : paramA = one two
+            #VVT: parameterize (testname=multi_2nd) : paramB = three four five
+            import vvtest_util as vvt
+            print ( 'test name '+vvt.NAME+'XXX' )
+            """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-w' )

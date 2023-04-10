@@ -360,24 +360,15 @@ class config_tests( vtu.vvtestTestCase ):
             myscript || exit 1
             type exprutil || exit 1
             """ )
-        util.writefile( 'rundir/ctest.xml', """
-            <rtest name="ctest">
-                <execute>
-                    myscript || exit 1
-                    ( which exprutil ) || exit 1
-                </execute>
-            </rtest>
-            """ )
 
         for batch in [False,True]:
 
             vrun = vtu.runvvtest( '-w --config ../myconfig',
                                   chdir='rundir', batch=batch )
-            vrun.assertCounts( total=3, npass=3 )
+            vrun.assertCounts( total=2, npass=2 )
 
             assert vrun.countGrepLogs( "output from myscript", 'atest' ) == 1
             assert vrun.countGrepLogs( "output from myscript", 'btest' ) == 1
-            assert vrun.countGrepLogs( "output from myscript", 'ctest' ) == 1
 
     def test_exercising_defaults_and_checking_in_the_idplatform_plugin(self):
         ""

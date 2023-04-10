@@ -200,56 +200,8 @@ class baseline_tests( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '-R' )
         vrun.assertCounts( total=1, npass=1 )
 
-    def test_xml_format_rebaseline_with_script_fragment_and_file_list(self):
-        ""
-        util.writefile( "bline.xml", """
-            <rtest name="bline">
-              <execute> <![CDATA[
-                # create a single baseline file to use for the first differencing
-                echo "baseline test data file" >! bline.txt
-                echo "line two" >> bline.txt
-                ]]>
-              </execute>
-              <execute name="unixdiff"> bline.txt ${XMLDIR}/bline.txt </execute>
-              <execute> <![CDATA[
-                # copy the previous file to a separate name
-                cp bline.txt bline2.txt
-                ]]>
-              </execute>
-              <execute name="unixdiff"> bline2.txt ${XMLDIR}/blinetwo.txt </execute>
-              <baseline>
-                cp -f bline.txt $SRCDIR/bline.txt
-              </baseline>
-              <baseline file="bline2.txt" destination="blinetwo.txt"/>
-            </rtest>""" )
-
-        util.writefile( "bline.txt", "" )
-        util.writefile( "bline2.txt", "" )
-        util.writefile( "blinetwo.txt", "" )
-
-        time.sleep(1)
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=1, diff=1 )
-
-        # run baseline and rerun tests
-        vtu.runvvtest( '-b' )
-        vrun = vtu.runvvtest( '-R' )
-        vrun.assertCounts( total=1, npass=1 )
-
     def test_variable_expansion_in_baseline_file_list(self):
         ""
-        util.writefile( "bline.xml", """
-            <rtest name="bline">
-              <execute> <![CDATA[
-                # create a single baseline file to use for the first differencing
-                echo "baseline test data file" >! bline.txt
-                echo "line two" >> bline.txt
-                ]]>
-              </execute>
-              <execute name="unixdiff"> bline.txt ${XMLDIR}/bline_base.txt </execute>
-              <baseline file="$NAME.txt" destination="${NAME}_base.txt"/>
-            </rtest>""" )
         util.writefile( "pybase.vvt", """
             #VVT: baseline : $NAME.txt, ${NAME}_base.txt
             import vvtest_util as vvt
@@ -263,32 +215,18 @@ class baseline_tests( vtu.vvtestTestCase ):
                 sys.exit( vvt.diff_exit_status )
             """ )
 
-        util.writefile( "bline_base.txt", "" )
         util.writefile( "pybase_base.txt", "" )
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, diff=2 )
+        vrun.assertCounts( total=1, diff=1 )
 
         # run baseline and rerun tests
         vtu.runvvtest( '-b' )
         vrun = vtu.runvvtest( '-R' )
-        vrun.assertCounts( total=2, npass=2 )
+        vrun.assertCounts( total=1, npass=1 )
 
     def test_filter_rebaseline_by_parameter_value(self):
         ""
-        util.writefile( "bline.xml", """
-            <rtest name="bline">
-              <parameterize foo="1 2"/>
-              <execute> <![CDATA[
-                # create a single baseline file to use for the first differencing
-                echo "baseline test data file" >! bline.txt
-                echo "line two" >> bline.txt
-                ]]>
-              </execute>
-              <execute name="unixdiff"> bline.txt ${XMLDIR}/bline_base.txt </execute>
-              <baseline parameters="foo=1"
-                        file="$NAME.txt" destination="${NAME}_base.txt"/>
-            </rtest>""" )
         util.writefile( "pybase.vvt", """
             #VVT: parameterize : foo = 1 2
             #VVT: baseline (parameters="foo<2") : $NAME.txt, ${NAME}_base.txt
@@ -303,27 +241,21 @@ class baseline_tests( vtu.vvtestTestCase ):
                 sys.exit( vvt.diff_exit_status )
             """ )
 
-        util.writefile( "bline_base.txt", "" )
         util.writefile( "pybase_base.txt", "" )
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=4, diff=4 )
+        vrun.assertCounts( total=2, diff=2 )
 
-        # run baseline; only the foo=1 tests should rebaseline
+        # run baseline; only the foo=1 test should rebaseline
         vrun = vtu.runvvtest( '-b' )
         assert vrun.countLines( 'baselining pybase.foo=1' ) == 1
-        assert vrun.countLines( 'baselining bline.foo=1' ) == 1
-        assert vrun.countLines( 'baselining bline.foo=2' ) == 0
         assert vrun.countLines( 'baselining pybase.foo=2' ) == 0
-
-        assert len( util.grepfiles( 'bline.txt */bline_base.txt',
-                    'TestResults.*/bline.foo=1/baseline.log' ) ) == 1
         assert len( util.grepfiles( 'pybase.txt */pybase_base.txt',
                     'TestResults.*/pybase.foo=1/baseline.log' ) ) == 1
 
         # on rerun, all should pass
         vrun = vtu.runvvtest( '-R' )
-        vrun.assertCounts( total=4, npass=4 )
+        vrun.assertCounts( total=2, npass=2 )
 
     def test_specifying_baseline_for_analyze_only(self):
         ""

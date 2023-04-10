@@ -39,30 +39,24 @@ def write_tests_cat_dog_circle( in_subdir=None ):
 
 def write_test_cat( sleep_time=1 ):
     ""
-    util.writefile( "one/cat.xml", """
-        <rtest name="cat">
-          <execute>
-            sleep """+str(sleep_time)+"""
-          </execute>
-        </rtest>""" )
+    util.writefile( "one/cat.vvt", """
+        import time
+        time.sleep("""+str(sleep_time)+""")
+        """ )
 
 def write_test_dog( sleep_time=2 ):
     ""
-    util.writefile( "one/dog.xml", """
-        <rtest name="dog">
-          <execute>
-            sleep """+str(sleep_time)+"""
-          </execute>
-        </rtest>""" )
+    util.writefile( "one/dog.vvt", """
+        import time
+        time.sleep("""+str(sleep_time)+""")
+        """ )
 
 def write_test_circle():
     ""
-    util.writefile( "two/circle.xml", """
-        <rtest name="circle">
-          <execute>
-            sleep 3
-          </execute>
-        </rtest>""" )
+    util.writefile( "two/circle.vvt", """
+        import time
+        time.sleep(3)
+        """ )
 
 
 def assert_cat_dog_circle_testresults_contents( testresults_obj, topdir=None ):

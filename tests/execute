@@ -25,31 +25,19 @@ import libvvtest.testexec as testexec
 
 class execute_tests( vtu.vvtestTestCase ):
 
-    def test_simple_xml_test_file(self):
-        ""
-        util.writefile( "null.xml", """
-            <rtest name="null">
-            </rtest>""" )
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=1, npass=1 )
-        tL = vrun.grepTestLines( '.*' )
-        assert len(tL) == 1 and os.path.exists( tL[0].split()[-1] )
-
     def test_simple_script_test_file(self):
         ""
-        util.writefile( 'helloworld.xml', """
-            <rtest name="helloworld">
-              <execute>
-                <![CDATA[ ${XMLDIR}/helloworld.csh ]]>
-              </execute>
-            </rtest>""" )
+        util.writescript( 'helloworld.vvt', """
+            #!/bin/bash
+            source vvtest_util.sh
+            ${SRCDIR}/helloworld.sh || exit 1
+            """ )
 
-        util.writescript( 'helloworld.csh', """
-            #!/bin/csh -f
+        util.writescript( 'helloworld.sh', """
+            #!/bin/bash
             echo "hello world"
-            exit 0""" )
-        time.sleep(1)
+            exit 0
+            """ )
 
         vtu.runvvtest().assertCounts( total=1, npass=1 )
         sL = util.grepfiles( 'hello world', 'TestResults*/helloworld/execute.log' )
@@ -67,61 +55,33 @@ class execute_tests( vtu.vvtestTestCase ):
             this is Aglob2.txt
             """)
 
-        util.writefile( "glob.xml", """
-            <rtest name="glob">
-              <link_files> glob?.txt </link_files>
-              <copy_files> Aglob.* </copy_files>
-              <execute>
-                cat glob1.txt || exit 1
-                cat glob2.txt || exit 1
-                cat Aglob.txt || exit 1
-              </execute>
-            </rtest>""")
-        time.sleep(1)
+        util.writefile( "glob.vvt", """
+            #VVT: link : glob?.txt
+            #VVT: copy : Aglob.*
+            import os, vvtest_util as vvt
+            assert os.path.exists( 'glob1.txt' )
+            assert os.path.exists( 'glob2.txt' )
+            assert os.path.exists( 'Aglob.txt' )
+            """)
 
         vtu.runvvtest().assertCounts( total=1, npass=1 )
 
     def test_link_and_copy_files_that_do_not_exist(self):
         ""
-        util.writefile( "link1.xml", """
-            <rtest name="link1">
-                <link_files> file.txt </link_files>
-                <execute>
-                    foreach f ( `ls` )
-                        echo "lsfile $f"
-                    end
-                </execute>
-            </rtest>""")
-        util.writefile( "copy1.xml", """
-            <rtest name="copy1">
-                <copy_files> file.txt </copy_files>
-                <execute>
-                    foreach f ( `ls` )
-                        echo "lsfile $f"
-                    end
-                </execute>
-            </rtest>""")
-        util.writefile( "link2.xml", """
-            <rtest name="link2">
-                <link_files linkname="file.txt"> file.txt </link_files>
-                <execute>
-                    foreach f ( `ls` )
-                        echo "lsfile $f"
-                    end
-                </execute>
-            </rtest>""")
-        util.writefile( "copy2.xml", """
-            <rtest name="copy2">
-                <copy_files linkname="file.txt"> file.txt </copy_files>
-                <execute>
-                    foreach f ( `ls` )
-                        echo "lsfile $f"
-                    end
-                </execute>
-            </rtest>""")
-        time.sleep(1)
+        util.writefile( "link1.vvt", """
+            #VVT: link : file.txt
+            import os
+            for fn in os.listdir('.'):
+                print ( 'lsfile '+fn )
+            """)
+        util.writefile( "copy1.vvt", """
+            #VVT: copy : file.txt
+            import os
+            for fn in os.listdir('.'):
+                print ( 'lsfile '+fn )
+            """)
 
-        vtu.runvvtest().assertCounts( total=4, fail=4 )
+        vtu.runvvtest().assertCounts( total=2, fail=2 )
 
         sL = util.grepfiles( 'lsfile ', 'TestResults.*/*/execute.log' )
         assert len( sL ) == 0
@@ -133,27 +93,23 @@ class execute_tests( vtu.vvtestTestCase ):
             """)
         time.sleep(1)
 
-        vtu.runvvtest( '-R' ).assertCounts( total=4, npass=4 )
+        vtu.runvvtest( '-R' ).assertCounts( total=2, npass=2 )
 
         sL = util.grepfiles( 'lsfile file.txt', 'TestResults.*/*/execute.log' )
-        assert len( sL ) == 4
+        assert len( sL ) == 2
 
     def test_link_and_copy_files_that_refer_to_parent_directory(self):
         ""
-        util.writefile( "subdir/links.xml", """
-            <rtest name="links">
-                <link_files> ../file.txt </link_files>
-                <copy_files> ../files/gfile*.txt </copy_files>
-                <execute>
-                    foreach f ( `ls` )
-                        echo "lsfile $f"
-                    end
-                </execute>
-            </rtest>""")
+        util.writefile( "subdir/links.vvt", """
+            #VVT: link : ../file.txt
+            #VVT: copy : ../files/gfile*.txt
+            import os
+            for fn in os.listdir('.'):
+                print ( 'lsfile '+fn )
+            """)
         util.writefile( "file.txt", "the text file" )
         util.writefile( "files/gfile1.txt", "G text file 1" )
         util.writefile( "files/gfileA.txt", "G text file A" )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( 'subdir' )
         vrun.assertCounts( total=1, npass=1 )
@@ -171,29 +127,18 @@ class execute_tests( vtu.vvtestTestCase ):
 
     def test_different_test_exit_statuses(self):
         ""
-        util.writefile( "PassTest.xml", """
-            <rtest name="PassTest">
-              <execute>
-                sleep 1
-                echo "Exiting with pass status"
-              </execute>
-            </rtest>""")
-        util.writefile( "FailTest.xml", """
-            <rtest name="FailTest">
-              <execute>
-                sleep 1
-                echo "Exiting with failure status"
-                exit 1
-              </execute>
-            </rtest>""")
-        util.writefile( "DiffTest.xml", """
-            <rtest name="DiffTest">
-              <execute>
-                sleep 1
-                echo "Exiting with diff status"
-                set have_diff = yes
-              </execute>
-            </rtest>""")
+        util.writefile( "PassTest.vvt", """
+            print ( "Exiting with pass status" )
+            """)
+        util.writefile( "FailTest.vvt", """
+            print ( "Exiting with failure status" )
+            raise Exception( 'fake failure' )
+            """)
+        util.writefile( "DiffTest.vvt", """
+            import sys, vvtest_util as vvt
+            print ( "Exiting with diff status" )
+            sys.exit( vvt.diff_exit_status )
+            """)
         time.sleep(1)
 
         vtu.runvvtest().assertCounts( total=3, npass=1, diff=1, fail=1 )
@@ -209,47 +154,17 @@ class execute_tests( vtu.vvtestTestCase ):
         os.chdir( vrun.resultsDir()+'/PassTest' )
         vtu.runvvtest( '-R' ).assertCounts( total=1, npass=1 )
 
-    def test_the_XMLDIR_variable(self):
-        ""
-        cwd = os.getcwd()
-
-        util.writefile( "xdir.xml", """
-            <rtest name="xdir">
-              <execute> <![CDATA[
-                set echo
-                cd $XMLDIR || exit 1
-                set xdir = `pwd`
-                cd """+cwd+""" || exit 1
-                set cdir = `pwd`
-                if ( $xdir != $cdir ) then
-                  echo "*** XMLDIR not equal to """+cwd+""""
-                  exit 1
-                endif
-                ]]>
-              </execute>
-            </rtest>""")
-        time.sleep(1)
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=1, npass=1 )
-
-        # cd into a test and re-run it
-        os.chdir( vrun.resultsDir()+'/xdir' )
-        vtu.runvvtest( '-R' ).assertCounts( total=1, npass=1 )
-
     def test_generate_test_area_with_option_g_then_run(self):
         ""
-        util.writefile( 'helloworld.xml', """
-            <rtest name="helloworld">
-              <execute>
-                ${XMLDIR}/helloworld.csh
-              </execute>
-            </rtest>""" )
-        util.writescript( 'helloworld.csh', """
-            #!/bin/csh -f
+        util.writefile( 'helloworld.vvt', """
+            import subprocess, vvtest_util as vvt
+            subprocess.check_call( vvt.SRCDIR+'/helloworld.sh' )
+            """ )
+        util.writescript( 'helloworld.sh', """
+            #!/bin/bash
             echo "hello world"
-            exit 0""" )
-        time.sleep(1)
+            exit 0
+            """ )
 
         vrun = vtu.runvvtest( '-g' )
         vrun.assertCounts( total=1, notrun=1 )
@@ -261,71 +176,17 @@ class execute_tests( vtu.vvtestTestCase ):
 
     def test_that_the_test_specification_file_is_automatically_soft_linked(self):
         ""
-        util.writefile( "auto1.xml", """
-            <rtest name="auto1">
-              <execute>
-                set echo=1
-                ls -l $NAME.xml || exit 1
-              </execute>
-            </rtest>""" )
-        util.writefile( "auto2.xml", """
-            <rtest name="auto2">
-              <link> $NAME.xml </link>
-              <execute>
-                set echo=1
-                ls -l $NAME.xml || exit 1
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "auto1.vvt", """
+            import os
+            assert os.path.exists( 'auto1.vvt' )
+            """ )
+        util.writefile( "auto2.vvt", """
+            #VVT: link : auto2.vvt
+            import os
+            assert os.path.exists( 'auto2.vvt' ) and os.path.islink( 'auto2.vvt' )
+            """ )
 
         vtu.runvvtest().assertCounts( total=2, npass=2 )
-
-        assert len( glob.glob( 'TestResults.*/auto1/auto1.xml' ) ) == 1
-        assert len( glob.glob( 'TestResults.*/auto2/auto2.xml' ) ) == 1
-
-    def test_filtering_execute_blocks_by_test_name(self):
-        ""
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-                <rtest name="multi2"/>
-                <execute testname="multi"> echo "multi only" </execute>
-                <execute testname="multi2"> echo "multi2 only" </execute>
-                <execute testname="multi or multi2"> echo "both tests" </execute>
-            </rtest>""" )
-        time.sleep(1)
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, npass=2 )
-
-        xpat = 'TestResults.*/multi/execute.log'
-        assert len( util.grepfiles( 'multi only', xpat ) ) == 1
-        assert len( util.grepfiles( 'both tests', xpat ) ) == 1
-
-        xpat = 'TestResults.*/multi2/execute.log'
-        assert len( util.grepfiles( 'multi2 only', xpat ) ) == 1
-        assert len( util.grepfiles( 'both tests', xpat ) ) == 1
-
-    def test_using_NOT_in_the_test_name_filter(self):
-        ""
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-                <rtest name="multi2"/>
-                <execute testname="multi"> echo "multi only" </execute>
-                <execute testname="not multi"> echo "multi2 only" </execute>
-                <execute testname="multi or multi2"> echo "both tests" </execute>
-            </rtest>""" )
-        time.sleep(1)
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, npass=2 )
-
-        xpat = 'TestResults.*/multi/execute.log'
-        assert len( util.grepfiles( 'multi only', xpat ) ) == 1
-        assert len( util.grepfiles( 'both tests', xpat ) ) == 1
-
-        xpat = 'TestResults.*/multi2/execute.log'
-        assert len( util.grepfiles( 'multi2 only', xpat ) ) == 1
-        assert len( util.grepfiles( 'both tests', xpat ) ) == 1
 
     def test_behavior_when_two_tests_have_the_same_filename_path(self):
         ""
@@ -410,6 +271,4 @@ class execute_tests( vtu.vvtestTestCase ):
 
 ############################################################################
 
-if not windows:
-    # all tests in this file use the xml format, which fail
-    util.run_test_cases( sys.argv, sys.modules[__name__] )
+util.run_test_cases( sys.argv, sys.modules[__name__] )

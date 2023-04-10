@@ -22,26 +22,20 @@ class extract_use_cases( vtu.vvtestTestCase ):
 
     def test_all_files_get_extracted(self):
         ""
-        util.writefile( 'orig/atest.xml', """
-            <rtest name="atest">
-              <copy_files> file1.txt </copy_files>
-              <link_files> file2.txt </link_files>
-              <baseline file="file3.txt"/>
-              <source_files> file4.txt </source_files>
-              <execute>
-                set echo
-                cat file1.txt || exit 1
-                cat file2.txt || exit 1
-                cat $XMLDIR/file3.txt || exit 1
-                cat $XMLDIR/file4.txt || exit 1
-                unset echo
-              </execute>
-            </rtest>""" )
+        util.writefile( 'orig/atest.vvt', """
+            #VVT: copy : file1.txt
+            #VVT: link : file2.txt
+            #VVT: baseline : file3.txt, file3.txt
+            #VVT: sources : file4.txt
+            import os, vvtest_util as vvt
+            assert os.path.exists( 'file1.txt' )
+            assert os.path.exists( 'file2.txt' )
+            assert os.path.exists( vvt.SRCDIR+'/file3.txt' )
+            """ )
         util.writefile( 'orig/file1.txt', "file one" )
         util.writefile( 'orig/file2.txt', "file two" )
         util.writefile( 'orig/file3.txt', "file three" )
         util.writefile( 'orig/file4.txt', "file four" )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( chdir='orig' )
         vrun.assertCounts( total=1, npass=1 )
@@ -57,26 +51,21 @@ class extract_use_cases( vtu.vvtestTestCase ):
 
     def test_the_three_ways_name_substitution_can_occur(self):
         ""
-        util.writefile( 'orig/atest.xml', """
-            <rtest name="atest">
-              <copy_files> $NAME.txt </copy_files>
-              <link_files> NAME.txt </link_files>
-              <baseline file="${NAME}_base.txt"/>
-              <source_files> {$NAME}_src.txt </source_files>
-              <execute>
-                set echo
-                cat atest.txt || exit 1
-                cat NAME.txt || exit 1
-                cat $XMLDIR/atest_base.txt || exit 1
-                cat $XMLDIR/atest_src.txt || exit 1
-                unset echo
-              </execute>
-            </rtest>""" )
+        util.writefile( 'orig/atest.vvt', """
+            #VVT: copy : $NAME.txt
+            #VVT: link : NAME.txt
+            #VVT: baseline : ${NAME}_base.txt, ${NAME}_base.txt
+            #VVT: sources : {$NAME}_src.txt
+            import os, vvtest_util as vvt
+            assert os.path.exists( 'atest.txt' )
+            assert os.path.exists( 'NAME.txt' )
+            assert os.path.exists( vvt.SRCDIR+'/atest_base.txt' )
+            assert os.path.exists( vvt.SRCDIR+'/atest_src.txt' )
+            """ )
         util.writefile( 'orig/atest.txt', "file one" )
         util.writefile( 'orig/NAME.txt', "file two" )
         util.writefile( 'orig/atest_base.txt', "file three" )
         util.writefile( 'orig/atest_src.txt', "file four" )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( chdir='orig' )
         vrun.assertCounts( total=1, npass=1 )
@@ -92,25 +81,23 @@ class extract_use_cases( vtu.vvtestTestCase ):
 
     def test_extract_on_a_test_with_multiple_test_names(self):
         ""
-        util.writefile( 'orig/tfile.xml', """
-            <rtest name="multi">
-              <rtest name="multi2"/>
-              <copy_files> common.txt </copy_files>
-              <link_files testname="multi"> m1.txt </link_files>
-              <copy_files testname="multi2"> m2.txt </copy_files>
-              <execute> echo "hello world" </execute>
-            </rtest>""" )
+        util.writefile( 'orig/tfile.vvt', """
+            #VVT: testname : multi
+            #VVT: testname : multi2
+            #VVT: copy : common.txt
+            #VVT: link (testname=multi) : m1.txt
+            #VVT: copy (testname=multi2) : m2.txt
+            """ )
         util.writefile( 'orig/common.txt', "file one" )
         util.writefile( 'orig/m1.txt', "file two" )
         util.writefile( 'orig/m2.txt', "file three" )
         util.writefile( 'orig/dummy.txt', "file dummy" )
-        time.sleep(1)
 
         vtu.runvvtest( '--extract copy orig' )
 
         fL = glob.glob( 'copy/*' )
         fL.sort()
-        assert fL == ['copy/common.txt','copy/m1.txt','copy/m2.txt','copy/tfile.xml']
+        self.assertEqual( fL, ['copy/common.txt','copy/m1.txt','copy/m2.txt','copy/tfile.vvt'] )
 
         # this time, exclude one of the tests
 
@@ -118,26 +105,21 @@ class extract_use_cases( vtu.vvtestTestCase ):
 
         fL = glob.glob( 'cp2/*' )
         fL.sort()
-        assert fL == ['cp2/common.txt','cp2/m1.txt','cp2/tfile.xml']
+        self.assertEqual( fL, ['cp2/common.txt','cp2/m1.txt','cp2/tfile.vvt'] )
 
     def test_that_a_glob_pattern_will_be_expanded_in_source_files(self):
         ""
         util.writefile( 'orig/file1.txt', "f1\n" )
         util.writefile( 'orig/file_7.txt', "f7\n" )
-        util.writefile( 'orig/atest.xml', """
-            <rtest name="atest">
-              <source_files> file*.txt </source_files>
-              <execute>
-                echo "hello world"
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'orig/atest.vvt', """
+            #VVT: sources = file*.txt
+            """ )
 
         vtu.runvvtest( '--extract copy orig' )
 
         fL = glob.glob( 'copy/*' )
         fL.sort()
-        assert fL == ['copy/atest.xml', 'copy/file1.txt', 'copy/file_7.txt']
+        assert fL == ['copy/atest.vvt', 'copy/file1.txt', 'copy/file_7.txt']
 
     def test_that_globs_work_in_link_and_copy_files(self):
         ""
@@ -145,19 +127,16 @@ class extract_use_cases( vtu.vvtestTestCase ):
         util.writefile( 'orig/ln_7.txt', "l7\n" )
         util.writefile( 'orig/cp1.txt', "c1\n" )
         util.writefile( 'orig/cp_7.txt', "c7\n" )
-        util.writefile( 'orig/atest.xml', """
-            <rtest name="atest">
-              <link_files> ln*.txt </link_files>
-              <copy_files> cp*.txt </copy_files>
-              <execute> echo "hello world" </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'orig/atest.vvt', """
+            #VVT: link : ln*.txt
+            #VVT: copy : cp*.txt
+            """ )
 
         vtu.runvvtest( '--extract copy orig' )
 
         fL = glob.glob( 'copy/*' )
         fL.sort()
-        assert fL == ['copy/atest.xml', 'copy/cp1.txt', 'copy/cp_7.txt',
+        assert fL == ['copy/atest.vvt', 'copy/cp1.txt', 'copy/cp_7.txt',
                       'copy/ln1.txt', 'copy/ln_7.txt']
 
     def test_extract_with_script_specification_file(self):

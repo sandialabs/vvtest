@@ -22,10 +22,8 @@ class options_tests( vtu.vvtestTestCase ):
 
     def test_spot_check_each_mode_of_operation(self):
         ""
-        util.writefile( "null.xml", """
-            <rtest name="null">
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "null.vvt", """
+            """ )
 
         vtu.runvvtest( '-h' )
         vtu.runvvtest( '--help' )

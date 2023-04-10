@@ -25,23 +25,21 @@ class restart_tests( vtu.vvtestTestCase ):
         ""
         for batch in [False,True]:
 
-            util.writefile( 'atest.xml', """
-                <rtest name="atest">
-                  <parameterize timestep="1 2"/>
-                  <execute>
-                    if ( "$timestep" == 2 ) then
-                      echo "fake failure"
-                      exit 1
-                    else
-                      touch atest.$timestep
-                    endif
-                  </execute>
-                  <analyze>
-                     ls ../atest.timestep=1/atest.1 || exit 1
-                     ls ../atest.timestep=2/atest.2 || exit 1
-                  </analyze>
-                </rtest>""" )
-            time.sleep(1)
+            util.writefile( 'atest.vvt', """
+                #VVT: parameterize : timestep = 1 2
+                #VVT: analyze : --analyze
+                import os, sys, time, vvtest_util as vvt
+                import script_util as util
+                if '--analyze' not in sys.argv[1:]:
+                    if vvt.timestep == '2':
+                        raise Exception( 'fake exception' )
+                    else:
+                        with open( 'atest.'+vvt.timestep, 'wt' ):
+                            pass
+                else:
+                    assert os.path.exists( '../atest.timestep=1/atest.1' )
+                    assert os.path.exists( '../atest.timestep=2/atest.2' )
+                """ )
 
             vtu.remove_results()
 
@@ -49,17 +47,18 @@ class restart_tests( vtu.vvtestTestCase ):
             vrun.assertCounts( total=3, npass=1, fail=1, notrun=1 )
 
             # "fix" the test and restart
-            util.writefile( 'atest.xml', """
-                <rtest name="atest">
-                  <parameterize timestep="1 2"/>
-                  <execute>
-                    touch atest.$timestep
-                  </execute>
-                  <analyze>
-                     ls ../atest.timestep=1/atest.1 || exit 1
-                     ls ../atest.timestep=2/atest.2 || exit 1
-                  </analyze>
-                </rtest>""" )
+            util.writefile( 'atest.vvt', """
+                #VVT: parameterize : timestep = 1 2
+                #VVT: analyze : --analyze
+                import os, sys, time, vvtest_util as vvt
+                import script_util as util
+                if '--analyze' not in sys.argv[1:]:
+                    with open( 'atest.'+vvt.timestep, 'wt' ):
+                        pass
+                else:
+                    assert os.path.exists( '../atest.timestep=1/atest.1' )
+                    assert os.path.exists( '../atest.timestep=2/atest.2' )
+                """ )
             time.sleep(1)
 
             vrun = vtu.runvvtest( '-k fail/notrun', batch=batch )

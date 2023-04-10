@@ -22,7 +22,7 @@ bashexec = os.path.join( trigutil.trigdir, 'bashexec' )
 
 #######################################################################
 
-class catchall( unittest.TestCase ):
+class suite( unittest.TestCase ):
 
     def setUp(self):
         ""

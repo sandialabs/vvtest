@@ -43,69 +43,44 @@ class filter_and_num_processors( vtu.vvtestTestCase ):
             else:
                 print ( 'executing test, np='+str(vvt.np) )
             """ )
-        util.writefile( 'xtest.xml', """
-            <rtest name="xtest">
-              <execute> echo "executing test" </execute>
-            </rtest>""" )
-        util.writefile( 'ytest.xml', """
-            <rtest name="ytest">
-              <parameterize np="1 2 4"/>
-              <execute> echo "executing test, np=$np" </execute>
-            </rtest>""" )
-        util.writefile( 'ztest.xml', """
-            <rtest name="ztest">
-              <parameterize np="1 2 4"/>
-              <execute> echo "executing test, np=$np" </execute>
-              <analyze> echo "executing analyze, np=$PARAM_np" </analyze>
-            </rtest>""" )
-        time.sleep(1)
 
         for batch in [False,True]:
 
             vtu.remove_results()
             vrun = vtu.runvvtest( batch=batch )
-            vrun.assertCounts( total=16, npass=16 )
+            vrun.assertCounts( total=8, npass=8 )
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '-n 1', batch=batch )
-            vrun.assertCounts( total=16, npass=16 )
+            vrun.assertCounts( total=8, npass=8 )
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '-N 2', batch=batch )
-            vrun.assertCounts( total=10, npass=10 )
+            vrun.assertCounts( total=5, npass=5 )
 
             assert len( glob.glob( 'TestResults*/atest*/execute.log' ) ) == 1
-            assert len( glob.glob( 'TestResults*/xtest*/execute.log' ) ) == 1
             assert len( glob.glob( 'TestResults*/btest*/execute.log' ) ) == 2
             assert len( glob.glob( 'TestResults*/ctest*/execute.log' ) ) == 2
-            assert len( glob.glob( 'TestResults*/ytest*/execute.log' ) ) == 2
-            assert len( glob.glob( 'TestResults*/ztest*/execute.log' ) ) == 2
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '-n 1 -N 2', batch=batch )
-            vrun.assertCounts( total=10, npass=10 )
+            vrun.assertCounts( total=5, npass=5 )
 
             assert len( glob.glob( 'TestResults*/atest*/execute.log' ) ) == 1
-            assert len( glob.glob( 'TestResults*/xtest*/execute.log' ) ) == 1
             assert len( glob.glob( 'TestResults*/btest*/execute.log' ) ) == 2
             assert len( glob.glob( 'TestResults*/ctest*/execute.log' ) ) == 2
-            assert len( glob.glob( 'TestResults*/ytest*/execute.log' ) ) == 2
-            assert len( glob.glob( 'TestResults*/ztest*/execute.log' ) ) == 2
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '-N 4', batch=batch )
-            vrun.assertCounts( total=16, npass=16 )
+            vrun.assertCounts( total=8, npass=8 )
 
             vtu.remove_results()
             vrun = vtu.runvvtest( '-p "np<=2 or not np"', batch=batch )
-            vrun.assertCounts( total=12, npass=12 )
+            vrun.assertCounts( total=6, npass=6 )
 
             assert len( glob.glob( 'TestResults*/atest*/execute.log' ) ) == 1
-            assert len( glob.glob( 'TestResults*/xtest*/execute.log' ) ) == 1
             assert len( glob.glob( 'TestResults*/btest*/execute.log' ) ) == 2
             assert len( glob.glob( 'TestResults*/ctest*/execute.log' ) ) == 3
-            assert len( glob.glob( 'TestResults*/ytest*/execute.log' ) ) == 2
-            assert len( glob.glob( 'TestResults*/ztest*/execute.log' ) ) == 3
 
 
 ########################################################################

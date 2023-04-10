@@ -7,19 +7,17 @@
 import os, sys
 import time
 
+from . import logger
 from . import utesthooks
-from . import pathutil
-from .printinfo import TestInformationPrinter
-from .outpututils import XstatusString, pretty_time
+from .printinfo import DirectInfoPrinter, BatchInfoPrinter
 
 
 class TestListRunner:
 
-    def __init__(self, test_dir, tlist, xlist, perms,
+    def __init__(self, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout):
+                       total_timeout ):
         ""
-        self.test_dir = test_dir
         self.tlist = tlist
         self.xlist = xlist
         self.perms = perms
@@ -31,36 +29,30 @@ class TestListRunner:
     def setup(self):
         ""
         self.starttime = time.time()
-        print3( "Start time:", time.ctime() )
+        logger.info("Start time: {0}".format(time.ctime()))
 
         rfile = self.tlist.initializeResultsFile( **(self.rtinfo.asDict()) )
         self.perms.apply( os.path.abspath( rfile ) )
-
-        self.cwd = os.getcwd()
 
     def total_time_expired(self):
         ""
         if self.total_timeout and self.total_timeout > 0:
             if time.time() - self.starttime > self.total_timeout:
-                print3( '\n*** vvtest: total timeout expired:',
-                        self.total_timeout, '\n' )
+                logger.warn('total timeout expired: {0}s'.format(self.total_timeout))
                 return True
         return False
 
 
 class BatchRunner( TestListRunner ):
 
-    def __init__(self, test_dir, tlist, xlist, perms,
+    def __init__(self, batch, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout):
+                       total_timeout ):
         ""
-        TestListRunner.__init__( self, test_dir, tlist, xlist, perms,
+        TestListRunner.__init__( self, tlist, xlist, perms,
                                  rtinfo, results_writer, plat, total_timeout )
-        self.batch = None
-
-    def setBatcher(self, batch):
-        ""
         self.batch = batch
+        self.info = BatchInfoPrinter( test_dir, tlist, batch )
 
     def startup(self):
         ""
@@ -74,9 +66,8 @@ class BatchRunner( TestListRunner ):
         self.batch.constructBatchJobs()
 
         self.qsleep = int( os.environ.get( 'VVTEST_BATCH_SLEEP_LENGTH', 15 ) )
-        self.info = TestInformationPrinter( sys.stdout, self.tlist, self.batch )
 
-        print3( 'Maximum concurrent batch jobs:', self.batch.getMaxJobs() )
+        logger.info('Maximum concurrent batch jobs: {0}'.format(self.batch.getMaxJobs()))
 
     def run(self):
         ""
@@ -85,10 +76,11 @@ class BatchRunner( TestListRunner ):
         uthook = utesthooks.construct_unit_testing_hook( 'batch' )
 
         try:
+
             while True:
 
                 qid = self.batch.checkstart()
-                if qid != None:
+                if qid is not None:
                     # nothing to print here because the qsubmit prints
                     pass
                 elif self.batch.numInProgress() == 0:
@@ -98,13 +90,14 @@ class BatchRunner( TestListRunner ):
 
                 qidL,doneL = self.batch.checkdone()
 
-                self.print_finished( qidL, doneL )
+                self.info.printFinishedBatches( qidL )
+                self.info.printFinished( doneL )
 
                 uthook.check( self.batch.numInProgress(), self.batch.numPastQueue() )
 
                 self.results_writer.midrun( self.tlist, self.rtinfo )
 
-                self.print_progress( doneL )
+                self.info.printProgress( len(doneL) )
 
                 if self.total_time_expired():
                     break
@@ -115,26 +108,9 @@ class BatchRunner( TestListRunner ):
         finally:
             self.batch.shutdown()
 
-        self.finishup( NS, NF, nrL )
+        self.info.printBatchRemainders( NS, NF, nrL )
 
         return encode_integer_warning( self.tlist )
-
-    def print_finished(self, qidL, doneL):
-        ""
-        if len(qidL) > 0:
-            ids = ' '.join( [ str(qid) for qid in qidL ] )
-            print3( 'Finished batch IDS:', ids )
-        for tcase in doneL:
-            ts = XstatusString( tcase, self.test_dir, self.cwd )
-            print3( "Finished:", ts )
-
-    def print_progress(self, doneL):
-        ""
-        if len(doneL) > 0:
-            sL = [ get_batch_info( self.batch ),
-                   get_test_info( self.tlist, self.xlist ),
-                   'time = '+pretty_time( time.time() - self.starttime ) ]
-            print3( "Progress:", ', '.join( sL )  )
 
     def sleep_with_info_check(self):
         ""
@@ -142,30 +118,18 @@ class BatchRunner( TestListRunner ):
             self.info.checkPrint()
             time.sleep( 1 )
 
-    def finishup(self, NS, NF, nrL):
-        ""
-        if len(NS)+len(NF)+len(nrL) > 0:
-            print3()
-        if len(NS) > 0:
-            print3( "*** Warning: these batch numbers did not seem to start:",
-                    ' '.join(NS) )
-        if len(NF) > 0:
-            print3( "*** Warning: these batch numbers did not seem to finish:",
-                    ' '.join(NF) )
-
-        print_notrun_reasons( nrL )
-
 
 class DirectRunner( TestListRunner ):
 
     def __init__(self, test_dir, tlist, xlist, perms,
                        rtinfo, results_writer, plat,
-                       total_timeout):
+                       total_timeout ):
         ""
-        TestListRunner.__init__( self, test_dir, tlist, xlist, perms,
+        TestListRunner.__init__( self, tlist, xlist, perms,
                                  rtinfo, results_writer, plat, total_timeout )
         self.batch_id = None
         self.handler = xlist.getExecutionHandler()
+        self.info = DirectInfoPrinter( test_dir, xlist, tlist.numActive() )
 
     def setBatchID(self, batch_id):
         ""
@@ -174,10 +138,7 @@ class DirectRunner( TestListRunner ):
     def startup(self):
         ""
         self.setup()
-
         self.plat.display()
-
-        self.info = TestInformationPrinter( sys.stdout, self.xlist )
 
     def run(self):
         ""
@@ -190,7 +151,7 @@ class DirectRunner( TestListRunner ):
 
                 tnext = self.xlist.popNext( self.plat.sizeAvailable() )
 
-                if tnext != None:
+                if tnext is not None:
                     self.start_next( tnext )
                 elif self.xlist.numRunning() == 0:
                     break
@@ -198,14 +159,15 @@ class DirectRunner( TestListRunner ):
                     self.info.checkPrint()
                     time.sleep(1)
 
-                showprogress = self.print_finished()
+                doneL = self.process_finished()
+
+                self.info.printFinished( doneL )
 
                 uthook.check( self.xlist.numRunning(), self.xlist.numDone() )
 
                 self.results_writer.midrun( self.tlist, self.rtinfo )
 
-                if showprogress:
-                    self.print_progress()
+                self.info.printProgress( len(doneL) )
 
                 if self.total_time_expired():
                     break
@@ -215,79 +177,30 @@ class DirectRunner( TestListRunner ):
         finally:
             self.tlist.writeFinished()
 
-        self.finishup( nrL )
+        self.info.printRemainders( nrL )
 
         return encode_integer_warning( self.tlist )
 
     def start_next(self, texec):
         ""
         tcase = texec.getTestCase()
-        print3( 'Starting:', exec_path( tcase, self.test_dir ) )
+        self.info.printStarting( tcase )
         start_test( self.handler, texec, self.plat )
         self.tlist.appendTestResult( tcase )
 
-    def print_finished(self):
+    def process_finished(self):
         ""
-        showprogress = False
+        doneL = []  # TestCase objects
 
         for texec in list( self.xlist.getRunning() ):
             tcase = texec.getTestCase()
             if texec.poll():
                 self.handler.finishExecution( texec )
             if texec.isDone():
-                xs = XstatusString( tcase, self.test_dir, self.cwd )
-                print3( "Finished:", xs )
                 self.xlist.testDone( texec )
-                showprogress = True
+                doneL.append( tcase )
 
-        return showprogress
-
-    def print_progress(self):
-        ""
-        ndone = self.xlist.numDone()
-        ntot = self.tlist.numActive()
-        pct = 100 * float(ndone) / float(ntot)
-        div = str(ndone)+'/'+str(ntot)
-        dt = pretty_time( time.time() - self.starttime )
-        print3( "Progress: " + div+" = %%%.1f"%pct + ', time = '+dt )
-
-    def finishup(self, nrL):
-        ""
-        if len(nrL) > 0:
-            print3()
-        print_notrun_reasons( [ (tc,tc.getBlockedReason()) for tc in nrL ] )
-
-
-def print_notrun_reasons( notrunlist ):
-    ""
-    for tcase,reason in notrunlist:
-        xdir = tcase.getSpec().getDisplayString()
-        print3( '*** Warning: test "'+xdir+'"',
-                'notrun due to dependency: ' + str(reason) )
-
-
-def get_batch_info( batch ):
-    ""
-    ndone = batch.getNumDone()
-    nrun = batch.numInProgress()
-
-    return 'jobs running='+str(nrun)+' completed='+str(ndone)
-
-
-def get_test_info( tlist, xlist ):
-    ""
-    ndone = xlist.numDone()
-    ntot = tlist.numActive()
-    tpct = 100 * float(ndone) / float(ntot)
-    tdiv = 'tests '+str(ndone)+'/'+str(ntot)
-
-    return tdiv+" = %%%.1f"%tpct
-
-
-def exec_path( tcase, test_dir ):
-    ""
-    xdir = tcase.getSpec().getDisplayString()
-    return pathutil.relative_execute_directory( xdir, test_dir, os.getcwd() )
+        return doneL
 
 
 def run_baseline( xlist, plat ):
@@ -318,20 +231,20 @@ def run_baseline( xlist, plat ):
 
             if texec.isDone():
                 if tstat.passed():
-                    print3( "done" )
+                    logger.info("done")
                 else:
                     failures = True
-                    print3("FAILED")
+                    logger.info("FAILED")
                 break
 
         if not tstat.isDone():
             if texec.killJob():
                 handler.finishExecution( texec )
             failures = True
-            print3( "TIMED OUT" )
+            logger.info("TIMED OUT")
 
     if failures:
-        print3( "\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n" )
+        logger.warn( "\n\n !!!!!!!!!!!  THERE WERE FAILURES  !!!!!!!!!! \n\n" )
 
 
 def start_test( handler, texec, platform, is_baseline=False ):
@@ -367,9 +280,3 @@ def encode_integer_warning( tlist ):
             elif result == 'notrun' : ival |= ( 2**5 )
 
     return ival
-
-
-def print3( *args ):
-    ""
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()

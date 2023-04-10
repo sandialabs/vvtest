@@ -11,6 +11,7 @@ import glob
 import itertools
 from os.path import dirname
 
+from . import logger
 from . import TestList
 from .testlistio import TestListReader, file_is_marked_finished
 from . import pathutil
@@ -84,7 +85,7 @@ class Batcher:
     def checkstart(self):
         """
         Launches a new batch job if possible.  If it does, the batch id is
-        returned.
+        returned, else None.
         """
         if self.jobhandler.numSubmitted() < self.maxjobs:
             for bjob in self.jobhandler.getNotStarted():
@@ -165,7 +166,13 @@ class Batcher:
         ""
         self._write_job( bjob )
         self.results.addResultsInclude( bjob )
-        self.jobhandler.startJob( bjob )
+
+        jobid,out = self.jobhandler.startJob( bjob )
+
+        if jobid is None:
+            logger.error( out )
+        else:
+            logger.xinfo( out )
 
     def _write_job(self, bjob):
         ""
@@ -275,7 +282,7 @@ class Batcher:
     def _remove_batch_directories(self):
         ""
         for d in self.namer.globBatchDirectories():
-            print3( 'rm -rf '+d )
+            logger.info( 'rm -rf {0}'.format(d) )
             pathutil.fault_tolerant_remove( d )
 
 
@@ -561,8 +568,3 @@ def check_set_outfile_permissions( bjob, perms, curtime ):
     if not bjob.outfileSeen() and os.path.exists( ofile ):
         perms.apply( ofile )
         bjob.setOutfileSeen( curtime )
-
-
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()

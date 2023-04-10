@@ -51,7 +51,6 @@ class ScriptTestParser:
         self.fpath = filepath
 
         self.root = rootpath or '.'
-        # print ( 'magic: parser, root', self.root, 'fpath', self.fpath )
 
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist

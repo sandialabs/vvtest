@@ -149,13 +149,18 @@ class BatchJobHandler:
         return fn
 
     def startJob(self, batchjob):
-        ""
+        """
+        returns batch system jobid and info string if successful, or None
+        and an error message if unsuccessful
+        """
         workdir = self.namer.getRootDir()
         scriptname = self.namer.getScriptPath( batchjob.getBatchID() )
 
         outfile = batchjob.getOutputFilename()
-        jobid = self.batchitf.submitJob( workdir, outfile, scriptname )
+        jobid,out = self.batchitf.submitJob( workdir, outfile, scriptname )
         self.markJobStarted( batchjob, jobid )
+
+        return jobid,out
 
     def numSubmitted(self):
         return len( self.submitted )

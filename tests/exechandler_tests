@@ -186,9 +186,9 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
                                             [ ('junk*',None) ],
                                             [ ('file*.txt','dest.txt') ] )
             assert not ok
-            print3( out.strip() )
-            assert not err.strip()
-            assert out.count( 'error: ' ) == 2
+            out = '\n'.join( [ out.strip(), err.strip() ] )
+            print3( out )
+            assert out.count( 'Error: ' ) == 2
             assert out.count( 'non-existent file' ) == 1
             assert out.count( 'more than one file' ) == 1
 

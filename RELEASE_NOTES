@@ -6,6 +6,10 @@ Improvements:
       can now print a second line which contains a JSON encoded list
       of {testname: { test parameters }} entries.
 
+    - Add -q command line option for quieter operation. Using -q without -v
+      will only show a progress bar as tests execute rather than the verbose
+      test launch and finish console output.
+
     - A new option, -B, has been added which is similar to the -b option.
       Using -b means perform a re-baseline operation on tests that "diff".
       Using -B means re-baseline on all tests regardless of result status.

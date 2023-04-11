@@ -16,6 +16,7 @@ except Exception:
     from pipes import quote
 
 from . import outpututils
+from . import execute
 
 class JsonWriter:
     """Write test results to a json database.
@@ -76,10 +77,13 @@ class JsonWriter:
             top["duration"] = top["endtime"] - top["starttime"]
         else:
             top["duration"] = -1
+        top["returncode"] = execute.encode_integer_warning(atestlist)
         data.update(top)
 
         if rtconfig is not None:
-            data["config"] = rtconfig.asDict()
+            data["onopts"] = " ".join(rtconfig.getAttr("onopts"))
+            data["offopts"] = " ".join(rtconfig.getAttr("offopts"))
+            data["testargs"] = " ".join(rtconfig.getAttr("testargs"))
 
         uname = os.uname()
         data["machine"] = {

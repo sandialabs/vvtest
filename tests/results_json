@@ -166,7 +166,7 @@ def validate_output(arg):
     assert first_level_keys == ["vvtest"]
     for parent_key in json_output_schema["vvtest"]:
         assert parent_key in arg["vvtest"]
-        if parent_key in ("config", "machine", "config", "tests"):
+        if parent_key in ("machine", "tests"):
             for child, value2 in arg["vvtest"][parent_key].items():
                 expected_type = json_output_schema["vvtest"][parent_key][child]
                 validate_type(
@@ -248,18 +248,10 @@ json_output_schema = {
         "endtime": float,
         "enddate": str,
         "duration": float,
-        "config": {
-            "vvtestdir": str,
-            "configdir": list_of_str,
-            "exepath": str_or_none,
-            "onopts": list_of_str,
-            "offopts": list_of_str,
-            "preclean": bool,
-            "postclean": bool,
-            "analyze": bool,
-            "logfile": bool,
-            "testargs": list_of_str,
-        },
+        "returncode": int,
+        "onopts": str,
+        "offopts": str,
+        "testargs": str,
         "machine": {
             "platform": str,
             "system": str,

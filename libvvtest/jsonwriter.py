@@ -10,8 +10,12 @@ import os
 import sys
 import zlib
 
-from . import outpututils
+try:
+    from shlex import quote
+except Exception:
+    from pipes import quote
 
+from . import outpututils
 
 class JsonWriter:
     """Write test results to a json database.
@@ -64,6 +68,7 @@ class JsonWriter:
             "python",
         ):
             top.pop(var, None)
+        top["command"] = " ".join(quote(_) for _ in top.pop("cmdline", []))
         top["starttime"] = top.pop("startepoch", -1)
         top["endtime"] = top.pop("finishepoch", -1)
         top["enddate"] = top.pop("finishdate", None)

@@ -240,7 +240,7 @@ json_output_schema = {
     "vvtest": {
         "curdir": str,
         "startdate": str,
-        "cmdline": list_of_str,
+        "command": str,
         "vvtestdir": str,
         "compiler": str_or_none,
         "rundir": str,

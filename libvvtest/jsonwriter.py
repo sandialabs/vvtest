@@ -18,6 +18,7 @@ except Exception:
 from . import outpututils
 from . import execute
 
+
 class JsonWriter:
     """Write test results to a json database.
 
@@ -100,7 +101,7 @@ class JsonWriter:
         data["python"] = {
             "executable": sys.executable,
             "version": sys.version,
-            "version info": sys.version_info,
+            "version info": list(sys.version_info),
         }
 
         data["environment"] = os.environ.copy()
@@ -162,7 +163,8 @@ class JsonWriter:
             "timeout": stat.getAttr("timeout", None),
         }
         if spec.isAnalyze():
-            test["parameter set"] = spec.getParameterSet().getParameters(typed=True)
+            p = spec.getParameterSet().getParameters(typed=True, serializable=True)
+            test["parameter set"] = p
 
         resources = test.setdefault("resources", {})
         resources["processors"] = 0

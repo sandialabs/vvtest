@@ -9,6 +9,7 @@ import platform
 
 from . import rpool
 from . import rprobe
+from . import logger
 
 
 class Platform:
@@ -73,7 +74,7 @@ class Platform:
             if maxnp is not None: s += ', max cores = '+str(maxnp)
             if nd    is not None: s += ', num devices = '+str(nd)
             if maxnd is not None: s += ', max devices = '+str(maxnd)
-        print ( s )
+        logger.info( s )
 
     ##################################################################
 

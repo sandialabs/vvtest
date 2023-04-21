@@ -4,7 +4,6 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-import sys, os
 import time
 
 from .wordcheck import check_variable_name
@@ -95,11 +94,11 @@ class TestStatus:
         kL = []
 
         skip = self.attrs.get( 'skip', None )
-        if skip != None:
+        if skip is not None:
             kL.append( 'skip' )
 
         state = self.attrs.get('state',None)
-        if state == None:
+        if state is None:
             kL.append( 'notrun' )
         else:
             if state == "notrun":
@@ -108,7 +107,7 @@ class TestStatus:
                 kL.extend( ['notdone', 'running'] )
 
         result = self.attrs.get('result',None)
-        if result != None:
+        if result is not None:
             if result == 'timeout':
                 kL.append( 'fail' )
             kL.append( result )
@@ -118,9 +117,9 @@ class TestStatus:
     def markSkipByParameter(self, permanent=True):
         ""
         if permanent:
-            self.attrs['skip'] = PARAM_SKIP
+            self.markSkipped(PARAM_SKIP)
         else:
-            self.attrs['skip'] = RESTART_PARAM_SKIP
+            self.markSkipped(RESTART_PARAM_SKIP)
 
     def skipTestByParameter(self):
         ""
@@ -129,61 +128,66 @@ class TestStatus:
     def markSkipByKeyword(self, with_results=False):
         ""
         if with_results:
-            self.attrs['skip'] = RESULTS_KEYWORD_SKIP
+            self.markSkipped(RESULTS_KEYWORD_SKIP)
         else:
-            self.attrs['skip'] = KEYWORD_SKIP
+            self.markSkipped(KEYWORD_SKIP)
 
     def markSkipBySubdirectoryFilter(self):
         ""
-        self.attrs['skip'] = SUBDIR_SKIP
+        self.markSkipped(SUBDIR_SKIP)
 
     def markSkipByEnabled(self):
         ""
-        self.attrs['skip'] = 'enabled'
+        self.markSkipped('enabled')
 
     def markSkipByPlatform(self):
         ""
-        self.attrs['skip'] = 'platform'
+        self.markSkipped('platform')
 
     def markSkipByOption(self):
         ""
-        self.attrs['skip'] = 'option'
+        self.markSkipped('option')
 
     def markSkipByTDD(self):
         ""
-        self.attrs['skip'] = 'tdd'
+        self.markSkipped('tdd')
 
     def markSkipByFileSearch(self):
         ""
-        self.attrs['skip'] = 'search'
+        self.markSkipped('search')
 
     def markSkipByMaxProcessors(self):
         ""
-        self.attrs['skip'] = 'maxprocs'
+        self.markSkipped('maxprocs')
 
     def markSkipByMaxDevices(self):
         ""
-        self.attrs['skip'] = 'maxdevices'
+        self.markSkipped('maxdevices')
 
     def markSkipByRuntime(self):
         ""
-        self.attrs['skip'] = 'runtime'
+        self.markSkipped('runtime')
 
     def markSkipByBaselineHandling(self):
         ""
-        self.attrs['skip'] = 'nobaseline'
+        self.markSkipped('nobaseline')
 
     def markSkipByAnalyzeDependency(self):
         ""
-        self.attrs['skip'] = 'depskip'
+        self.markSkipped('depskip')
 
     def markSkipByCummulativeRuntime(self):
         ""
-        self.attrs['skip'] = 'tsum'
+        self.markSkipped('tsum')
 
     def markSkipByUserValidation(self, reason):
         ""
+        self.markSkipped(reason)
+
+    def markSkipped(self, reason):
+        ""
         self.attrs['skip'] = reason
+
 
     def skipTestCausingAnalyzeSkip(self):
         ""
@@ -262,7 +266,7 @@ class TestStatus:
     def getRuntime(self, *default):
         ""
         xt = self.attrs.get( 'xtime', None )
-        if xt == None or xt < 0:
+        if xt is None or xt < 0:
             if len( default ) > 0:
                 return default[0]
             raise KeyError( "runtime attribute not set" )

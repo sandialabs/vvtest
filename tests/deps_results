@@ -27,14 +27,12 @@ def write_testX_depends_on_testY( result=None ):
     if result != None:
         attr = '(result="'+result+'")'
 
-    util.writescript( 'testX.vvt', """
-        #!"""+sys.executable+"""
+    util.write_py_script( 'testX.vvt', """
         #VVT: depends on """+attr+""": testY
         import os, sys, time
         sys.stdout.write( 'time='+str(time.time())+os.linesep )
         """ )
-    util.writescript( 'testY.vvt', """
-        #!"""+sys.executable+"""
+    util.write_py_script( 'testY.vvt', """
         import os, sys, time
         raise Exception( 'fake exception' )
         """ )

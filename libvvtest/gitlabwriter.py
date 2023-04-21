@@ -8,8 +8,8 @@ import os, sys
 import time
 from os.path import join as pjoin
 
+from . import logger
 from . import outpututils
-print3 = outpututils.print3
 
 import gitinterface
 import gitresults
@@ -56,50 +56,50 @@ class GitLabWriter:
     def prerun(self, atestlist, rtinfo, verbosity):
         ""
         if self.outurl:
-            self._dispatch_submission( atestlist, rtinfo )
+            self._dispatch_submission( atestlist, rtinfo, logger.info )
             self.tlast = time.time()
 
     def midrun(self, atestlist, rtinfo):
         ""
         if self.outurl and time.time()-self.tlast > self.period:
-            self._dispatch_submission( atestlist, rtinfo )
+            self._dispatch_submission( atestlist, rtinfo, logger.xinfo )
             self.tlast = time.time()
 
     def postrun(self, atestlist, rtinfo, rtconfig=None):
         ""
         if self.outurl:
-            self._dispatch_submission( atestlist, rtinfo )
+            self._dispatch_submission( atestlist, rtinfo, logger.info )
         else:
-            self._write_files( atestlist, rtinfo )
+            self._write_files( atestlist, rtinfo, logger.info )
 
     def info(self, atestlist, rtinfo):
         ""
         if self.outurl:
-            self._dispatch_submission( atestlist, rtinfo )
+            self._dispatch_submission( atestlist, rtinfo, logger.info )
         else:
-            self._write_files( atestlist, rtinfo )
+            self._write_files( atestlist, rtinfo, logger.info )
 
-    def _write_files(self, atestlist, rtinfo):
+    def _write_files(self, atestlist, rtinfo, logfunc):
         ""
         if not os.path.isdir( self.outdir ):
             os.mkdir( self.outdir )
 
         try:
-            self._convert_files( self.outdir, atestlist, rtinfo )
+            self._convert_files( self.outdir, atestlist, rtinfo, logfunc )
         finally:
             self.permsetter.recurse( self.outdir )
 
-    def _convert_files(self, destdir, atestlist, rtinfo):
+    def _convert_files(self, destdir, atestlist, rtinfo, logfunc):
         ""
         tcaseL = atestlist.getActiveTests( self.sortspec )
 
-        print3( "Writing", len(tcaseL),
-                "tests in GitLab format to", destdir )
+        logfunc( "Writing", len(tcaseL),
+                 "tests in GitLab format to", destdir )
 
         conv = GitLabMarkDownConverter( self.testdir, destdir )
         conv.saveResults( tcaseL, rtinfo )
 
-    def _dispatch_submission(self, atestlist, rtinfo):
+    def _dispatch_submission(self, atestlist, rtinfo, logfunc):
         ""
         try:
             start,sfx,msg = make_submit_info( rtinfo, self.onopts, self.nametag )
@@ -109,14 +109,14 @@ class GitLabWriter:
             try:
                 rdir = gr.createBranchLocation( directory_suffix=sfx,
                                                 epochdate=epoch )
-                self._convert_files( rdir, atestlist, rtinfo )
+                self._convert_files( rdir, atestlist, rtinfo, logfunc )
                 gr.pushResults( msg )
             finally:
                 gr.cleanup()
 
         except Exception as e:
-            print3( '\n*** WARNING: error submitting GitLab results:',
-                    str(e), '\n' )
+            logger.warn( '\n*** WARNING: error submitting GitLab results:',
+                         str(e), '\n' )
 
     def _submission_epoch(self, start):
         ""

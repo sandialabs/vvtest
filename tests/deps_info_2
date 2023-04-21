@@ -21,8 +21,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_multiple_dep_matches(self):
         ""
-        util.writescript( 'testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testX.vvt', """
             #VVT: depends on : testY
             import os, glob
             import vvtest_util as vvt
@@ -39,13 +38,11 @@ class dependency_information( vtu.vvtestTestCase ):
             pat = os.path.join( vvt.DEPDIRMAP['testY'][1], 'Y2.out' )
             assert len( glob.glob( pat ) ) == 1
             """ )
-        util.writescript( 'sub1/testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'sub1/testY.vvt', """
             fp = open( 'Y1.out', 'w' )
             fp.close()
             """ )
-        util.writescript( 'sub2/testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'sub2/testY.vvt', """
             fp = open( 'Y2.out', 'w' )
             fp.close()
             """ )
@@ -59,8 +56,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_depdirs_in_subdirs(self):
         ""
-        util.writescript( 'tsrc/testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tsrc/testX.vvt', """
             #VVT: depends on : sub1/testY
             #VVT: depends on : sub2/testZ
             import os, glob
@@ -73,13 +69,11 @@ class dependency_information( vtu.vvtestTestCase ):
             fL = glob.glob( os.path.join( vvt.DEPDIRS[1], '*.out' ) )
             assert len(fL) == 1
             """ )
-        util.writescript( 'tsrc/sub1/testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tsrc/sub1/testY.vvt', """
             fp = open( 'Y.out', 'w' )
             fp.close()
             """ )
-        util.writescript( 'tsrc/sub2/testZ.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tsrc/sub2/testZ.vvt', """
             fp = open( 'Z.out', 'w' )
             fp.close()
             """ )
@@ -103,8 +97,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_depdirs_in_subdirs_of_a_subdir(self):
         ""
-        util.writescript( 'tsrc/topdir/testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tsrc/topdir/testX.vvt', """
             #VVT: depends on : sub1/testY
             #VVT: depends on : sub2/testZ
             import os, glob
@@ -117,13 +110,11 @@ class dependency_information( vtu.vvtestTestCase ):
             fL = glob.glob( os.path.join( vvt.DEPDIRS[1], '*.out' ) )
             assert len(fL) == 1
             """ )
-        util.writescript( 'tsrc/topdir/sub1/testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tsrc/topdir/sub1/testY.vvt', """
             fp = open( 'Y.out', 'w' )
             fp.close()
             """ )
-        util.writescript( 'tsrc/topdir/sub2/testZ.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'tsrc/topdir/sub2/testZ.vvt', """
             fp = open( 'Z.out', 'w' )
             fp.close()
             """ )

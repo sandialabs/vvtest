@@ -59,6 +59,10 @@ class TestCase:
         ""
         return len( self.deps )
 
+    def getDependencies(self):
+        ""
+        return self.deps
+
     def isBlocked(self):
         ""
         blocked,reason = self._get_blocking()

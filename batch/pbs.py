@@ -90,6 +90,10 @@ class BatchPBS:
             line = line.strip()
             # a line should be something like
             #     123456.ladmin1 field1 field2 field3 Q field6
+            # A real-life example from 2023-04-10:
+            #Job id            Name             User              Time Use S Queue
+            #----------------  ---------------- ----------------  -------- - -----
+            #9932285.foospam-* hello_world.sh   mswan                    0 W serial
             if line:
                 sL = line.split()
                 if len(sL) >= 6:
@@ -97,11 +101,12 @@ class BatchPBS:
                     # the output from qstat may return a truncated job id,
                     # so match the beginning of the incoming 'jobids' strings
                     for j in jobids:
-                        if j.startswith( jid ):
+                        is_truncated = (jid[-1] == "*")
+                        if j == jid or (is_truncated and j.startswith(jid[:-1])):
                             if st in ['R']:
-                                jobs[jid] = 'running'
+                                jobs[j] = 'running'
                             elif st in ['Q']:
-                                jobs[jid] = 'pending'
+                                jobs[j] = 'pending'
                             break
                 else:
                     err = '\n*** unexpected qstat output line: '+repr(line)

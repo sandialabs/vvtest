@@ -75,8 +75,7 @@ class process_group_execution( vtu.vvtestTestCase ):
 
     def test_running_a_script_with_group_exec_subprocess(self):
         ""
-        util.writescript( 'myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'myscript', """
             print ( 'hello from myscript' )
             """ )
         time.sleep(1)
@@ -89,8 +88,7 @@ class process_group_execution( vtu.vvtestTestCase ):
 
     def write_file_touch_script(self, scriptname):
         ""
-        util.writescript( scriptname, """
-            #!"""+sys.executable+"""
+        util.write_py_script( scriptname, """
             import os, time
             os.chdir( '"""+os.getcwd()+"""' )
             fp = open( 'touch1.txt', 'w' ) ; fp.close()
@@ -128,8 +126,7 @@ class process_group_execution( vtu.vvtestTestCase ):
         ""
         self.write_file_touch_script( 'script2' )
         script2 = os.path.abspath( 'script2' )
-        util.writescript( 'script1', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'script1', """
             import subprocess
             p = subprocess.Popen( '"""+script2+"""', shell=True )
             x = p.wait()
@@ -151,8 +148,7 @@ class process_group_execution( vtu.vvtestTestCase ):
 
     def write_touch_script_that_ignores_signals(self, scriptname):
         ""
-        util.writescript( scriptname, """
-            #!"""+sys.executable+"""
+        util.write_py_script( scriptname, """
             import os, time, signal
             os.chdir( '"""+os.getcwd()+"""' )
 
@@ -181,8 +177,7 @@ class process_group_execution( vtu.vvtestTestCase ):
         ""
         self.write_touch_script_that_ignores_signals( 'script2' )
         script2 = os.path.abspath( 'script2' )
-        util.writescript( 'script1', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'script1', """
             import subprocess
             p = subprocess.Popen( '"""+script2+"""', shell=True )
             x = p.wait()
@@ -205,8 +200,7 @@ class process_group_execution( vtu.vvtestTestCase ):
         ""
         self.write_touch_script_that_ignores_signals( 'script2' )
         script2 = os.path.abspath( 'script2' )
-        util.writescript( 'script1', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'script1', """
             import subprocess
             p = subprocess.Popen( '"""+script2+"""', shell=True )
             x = p.wait()
@@ -247,8 +241,7 @@ class integration_signalling_tests( vtu.vvtestTestCase ):
             assert x != None
             sys.exit( abs(x) )
             """ )
-        util.writescript( 'subscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'subscript', """
             import time
             fp = open( 'touch1.txt', 'w' ) ; fp.close()
             time.sleep(10)

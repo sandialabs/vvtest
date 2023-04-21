@@ -149,13 +149,10 @@ class integration_tests( vtu.vvtestTestCase ):
 
     def test_save_results_with_multiple_parameterize(self):
         ""
-        util.writefile( "cat.xml", """
-            <rtest name="cat">
-            <parameterize direction="front rear"/>
-            <parameterize side="left right"/>
-                <execute/>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "cat.vvt", """
+            #VVT: parameterize : direction = front rear
+            #VVT: parameterize : side = left right
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, npass=4 )
@@ -178,7 +175,6 @@ class integration_tests( vtu.vvtestTestCase ):
             #VVT: analyze: -a
             pass
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=5, npass=5 )
@@ -196,16 +192,11 @@ class integration_tests( vtu.vvtestTestCase ):
 
     def test_save_results_with_zipped_parameterize_and_an_analyze(self):
         ""
-        util.writefile( "cat.xml", """
-            <rtest name="cat">
-            <parameterize direction="front rear"
-                          side="left right"/>
-                <execute/>
-                <analyze>
-                    echo "hello"
-                </analyze>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "cat.vvt", """
+            #VVT: parameterize : direction,side = front,left rear,right
+            #VVT: analyze : --analyze
+            pass
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=3, npass=3 )
@@ -273,12 +264,9 @@ class integration_tests( vtu.vvtestTestCase ):
                 'two/circle' )
 
         # increase the run time of one test and run vvtest again
-        util.writefile( "one/dog.xml", """
-            <rtest name="dog">
-                <execute>
-                    sleep 4
-                </execute>
-            </rtest>
+        util.writefile( "one/dog.vvt", """
+            import time
+            time.sleep(4)
             """ )
         time.sleep(1)
 

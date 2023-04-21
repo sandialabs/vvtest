@@ -21,26 +21,21 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
 
     def test_analyze_tests_dont_wait_until_end_to_run(self):
         ""
-        util.writefile( 'test1.xml', """
-            <rtest name="test1">
-              <parameterize timestep="1 2"/>
-              <execute>
-                sleep 1
-                touch afile.$timestep
-              </execute>
-              <analyze>
-                 ls ../test1.timestep=1/afile.1 || exit 1
-                 ls ../test1.timestep=2/afile.2 || exit 1
-              </analyze>
-            </rtest>""" )
-        util.writefile( 'test2.xml', """
-            <rtest name="test2">
-              <execute>
-                sleep 10
-                echo "that was a nice nap"
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'test1.vvt', """
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import sys, os, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                with open( 'afile.'+vvt.timestep, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../test1.timestep=1/afile.1' )
+                assert os.path.exists( '../test1.timestep=2/afile.2' )
+            """ )
+        util.writefile( 'test2.vvt', """
+            import time
+            time.sleep(10)
+            """ )
 
         for batch in [False,True]:
 
@@ -56,40 +51,37 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
 
     def test_analyze_tests_dont_run_child_failed_previously(self):
         ""
-        fail_test_xml = """
-            <rtest name="atest">
-              <parameterize timestep="1 2"/>
-              <execute>
-                if ( "$timestep" == 2 ) then
-                  echo "fake failure"
-                  exit 1
-                else
-                  touch afile.$timestep
-                endif
-              </execute>
-              <analyze>
-                 ls ../atest.timestep=1/afile.1 || exit 1
-                 ls ../atest.timestep=2/afile.2 || exit 1
-              </analyze>
-            </rtest>"""
-        fixed_test_xml = """
-            <rtest name="atest">
-              <parameterize timestep="1 2"/>
-              <execute>
-                touch afile.$timestep
-              </execute>
-              <analyze>
-                 ls ../atest.timestep=1/afile.1 || exit 1
-                 ls ../atest.timestep=2/afile.2 || exit 1
-              </analyze>
-            </rtest>"""
-        time.sleep(1)
+        fail_test_vvt = """
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import sys, os, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                if vvt.timestep == '2':
+                    raise Exception( 'fake failure' )
+                else:
+                    with open( 'afile.'+vvt.timestep, 'wt' ):
+                        pass
+            else:
+                assert os.path.exists( '../atest.timestep=1/afile.1' )
+                assert os.path.exists( '../atest.timestep=2/afile.2' )
+            """
+        fixed_test_vvt = """
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import sys, os, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                with open( 'afile.'+vvt.timestep, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../atest.timestep=1/afile.1' )
+                assert os.path.exists( '../atest.timestep=2/afile.2' )
+            """
 
         for batch in [False,True]:
 
             vtu.remove_results()
 
-            util.writefile( 'atest.xml', fail_test_xml )
+            util.writefile( 'atest.vvt', fail_test_vvt )
             time.sleep(1)
 
             # the analyze should not run because a child fails
@@ -105,7 +97,7 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
             vrun.assertCounts( total=3, npass=1, fail=1, notrun=1 )
 
             # "fix" the failure
-            util.writefile( 'atest.xml', fixed_test_xml )
+            util.writefile( 'atest.vvt', fixed_test_vvt )
             time.sleep(1)
 
             # rerun the failure
@@ -121,37 +113,37 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
 
     def test_rerun_with_analyze_deps(self):
         ""
-        fail_xml_test = """
-            <rtest name="atest">
-              <parameterize timestep="1 2"/>
-              <execute>
-                sleep 5
-                touch afile.$timestep
-              </execute>
-              <analyze>
-                 ls ../atest.timestep=1/bfile.1 || exit 1
-                 ls ../atest.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>"""
-        fixed_xml_test = """
-            <rtest name="atest">
-              <parameterize timestep="1 2"/>
-              <execute>
-                sleep 5
-                touch bfile.$timestep
-              </execute>
-              <analyze>
-                 ls ../atest.timestep=1/bfile.1 || exit 1
-                 ls ../atest.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>"""
+        fail_test = """
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import sys, os, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                time.sleep(5)
+                with open( 'afile.'+vvt.timestep, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../atest.timestep=1/bfile.1' )
+                assert os.path.exists( '../atest.timestep=2/bfile.2' )
+            """
+        fixed_test = """
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import sys, os, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                time.sleep(5)
+                with open( 'bfile.'+vvt.timestep, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../atest.timestep=1/bfile.1' )
+                assert os.path.exists( '../atest.timestep=2/bfile.2' )
+            """
         time.sleep(1)
 
         for batch in [False,True]:
 
             vtu.remove_results()
 
-            util.writefile( 'atest.xml', fail_xml_test )
+            util.writefile( 'atest.vvt', fail_test )
             time.sleep(1)
             
             # the analyze should fail
@@ -159,7 +151,7 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
             vrun.assertCounts( total=3, npass=2, fail=1 )
 
             # "fix" the execute
-            util.writefile( 'atest.xml', fixed_xml_test )
+            util.writefile( 'atest.vvt', fixed_test )
             time.sleep(1)
             
             # the analyze test should NOT run at the same time as the children
@@ -172,20 +164,20 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
         make sure if a child test takes more processors than available, then
         the analyze will still wait for all the children to finish
         """
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize np="1 1 2 2" foo="bar baz bar baz"/>
-              <execute>
-                sleep 4
-                touch afile.$foo.$np
-              </execute>
-              <analyze>
-                 ls ../atest.foo=bar.np=1/afile.bar.1 || exit 1
-                 ls ../atest.foo=baz.np=1/afile.baz.1 || exit 1
-                 ls ../atest.foo=bar.np=2/afile.bar.2 || exit 1
-                 ls ../atest.foo=baz.np=2/afile.baz.2 || exit 1
-              </analyze>
-            </rtest>""" )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np,foo = 1,bar 1,baz 2,bar 2,baz
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                time.sleep(4)
+                with open( 'afile.'+vvt.foo+'.'+vvt.np, 'wt' ):
+                    pass
+            else:
+                assert os.path.exists( '../atest.foo=bar.np=1/afile.bar.1' )
+                assert os.path.exists( '../atest.foo=baz.np=1/afile.baz.1' )
+                assert os.path.exists( '../atest.foo=bar.np=2/afile.bar.2' )
+                assert os.path.exists( '../atest.foo=baz.np=2/afile.baz.2' )
+            """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-n 1' )
@@ -195,23 +187,21 @@ class parameterize_analyze_dependency_handling( vtu.vvtestTestCase ):
         """
         analyze tests that have bad children are not pruned when using -i
         """
-        util.writefile( 'bad.xml', """
-            <rtest name="bad">
-              <keywords> fast medium </keywords>
-              <parameterize timestep="1 2"/>
-              <execute>
-                if ( "$timestep" == 2 ) then
-                  echo "fake failure"
-                  exit 1
-                else
-                  touch bfile.$timestep
-                endif
-              </execute>
-              <analyze>
-                 ls ../bad.timestep=1/bfile.1 || exit 1
-                 ls ../bad.timestep=2/bfile.2 || exit 1
-              </analyze>
-            </rtest>""" )
+        util.writefile( 'bad.vvt', """
+            #VVT: keywords = fast medium
+            #VVT: parameterize : timestep = 1 2
+            #VVT: analyze : --analyze
+            import os, sys, time, vvtest_util as vvt
+            if '--analyze' not in sys.argv[1:]:
+                if vvt.timestep == '2':
+                    raise Exception( 'fake failure' )
+                else:
+                    with open( 'bfile.'+vvt.timestep, 'wt' ):
+                        pass
+            else:
+                assert os.path.exists( '../bad.timestep=1/bfile.1' )
+                assert os.path.exists( '../bad.timestep=2/bfile.2' )
+            """ )
         time.sleep(1)
 
         # the analyze should be run here

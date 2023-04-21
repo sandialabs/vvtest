@@ -114,62 +114,48 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         ""
         tlist = MockTestList( self.getFakeTestList() )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr._write_summary( tlist, 'Test list:' )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr._write_summary, tlist, 'Test list:' )
 
-        val = sio.getvalue()
-        print3( val )
-        self.assert_test_list_summary( val )
-        assert 'Test list:' in val
-        assert 'Summary:' not in val
+        print3( out )
+        self.assert_test_list_summary( out )
+        assert 'Test list:' in out
+        assert 'Summary:' not in out
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr._write_summary( tlist, 'Summary:' )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr._write_summary, tlist, 'Summary:' )
 
-        val = sio.getvalue()
-        self.assert_test_list_summary( val )
-        assert 'Test list:' not in val
-        assert 'Summary:' in val
+        self.assert_test_list_summary( out )
+        assert 'Test list:' not in out
+        assert 'Summary:' in out
 
     def test_writing_test_lists_at_different_levels(self):
         ""
         tlist = MockTestList( self.getFakeTestList() )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr._write_test_list_results( tlist, 0 )
-        val = sio.getvalue()
-        cnts = vtu.parse_vvtest_counts( val )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr._write_test_list_results, tlist, 0 )
+        cnts = vtu.parse_vvtest_counts( out )
         assert cnts['total'] == 0
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr._write_test_list_results( tlist, 1 )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_nonpass( val )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr._write_test_list_results, tlist, 1 )
+        self.assert_test_list_counts_for_nonpass( out )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
+        conwr = ConsoleWriter( os.getcwd() )
         conwr.setMaxNonPass( 3 )
-        conwr._write_test_list_results( tlist, 1 )
-        val = sio.getvalue()
-        print3( val )
-        cnts = vtu.parse_vvtest_counts( val )
+        rtn,out,err = util.call_capture_output( conwr._write_test_list_results, tlist, 1 )
+        print3( out )
+        cnts = vtu.parse_vvtest_counts( out )
         assert cnts['total'] == 3
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr._write_test_list_results( tlist, 2 )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_active( val )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr._write_test_list_results, tlist, 2 )
+        self.assert_test_list_counts_for_active( out )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr._write_test_list_results( tlist, 3 )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_all( val )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr._write_test_list_results, tlist, 3 )
+        self.assert_test_list_counts_for_all( out )
 
     def test_prerun_console_output(self):
         ""
@@ -182,64 +168,52 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         assert consolewriter.get_prerun_list_level( 0, 2 ) == 3
         assert consolewriter.get_prerun_list_level( 1, 2 ) == 3
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr.prerun( tlist, RuntimeInfo(), 0 )
-        val = sio.getvalue()
-        cnts = vtu.parse_vvtest_counts( val )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, RuntimeInfo(), 0 )
+        cnts = vtu.parse_vvtest_counts( out )
         assert cnts['total'] == 0
-        self.assert_test_list_summary( val )
-        assert 'Test list:' in val and 'Summary:' not in val
+        self.assert_test_list_summary( out )
+        assert 'Test list:' in out and 'Summary:' not in out
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr.prerun( tlist, RuntimeInfo(), 1 )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_active( val )
-        assert 'Test list:' in val and 'Summary:' not in val
-        self.assert_test_list_summary( val )
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, RuntimeInfo(), 1 )
+        self.assert_test_list_counts_for_active( out )
+        assert 'Test list:' in out and 'Summary:' not in out
+        self.assert_test_list_summary( out )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd(), verbose=2 )
-        conwr.prerun( tlist, RuntimeInfo(), 1 )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_all( val )
-        assert 'Test list:' in val and 'Summary:' not in val
-        self.assert_test_list_summary( val )
+        conwr = ConsoleWriter( os.getcwd(), verbose=2 )
+        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, RuntimeInfo(), 1 )
+        self.assert_test_list_counts_for_all( out )
+        assert 'Test list:' in out and 'Summary:' not in out
+        self.assert_test_list_summary( out )
 
     def test_postrun_console_output(self):
         ""
         tlist = MockTestList( self.getFakeTestList() )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
-        conwr.postrun( tlist, RuntimeInfo() )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_nonpass( val )
-        self.assert_test_list_summary( val )
-        assert 'Test list:' not in val and 'Summary:' in val
+        conwr = ConsoleWriter( os.getcwd() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
+        self.assert_test_list_counts_for_nonpass( out )
+        self.assert_test_list_summary( out )
+        assert 'Test list:' not in out and 'Summary:' in out
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd(), verbose=1 )
-        conwr.postrun( tlist, RuntimeInfo() )
-        val = sio.getvalue()
-        self.assert_test_list_counts_for_active( val )
-        self.assert_test_list_summary( val )
-        assert 'Test list:' not in val and 'Summary:' in val
+        conwr = ConsoleWriter( os.getcwd(), verbose=1 )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
+        self.assert_test_list_counts_for_active( out )
+        self.assert_test_list_summary( out )
+        assert 'Test list:' not in out and 'Summary:' in out
 
     def test_no_postrun_output_if_no_active_tests(self):
         ""
         tlist = MockTestList( [ self.makeTest( 'skip' ) ] )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
+        conwr = ConsoleWriter( os.getcwd() )
         tm = time.time()
-        conwr.postrun( tlist, RuntimeInfo() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
 
-        val = sio.getvalue()
-        print3( val )
-        assert 'Summary:' not in val
-        assert '=================' not in val
+        print3( out )
+        assert 'Summary:' not in out
+        assert '=================' not in out
 
     def test_postrun_console_output_with_all_tests_passing_except_last(self):
         ""
@@ -248,14 +222,12 @@ class consolue_output_tests( vtu.vvtestTestCase ):
                                 self.makeTest( 'pass' ),
                                 self.makeTest( 'fail' ) ] )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd() )
+        conwr = ConsoleWriter( os.getcwd() )
         conwr.setMaxNonPass( 2 )
-        conwr.postrun( tlist, RuntimeInfo() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
 
-        val = sio.getvalue()
-        print3( val )
-        cntD = vtu.parse_vvtest_counts( val )
+        print3( out )
+        cntD = vtu.parse_vvtest_counts( out )
         assert cntD['total'] == 1
 
     def test_postrun_listing_is_same_as_info(self):
@@ -265,33 +237,25 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         tm = time.time()
         rtinfo = RuntimeInfo( finishepoch=tm-10, startepoch=tm )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd(), verbose=0 )
-        conwr.postrun( tlist, rtinfo )
-        val1 = sio.getvalue()
+        conwr = ConsoleWriter( os.getcwd(), verbose=0 )
+        rtn,out1,err = util.call_capture_output( conwr.postrun, tlist, rtinfo )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd(), verbose=0 )
-        conwr.info( tlist, rtinfo )
-        val2 = sio.getvalue()
+        conwr = ConsoleWriter( os.getcwd(), verbose=0 )
+        rtn,out2,err = util.call_capture_output( conwr.info, tlist, rtinfo )
 
-        self.assert_test_list_counts_for_nonpass( val1 )
-        self.assert_test_list_counts_for_nonpass( val2 )
+        self.assert_test_list_counts_for_nonpass( out1 )
+        self.assert_test_list_counts_for_nonpass( out2 )
 
         # now bump the verbosity
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd(), verbose=1 )
-        conwr.postrun( tlist, rtinfo )
-        val1 = sio.getvalue()
+        conwr = ConsoleWriter( os.getcwd(), verbose=1 )
+        rtn,out1,err = util.call_capture_output( conwr.postrun, tlist, rtinfo )
 
-        sio = StringIO()
-        conwr = ConsoleWriter( sio, os.getcwd(), verbose=1 )
-        conwr.info( tlist, rtinfo )
-        val2 = sio.getvalue()
+        conwr = ConsoleWriter( os.getcwd(), verbose=1 )
+        rtn,out2,err = util.call_capture_output( conwr.info, tlist, rtinfo )
 
-        self.assert_test_list_counts_for_active( val1 )
-        self.assert_test_list_counts_for_active( val2 )
+        self.assert_test_list_counts_for_active( out1 )
+        self.assert_test_list_counts_for_active( out2 )
 
     def test_no_normal_console_output_when_another_output_is_requested(self):
         ""

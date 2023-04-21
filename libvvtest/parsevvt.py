@@ -11,11 +11,13 @@ import re
 import shlex
 import subprocess
 import json
+from contextlib import contextmanager
 
 from .errors import TestSpecError
 from . import timehandler
 from .testspec import TestSpec
 from .depend import DependencyPattern
+from .testid import TestID
 
 from .ScriptReader import ScriptReader, check_parse_attributes_section
 
@@ -50,7 +52,6 @@ class ScriptTestParser:
         self.fpath = filepath
 
         self.root = rootpath or '.'
-        # print ( 'magic: parser, root', self.root, 'fpath', self.fpath )
 
         self.platname = platname or platform.uname()[0]
         self.optionlist = optionlist
@@ -78,6 +79,7 @@ class ScriptTestParser:
     def parseTestInstance(self, tspec):
         ""
         self.parse_enable        ( tspec )
+        self.parse_skipif        ( tspec )
         self.parse_keywords      ( tspec )
         self.parse_working_files ( tspec )
         self.parse_timeouts      ( tspec )
@@ -140,8 +142,16 @@ class ScriptTestParser:
             #VVT: parameterize (int,float) : foo,bar = 1,2 8,5
             #VVT: parameterize (float) : A,B = 1,2 3,4
             #VVT: parameterize (str,float,str) : X,Y,Z = 1,2,3 4,5,6
+
+        Returns a ParameterSet instance and, in the case of a generator, a
+        dependency map whose keys are
+            ( test name, param dict as a list of tuples with key & values always str )
+        and values are
+            { dependency test name: dependency param dict with key & values always str }
         """
         pset = ParameterSet()
+        depmap = None
+
         tmap = {}
 
         for spec in self.itr_specs( testname, 'parameterize' ):
@@ -161,9 +171,10 @@ class ScriptTestParser:
                                 'generator attribute', line=spec.lineno )
 
                 fname = os.path.join( self.root, self.fpath )
-                nameL,valL = generate_parameters( fname, spec.value,
-                                                  testname, self.platname,
-                                                  spec.lineno )
+                nameL,valL,depmap = generate_parameters(
+                                        fname, spec.value,
+                                        testname, self.platname,
+                                        spec.lineno )
                 valL,typmap = types_and_forced_values( nameL, valL,
                                                        self.force, spec.lineno )
 
@@ -181,7 +192,7 @@ class ScriptTestParser:
 
         pset.setParameterTypeMap( tmap )
 
-        return pset
+        return pset,depmap
 
     def parse_analyze(self, testname):
         """
@@ -495,6 +506,36 @@ class ScriptTestParser:
                     dpat = DependencyPattern( depname, exp, wx )
                     tspec.addDependencyPattern( dpat )
 
+    def parse_skipif(self, tspec):
+        """
+        Parse syntax that will skip this test by python expression.
+
+            # VVT: skipif [(reason=text)] : <python_expression>
+
+            # VVT: skipif: True
+            # VVT: skipif: os.getenv("SNLSYSTEM") == "tlcc2"
+            # VVT: skipif: not importable("numpy")
+            # VVT: skipif (reason=some reason) : some_expression
+
+        """
+        testname = tspec.getName()
+        for spec in self.itr_specs(testname, "skipif"):
+            if not spec.value:
+                raiseError("no skipif expression at line", spec.lineno)
+            reason = None
+            if spec.attrs:
+                check_allowed_attrs(spec.attrs, spec.lineno, 'reason')
+                reason = spec.attrs.get("reason")
+            skip = evaluate_boolean_expression(spec.value)
+            if skip is None:
+                raiseError(
+                    "failed to evaluate the expression {0!r}".format(spec.value),
+                    spec.lineno,
+                )
+            if skip:
+                reason = reason or "{0} evaluated to True".format(spec.value)
+                tspec.setSkippedReason(reason)
+
     def parse_preload_label(self, tspec):
         """
         #VVT: preload (filters) : label
@@ -626,51 +667,84 @@ def generate_parameters( testfile, gencmd, testname, platname, lineno ):
 
     out = run_generator_prog( cmdL, gencmd, xcute )
 
-    try:
-        plist = json.loads( out.strip() )
-    except Exception as e:
-        raiseError( 'from line '+str(lineno)+',',
-                    'could not load generator output (expected a ' + \
-                    'JSON encoded list of dictionaries):',
-                    '\n    output = '+repr(out.strip()),
-                    '\n    error  = '+str(e) )
+    plist,deplist = parse_generator_output( out, lineno )
 
     check_for_rectangular_matrix( plist, lineno )
-
-    if sys.version_info[0] < 3:
-        plist = remove_unicode( plist )
+    depmap = create_dependency_map( testname, plist, deplist, lineno )
 
     nameL, valL = make_names_and_value_lists( plist, lineno )
 
     check_special_parameters( nameL, valL, lineno )
 
-    return nameL,valL
+    return nameL,valL,depmap
 
 
-def remove_unicode( plist ):
+def parse_generator_output( out, lineno ):
     """
-    This function assumes a list of dictionaries.
+    expect a json list, optionally followed in a separate line by a json list
+
+        [ {'A':'val1'}, {'A':'val2'} ]
+    or
+        [ {'A':'val1'}, {'A':'val2'}, {'A':'val3'} ]
+        [ string pattern, None, { 'B':{'foo':42} } ]
     """
-    new_plist = []
+    plist = None
+    deplist = None
+
     try:
-        for D in plist:
-            newD = {}
-            for k,v in D.items():
-                if type(k) == unicode:
-                    k = str(k)
-                if type(v) == unicode:
-                    v = str(v)
-                newD[k] = v
-            new_plist.append( newD )
+        for line in out.splitlines():
+            line = line.strip()
+            if line:
+                if plist is None:
+                    plist = json.loads( line )
+                elif deplist is None:
+                    deplist = json.loads( line )
 
     except Exception as e:
-        raiseError( 'not done' )
+        raiseError( 'from line '+str(lineno)+',',
+                    'could not load generator output (expected one or two ' + \
+                    'JSON encoded lists):',
+                    '\n    output = '+repr(out.strip()),
+                    '\n    error  = '+str(e) )
 
-    return new_plist
+    if plist is None:
+        raiseError( 'at least one list expected from generator', line=lineno )
+
+    if sys.version_info[0] < 3:
+        plist = remove_unicode( plist, lineno )
+        deplist = remove_unicode( deplist, lineno )
+
+    return plist,deplist
+
+
+def remove_unicode( obj, lineno ):
+    ""
+    cpy = None
+    if obj is not None:
+        try:
+            cpy = unicode2str( obj )
+        except Exception as e:
+            raiseError( 'unicode removal failed', line=lineno )
+
+    return cpy
+
+
+def unicode2str( obj ):
+    ""
+    if type(obj) == unicode:
+        return str(obj)
+    elif type(obj) == list:
+        return [ unicode2str(obj2) for obj2 in obj ]
+    elif type(obj) == dict:
+        return dict( [ (unicode2str(k),unicode2str(v)) for k,v in obj.items() ] )
+    else:
+        return obj
 
 
 def types_and_forced_values( nameL, valL, force_params, lineno ):
-    ""
+    """
+    note that the values are changed into strings here, if necessary
+    """
     typmap = {}
     for i,n in enumerate(nameL):
         typ = type( valL[0][i] )  # representative value
@@ -685,12 +759,7 @@ def types_and_forced_values( nameL, valL, force_params, lineno ):
 
     new_valL = []
     for tup in valL:
-        new_tup = []
-        for v in tup:
-            if type(v) != str:
-                v = repr(v)
-            new_tup.append(v)
-        new_valL.append( new_tup )
+        new_valL.append( [ to_str(v) for v in tup ] )
 
     return new_valL,typmap
 
@@ -739,6 +808,99 @@ def check_for_rectangular_matrix( plist, lineno ):
 
     if errmsg:
         raiseError( errmsg, line=lineno )
+
+
+def check_deplist( deplist, required_length, lineno ):
+    ""
+    if type(deplist) != list:
+        raiseError( 'second generator object must be a list', line=lineno )
+
+    if len(deplist) != required_length:
+        raiseError( 'second generator list must have the same length as the first', line=lineno )
+
+    for obj in deplist:
+        if obj is None:
+            pass # ok
+        elif type(obj) == str:
+            pass # ok
+        elif type(obj) == dict:
+            if len(obj) != 1:
+                raiseError( 'dependency list dictionaries must have length one', line=lineno )
+            for k,v in obj.items():
+                if type(k) != str:
+                    raiseError( 'dependency list: items must be test name to param dict', line=lineno )
+                if type(v) != dict:
+                    raiseError( 'dependency list: items must be test name to param dict', line=lineno )
+                else:
+                    for k2,v2 in v.items():
+                        if type(k2) != str:
+                            raiseError( 'dependency list: malformed test name to '
+                                ' param dict,', v, line=lineno )
+                        if not allowable_variable(k2):
+                            raiseError( 'dependency list: invalid parameter name:',
+                                        repr(k2), line=lineno )
+                        if type(v2) not in [str,int,float]:
+                            raiseError( 'dependency list: invalid param value:',
+                                        v2, line=lineno )
+        else:
+            raiseError( 'invalid dependency list object,', type(obj), line=lineno )
+
+
+def to_str( obj ):
+    ""
+    if type(obj) == str:
+        return obj
+    else:
+        return repr(obj)
+
+
+def test_id_tuple( testname, test_params ):
+    ""
+    L = [testname]
+    for k,v in test_params.items():
+        L.append( (k,to_str(v)) )
+    return tuple(L)
+
+
+def create_dependency_map( testname, plist, deplist, lineno ):
+    ""
+    if deplist is None:
+        return None
+
+    check_deplist( deplist, len(plist), lineno )
+
+    depmap = {}
+
+    for i,params in enumerate(plist):
+        depobj = deplist[i]
+        key = test_id_tuple( testname, params )
+        if depobj is None:
+            pass  # skip
+        elif type(depobj) == str:
+            depmap[key] = depobj
+        else:
+            # depobj is testname to param dict
+            depname,pdict = list( depobj.items() )[0]
+            D = dict( [ (k,to_str(v)) for k,v in pdict.items() ] )
+            depmap[key] = { depname:D }
+
+    return depmap
+
+
+def add_generator_dependencies( tspec, depmap ):
+    ""
+    if depmap:
+
+        key = test_id_tuple( tspec.getName(), tspec.getParameters() )
+        pat = depmap.get( key, None )
+        if pat:
+            if type(pat) == str:
+                tspec.addDependencyPattern( DependencyPattern(pat) )
+            else:
+                dname,dparams = list( pat.items() )[0]
+                tid = TestID( dname, '', dparams, [], tspec.getIDTraits() )
+                mat = os.path.basename( tid.computeMatchString() )
+                tspec.addDependencyPattern( DependencyPattern(mat) )
 
 
 def make_names_and_value_lists( plist, lineno ):
@@ -795,7 +957,7 @@ def check_generator_value_types( name, vals, lineno ):
     ""
     ns = ni = nf = 0
     for v in vals:
-        if type(v) == type(''):
+        if type(v) == str:
             ns += 1
         elif type(v) == int:
             ni += 1
@@ -1196,3 +1358,24 @@ def testname_ok( attrs, tname, lineno ):
                             line=lineno )
 
     return ok
+
+
+def importable(module):
+    try:
+        __import__(module)
+    except (ModuleNotFoundError, ImportError):
+        return False
+    return True
+
+
+def safe_eval(expression):
+    globals = {"os": os, "sys": sys, "importable": importable}
+    return eval(expression, globals, {})
+
+
+def evaluate_boolean_expression(expression):
+    try:
+        result = safe_eval(expression)
+    except Exception:
+        return None
+    return bool(result)

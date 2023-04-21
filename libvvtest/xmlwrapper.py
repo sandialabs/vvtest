@@ -149,8 +149,7 @@ class XmlNode:
 
 def printXmlNode(nd, indent=''):
     if nd.name != None:
-      print3( indent + nd.name, str(nd.line_no) + ':',
-              str(nd.attrs), nd.content )
+      print( indent + nd.name + str(nd.line_no) + ':' + str(nd.attrs) + nd.content )
       for kid in nd.kids:
         printXmlNode( kid, indent + '  ' )
 
@@ -247,8 +246,3 @@ def recurse_construct_ET_to_XmlNode( parent_wrapper_node, ET_node ):
         newnd.addSubNode( subnd )
 
     return newnd
-
-
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(x) for x in args ] ) + '\n' )
-    sys.stdout.flush()

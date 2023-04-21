@@ -22,7 +22,7 @@ bashexec = os.path.join( trigutil.trigdir, 'bashexec' )
 
 #######################################################################
 
-class catchall( unittest.TestCase ):
+class suite( unittest.TestCase ):
 
     def setUp(self):
         ""
@@ -39,8 +39,7 @@ class catchall( unittest.TestCase ):
 
     def test_setting_a_PATH_directory(self):
         ""
-        util.writescript( 'bin/myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'bin/myscript', """
             import os, sys
             sys.stdout.write( 'hello from myscript'+os.linesep )
             sys.stdout.flush()
@@ -57,14 +56,12 @@ class catchall( unittest.TestCase ):
 
     def test_using_PATH_values_preserves_order(self):
         ""
-        util.writescript( 'bin1/myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'bin1/myscript', """
             import os, sys
             sys.stdout.write( 'hello script one'+os.linesep )
             sys.stdout.flush()
             """ )
-        util.writescript( 'bin2/myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'bin2/myscript', """
             import os, sys
             sys.stdout.write( 'hello script two'+os.linesep )
             sys.stdout.flush()
@@ -86,8 +83,7 @@ class catchall( unittest.TestCase ):
 
     def test_arguments_with_spaces_are_preserved(self):
         ""
-        util.writescript( 'myscript', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'myscript', """
             import os, sys
             nargs = len( sys.argv[1:] )
             sys.stdout.write( 'num arguments '+str(nargs)+os.linesep )

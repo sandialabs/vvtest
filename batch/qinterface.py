@@ -110,7 +110,10 @@ class BatchQueueInterface:
             fp.write( '\n'.join( bufL ) + '\n' )
 
     def submitJob(self, workdir, outfile, scriptname):
-        ""
+        """
+        returns batch system jobid and info string if successful, or None
+        and an error message if unsuccessful
+        """
         cwd = os.getcwd()
         os.chdir( workdir )
         try:
@@ -119,13 +122,12 @@ class BatchQueueInterface:
             os.chdir( cwd )
 
         if jobid is None:
-            print3( cmd+'\n'+out )
-            print3( '*** Batch submission failed or could not parse '
-                    'output to get job id' )
+            out = "{0}\n{1}\n{2}".format( cmd, out,
+                "Batch submission failed or could not parse output to get job id" )
         else:
-            print3( "Job script", scriptname, "submitted with id", jobid )
+            out = "Job script {0} submitted with id {1}".format(scriptname, jobid)
 
-        return jobid
+        return jobid,out
 
     def queryJobs(self, jobidL):
         """
@@ -146,9 +148,10 @@ class BatchQueueInterface:
 
     def cancelJobs(self, jobidL):
         ""
-        if hasattr( self.batch, 'cancel' ):
-            print3( '\nCancelling jobs:', jobidL )
-            for jid in jobidL:
+        jids = list( filter( lambda jid: jid is not None, jobidL ) )
+        if len(jids) > 0 and hasattr( self.batch, 'cancel' ):
+            print ( "\nCancelling jobs: {0}".format(" ".join(str(_) for _ in jids)) )
+            for jid in jids:
                 self.batch.cancel( jid )
 
 
@@ -161,8 +164,3 @@ def extract_non_None_job_ids( jobidL ):
             non_None.append( jobid )
 
     return non_None
-
-
-def print3( *args ):
-    sys.stdout.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    sys.stdout.flush()

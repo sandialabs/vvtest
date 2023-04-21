@@ -24,8 +24,7 @@ class bindir_tests( vtu.vvtestTestCase ):
         # just to make sure an auto bin dir search is not done
         os.mkdir( 'bin' )
 
-        util.writescript( 'mybin/myprog', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'mybin/myprog', """
             print ( 'running myprog' )
             """ )
         util.writefile( 'testA.vvt', """
@@ -35,13 +34,6 @@ class bindir_tests( vtu.vvtestTestCase ):
             sys.stdout.flush()
             subprocess.check_call( vvt.PROJECT+"/myprog", shell=True )
             """ )
-        util.writefile( 'testB.xml', """
-            <rtest name="testB">
-                <execute> echo "bindir= $PROJECT" || exit 1
-                          $PROJECT/myprog || exit 1
-                </execute>
-            </rtest>
-            """ )
 
         for batch in [False,True]:
 
@@ -50,17 +42,14 @@ class bindir_tests( vtu.vvtestTestCase ):
                 vtu.remove_results()
 
                 vrun = vtu.runvvtest( bdir+' mybin', batch=batch )
-                vrun.assertCounts( total=2, npass=2 )
+                vrun.assertCounts( total=1, npass=1 )
 
                 assert len( util.grepfiles( 'running myprog',
                                     'TestResults*/testA/execute.log' ) ) == 1
-                assert len( util.grepfiles( 'running myprog',
-                                    'TestResults*/testB/execute.log' ) ) == 1
 
                 L = vrun.greplogs( 'bindir=' )
-                assert len(L) == 2
+                assert len(L) == 1
                 assert L[0].split('=',1)[1].strip() == '../../mybin'
-                assert L[1].split('=',1)[1].strip() == '../../mybin'
 
 
 ########################################################################

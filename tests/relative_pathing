@@ -96,8 +96,7 @@ class suite( vtu.vvtestTestCase ):
 
 def write_use_case_files( topdir ):
     ""
-    util.writescript( pjoin(topdir, 'bin/ascript'), """
-        #!"""+sys.executable+"""
+    util.write_py_script( pjoin(topdir, 'bin/ascript'), """
         print ( 'running ascript' )
         """ )
 

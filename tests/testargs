@@ -21,20 +21,11 @@ class test_arguments( vtu.vvtestTestCase ):
 
     def test_use_command_line_option_to_add_test_script_options(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize nx="1 4"/>
-              <execute>
-                echo "script args $argv"
-              </execute>
-            </rtest>""" )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.writefile( 'atest.vvt', """
             #VVT: parameterize : planet=earth mars
             import sys
             print ( 'script args '+' '.join( sys.argv[1:] ) )
             """ )
-        time.sleep(1)
 
         testargs = '--test-args=--dummy --test-args=foo'
 
@@ -43,24 +34,21 @@ class test_arguments( vtu.vvtestTestCase ):
             vtu.remove_results()
 
             vrun = vtu.runvvtest( testargs, batch=batch )
-            vrun.assertCounts( total=4, npass=4 )
-            assert vrun.getTestIds() == [ 'atest.nx=1',
-                                          'atest.nx=4',
-                                          'btest.planet=earth',
-                                          'btest.planet=mars' ]
+            vrun.assertCounts( total=2, npass=2 )
+            assert vrun.getTestIds() == [ 'atest.planet=earth',
+                                          'atest.planet=mars' ]
 
-            assert vrun.countGrepLogs( 'script args *--dummy *foo' ) == 4
+            assert vrun.countGrepLogs( 'script args *--dummy *foo' ) == 2
 
             tdir = vrun.resultsDir()
 
             vrun = vtu.runvvtest( testargs, '-R -p nx=4/planet=earth',
                                   batch=batch, chdir=tdir )
-            vrun.assertCounts( total=2, npass=2 )
+            vrun.assertCounts( total=1, npass=1 )
 
-            assert vrun.getTestIds() == [ 'atest.nx=4',
-                                          'btest.planet=earth' ]
+            assert vrun.getTestIds() == [ 'atest.planet=earth' ]
 
-            assert vrun.countGrepLogs( 'script args *--dummy *foo' ) == 4
+            assert vrun.countGrepLogs( 'script args *--dummy *foo' ) == 2
 
 
 ########################################################################

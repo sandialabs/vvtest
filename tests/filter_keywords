@@ -23,29 +23,19 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def write_ab_test_pair(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize nx="1 4"/>
-              <execute>
-                set echo
-                if ( "$nx" == 4 ) then
-                  exit 1
-                endif
-                unset echo
-              </execute>
-            </rtest>""" )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : nx = 1 4
+            import sys, vvtest_util as vvt
+            if vvt.nx == '4':
+                sys.exit(1)
+            """ )
 
-        util.writefile( 'btest.xml', """
-            <rtest name="btest">
-              <parameterize nx="1 4"/>
-              <execute>
-                set echo
-                if ( "$nx" == 4 ) then
-                  exit 1
-                endif
-                unset echo
-              </execute>
-            </rtest>""" )
+        util.writefile( 'btest.vvt', """
+            #VVT: parameterize : nx = 1 4
+            import sys, vvtest_util as vvt
+            if vvt.nx == '4':
+                sys.exit(1)
+            """ )
 
     def test_use_results_keyword_expression(self):
         ""
@@ -121,15 +111,11 @@ class filter_and_keywords( vtu.vvtestTestCase ):
             assert vrun.countTestLines( 'pass *btest.nx=1') == 1
             assert vrun.countTestLines( 'fail *btest.nx=4') == 1
 
-    def test_xml_test_filter_by_keyword_expression(self):
-        """
-        filter tests out by command line keyword expression
-        """
-        util.writefile( 'solar.xml', """
-            <rtest name="solar">
-              <keywords> earth mars </keywords>
-              <execute> echo "solar ran" </execute>
-            </rtest>""" )
+    def test_filter_by_command_line_keyword_expression(self):
+        ""
+        util.writefile( 'solar.vvt', """
+            #VVT: keywords : earth mars
+            """ )
 
         for batch in [False,True]:
 
@@ -149,39 +135,6 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
             vrun = vtu.runvvtest( '-w -k venus/mars', batch=batch )
             vrun.assertCounts( total=1, npass=1 )
-
-    def test_specifying_keywords_in_xml_files(self):
-        ""
-        util.writefile( 'bad3.xml', """
-            <rtest name="atest">
-              <keywords> junk1 ju/nk2 </keywords>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, vtu.parse_single_test_file, 'bad3.xml' )
-
-        util.writefile( 'ok1.xml', """
-            <rtest name="atest">
-              <keywords> junk1 junk2 </keywords>
-            </rtest>""" )
-
-        tspec = vtu.parse_single_test_file( 'ok1.xml' )
-        kL = tspec.getKeywords()
-        kL.sort()
-        assert kL == [ 'atest', 'junk1', 'junk2', 'ok1' ]
-
-        util.writefile( 'ok2.xml', """
-            <rtest name="atest">
-              <keywords> junk1 </keywords>
-              <execute name="exename"> # none </execute>
-              <keywords> junk2 </keywords>
-            </rtest>""" )
-
-        tspec = vtu.parse_single_test_file( 'ok2.xml' )
-        kL = tspec.getKeywords()
-        kL.sort()
-        assert kL == [ 'atest', 'exename', 'junk1', 'junk2', 'ok2' ]
-        assert tspec.hasKeyword('atest')
-        assert not tspec.hasKeyword('junk')
 
     def test_specifying_keywords_in_vvt_files(self):
         ""
@@ -203,20 +156,14 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def test_special_characters_in_keyword_handling(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <keywords> blah-1 foo.2 bar+3 baz=4 mars#5 sun%6
-                         pluto^7 venus:8 jupiter~9 jupiter@0 </keywords>
-              <execute> echo "hello" </execute>
-            </rtest>""" )
-        util.writefile( 'btest.vvt', """
+        util.writefile( 'atest.vvt', """
             #VVT: keywords : blah-1 foo.2 bar+3 baz=4 mars#5 sun%6
             #VVT::           pluto^7 venus:8 jupiter~9 jupiter@0
             """ )
 
         vrun = vtu.runvvtest( '-k pluto^7' )
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == ['atest','btest']
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == ['atest']
 
         vrun = vtu.runvvtest( '-w -k "foo or b\\$ar"', raise_on_error=False )
         assert vrun.x != 0
@@ -224,13 +171,11 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def test_script_test_filter_by_keyword_expression(self):
         ""
-        util.writescript( 'solar.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'solar.vvt', """
             #VVT: keywords : earth mars
             print ( 'solar ran' )
             """ )
-        util.writescript( 'galaxy.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'galaxy.vvt', """
             #VVT: parameterize : foo = bar baz
             #VVT: keywords (parameter="foo=bar"): earth
             #VVT: keywords (parameter="foo=baz"): mars
@@ -260,16 +205,13 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def test_script_test_filter_by_testname_and_keyword_simultaneously(self):
         ""
-        util.writescript( 'atest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'atest.vvt', """
             print ( 'executing test' )
             """ )
-        util.writescript( 'btest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'btest.vvt', """
             raise Exception( 'fake failure' )
             """ )
-        util.writescript( 'ctest.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'ctest.vvt', """
             print ( 'executing test' )
             """ )
 
@@ -293,17 +235,12 @@ class filter_and_keywords( vtu.vvtestTestCase ):
 
     def test_command_line_keyword_expression_globbing(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <keywords> foo-bar earth+moon </keywords>
-              <execute> echo "hello" </execute>
-            </rtest>""" )
-        util.writefile( 'btest.vvt', """
+        util.writefile( 'atest.vvt', """
             #VVT: keywords : foo-bar earth+moon
             """ )
 
         vrun = vtu.runvvtest( '-k "*-bar or earth+*"' )
-        vrun.assertCounts( total=2, npass=2 )
+        vrun.assertCounts( total=1, npass=1 )
 
 
 ########################################################################

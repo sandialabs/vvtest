@@ -573,8 +573,7 @@ class ScriptReader_include_directives( vtu.vvtestTestCase ):
         util.writefile( 'explode.txt', """
             #VVT: parameterize : fuse = 1 2 4 8 16 32 64 128 256
             """ )
-        util.writescript( 'script.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'script.vvt', """
             #VVT: include : subdir/directive_file.txt
             #VVT: link (parameters="size=2") : foo
             #VVT: link (parameters="size=1") : bar

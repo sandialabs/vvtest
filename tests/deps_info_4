@@ -21,8 +21,7 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_depdirs_are_available_when_rerunning_an_analyze(self):
         ""
-        util.writescript( 'testA.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testA.vvt', """
             #VVT: parameterize : value = 1 2
             #VVT: analyze : --analyze
 
@@ -48,16 +47,14 @@ class dependency_information( vtu.vvtestTestCase ):
 
     def test_depdirs_are_available_when_rerunning_a_test_with_a_dependency(self):
         ""
-        util.writescript( 'testX.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testX.vvt', """
             #VVT: depends on : testY
             import vvtest_util as vvt
             print ( 'DEPDIRS', vvt.DEPDIRS )
             assert len(vvt.DEPDIRS) == 1, 'DEPDIRS not length one'
             raise Exception( 'always fail' )
             """ )
-        util.writescript( 'testY.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'testY.vvt', """
             import vvtest_util as vvt
             assert len(vvt.DEPDIRS) == 0
             """ )

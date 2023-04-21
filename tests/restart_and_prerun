@@ -22,42 +22,7 @@ class restart_tests( vtu.vvtestTestCase ):
 
     def test_prerun_file_cleanout(self):
         ""
-        util.writefile( "clean.xml", """
-            <rtest name="clean">
-              <execute> <![CDATA[
-                foreach f ( `ls` )
-                  echo "existing file = $f"
-                end
-                set noclobber
-                echo "gen file contents" > generated_file.txt || exit 1
-              ]]>
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
-
-        for batch in [False,True]:
-
-            vtu.remove_results()
-
-            vrun = vtu.runvvtest( batch=batch )
-            vrun.assertCounts( total=1, npass=1 )
-
-            assert len( glob.glob( 'TestResults*/clean/generated_file.txt' ) ) == 1
-
-            # the generated file should be removed prior to running the script
-            vrun = vtu.runvvtest( '-R', batch=batch )
-            vrun.assertCounts( total=1, npass=1 )
-            assert vrun.countGrepLogs( 'existing*generated' ) == 0
-
-            # with -m option should fail because of "noclobber" in script
-            vrun = vtu.runvvtest( '-R -m', batch=batch )
-            vrun.assertCounts( total=1, fail=1 )
-            assert vrun.countGrepLogs( 'existing*generated' ) == 1
-
-    def test_prerun_file_cleanout_with_a_script_test(self):
-        ""
-        util.writescript( "clean.vvt", """
-            #!"""+sys.executable+"""
+        util.write_py_script( "clean.vvt", """
             import os
             for f in os.listdir('.'):
                 print ( 'existing file = '+f )
@@ -66,7 +31,6 @@ class restart_tests( vtu.vvtestTestCase ):
             fp.write( 'gen file contents' )
             fp.close()
             """ )
-        time.sleep(1)
 
         for batch in [False,True]:
 
@@ -89,17 +53,12 @@ class restart_tests( vtu.vvtestTestCase ):
 
     def test_prerun_file_cleanout_when_test_contains_a_soft_linked_directory(self):
         ""
-        util.writefile( 'softdir.xml', """
-            <rtest name="softdir">
-              <link_files> subdir </link_files>
-              <execute>
-                ls subdir/afile.txt || exit 1
-              </execute>
-            </rtest>""" )
-        util.writefile( 'subdir/afile.txt', """
-            contents of file
+        util.writefile( 'softdir.vvt', """
+            #VVT: link : subdir
+            import os
+            assert os.path.exists( 'subdir/afile.txt' )
             """ )
-        time.sleep(1)
+        util.writefile( 'subdir/afile.txt', 'contents\n' )
 
         for batch in [False,True]:
 

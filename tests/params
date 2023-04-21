@@ -15,12 +15,8 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.errors import TestSpecError
-from libvvtest.ScriptReader import ScriptReader
-import libvvtest.testcreator as testcreator
-import libvvtest.parsexml as parsexml
 import libvvtest.parsevvt as parsevvt
 from libvvtest.paramset import ParameterSet
 
@@ -29,11 +25,11 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_nominal_parameterize_usage(self):
         ""
-        util.writefile( 'basic.xml', """
-            <rtest name="basic">
-              <parameterize np="1 4 8"/>
-              <execute> echo "execute basic2 np = $np" </execute>
-            </rtest>""" )
+        util.writefile( 'basic.vvt', """
+            #VVT: parameterize : np = 1 4 8
+            import vvtest_util as vvt
+            print ( 'execute basic2 np = '+vvt.np )
+            """ )
         time.sleep(1)
 
         for batch in [False,True]:
@@ -96,12 +92,12 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_multiple_parameterize(self):
         ""
-        util.writefile( 'basic.xml', """
-            <rtest name="basic">
-              <parameterize np="1 4"/>
-              <parameterize dt="0.1 0.01"/>
-              <execute> echo "execute basic np = $np dt = $dt" </execute>
-            </rtest>""" )
+        util.writefile( 'basic.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: parameterize : dt = 0.1 0.01
+            import vvtest_util as vvt
+            print ( 'execute basic np = '+vvt.np+' dt = '+vvt.dt )
+            """ )
         time.sleep(1)
 
         for batch in [False,True]:
@@ -131,15 +127,13 @@ class parameter_tests( vtu.vvtestTestCase ):
             vrun = vtu.runvvtest( batch=batch )
             vrun.assertCounts( total=2, npass=2 )
 
-    def test_an_empty_parameterize(self):
+    def test_num_procs_is_always_available(self):
         ""
-        util.writefile( 'basic.xml', """
-            <rtest name="basic">
-              <keywords> foobar </keywords>
-              <parameterize/>
-              <execute> echo "execute basic3 np = $np" </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'basic.vvt', """
+            #VVT: keywords : foobar
+            import vvtest_util as vvt
+            print ( 'execute basic3 np = '+str(vvt.RESOURCE_np) )
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=1, npass=1 )
@@ -149,14 +143,6 @@ class parameter_tests( vtu.vvtestTestCase ):
 
         vtu.remove_results()
 
-        util.writefile( 'basic.xml', """
-          <rtest name="basic">
-            <keywords> foobar </keywords>
-            <parameterize testname="basic"/>
-            <execute> echo "execute basic3 np = $np" </execute>
-          </rtest>""")
-        time.sleep(1)
-
         vrun = vtu.runvvtest( '-k foobar' )
         vrun.assertCounts( total=1, npass=1 )
 
@@ -165,13 +151,12 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_filtering_out_by_parameter_on_a_subsequent_run(self):
         ""
-        util.writefile( 'params.xml', """
-            <rtest name="params">
-              <parameterize AA="1 2"/>
-              <parameterize BB="foo bar"/>
-              <execute> echo "params AA=$AA BB=$BB" </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'params.vvt', """
+            #VVT: parameterize : AA = 1 2
+            #VVT: parameterize : BB = foo bar
+            import vvtest_util as vvt
+            print ( 'params AA='+vvt.AA+' BB='+vvt.BB )
+            """ )
 
         vtu.runvvtest().assertCounts( total=4, npass=4 )
 
@@ -184,17 +169,18 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_that_an_analyze_section_will_have_the_parameters_available(self):
         ""
-        util.writefile( 'basic.xml', """
-            <rtest name="basic">
-              <parameterize np="1 4"/>
-              <parameterize dt="0.1 0.01"/>
-              <execute> echo "execute basic np = $np dt = $dt" </execute>
-              <analyze>
-                echo "access PARAM_np = $PARAM_np"
-                echo "access PARAM_dt = $PARAM_dt"
-              </analyze>
-            </rtest> """ )
-        time.sleep(1)
+        util.writefile( 'basic.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: parameterize : dt = 0.1 0.01
+            #VVT: analyze : --analyze
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv[1:]:
+                print ( 'access PARAM_np = '+' '.join(vvt.PARAM_np) )
+                print ( 'access PARAM_dt = '+' '.join(vvt.PARAM_dt) )
+            else:
+                print ( 'execute basic np = '+vvt.np+' dt = '+vvt.dt )
+            """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=5, npass=5 )
@@ -219,42 +205,47 @@ class parameter_tests( vtu.vvtestTestCase ):
 
         util.rmallfiles()
 
-        util.writefile( 'zip.xml', """
-            <rtest name="zip">
-              <parameterize np="1 4" dt="0.1 0.01"/>
-              <execute> echo "execute zip np = $np dt = $dt" </execute>
-              <analyze>
-                echo "access PARAM_dt_np = $PARAM_dt_np"
-              </analyze>
-            </rtest> """ )
+        util.writefile( 'zip.vvt', """
+            #VVT: parameterize : np,dt = 1,0.1 4,0.01
+            #VVT: analyze : --analyze
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv[1:]:
+                print ( 'access PARAM_np_dt = '+repr(vvt.PARAM_np_dt) )
+            else:
+                print ( 'execute zip np = '+vvt.np+' dt = '+vvt.dt )
+            """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=3, npass=3 )
         tdir = vrun.resultsDir()
 
-        lines = vrun.greplogs( 'access PARAM_dt_np' )
+        lines = vrun.greplogs( 'access PARAM_np_dt' )
         assert len(lines) == 1
-        assert lines[0].split('=')[1].split() == ['0.1/1','0.01/4']
+        obj = eval( lines[0].split('=')[1].strip() )
+        self.assertEqual( obj, [['1', '0.1'], ['4', '0.01']] )
 
         vrun = vtu.runvvtest( '-R', chdir=tdir+'/zip' )
         vrun.assertCounts( total=1, npass=1 )
 
-        lines = vrun.greplogs( 'access PARAM_dt_np' )
+        lines = vrun.greplogs( 'access PARAM_np_dt' )
         assert len(lines) == 1
-        assert lines[0].split('=')[1].split() == ['0.1/1','0.01/4']
+        obj = eval( lines[0].split('=')[1].strip() )
+        self.assertEqual( obj, [['1', '0.1'], ['4', '0.01']] )
 
     def test_complex_command_line_parameter_expression_with_rerun(self):
         ""
-        util.writefile( 'basic.xml', """
-            <rtest name="basic">
-              <parameterize isize="1 2 4"/>
-              <execute> echo "execute basic isize = $isize" </execute>
-              <analyze>
-                echo "access PARAM_isize = $PARAM_isize"
-              </analyze>
-            </rtest> """)
-        time.sleep(1)
+        util.writefile( 'basic.vvt', """
+            #VVT: parameterize : isize = 1 2 4
+            #VVT: analyze : --analyze
+            import sys
+            import vvtest_util as vvt
+            if '--analyze' in sys.argv[1:]:
+                print ( 'access PARAM_isize = '+' '.join(vvt.PARAM_isize) )
+            else:
+                print ( 'execute basic isize = '+vvt.isize )
+            """)
 
         for batch in [False,True]:
 
@@ -271,14 +262,6 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_that_an_analyze_sees_restricted_parameters(self):
         ""
-        util.writefile( 'foo.xml', """
-            <rtest name="foo">
-              <parameterize isize="1 2 4"/>
-              <execute> echo "execute isize = $isize" </execute>
-              <analyze>
-                echo "access PARAM_isize = $PARAM_isize"
-              </analyze>
-            </rtest> """ )
         util.writefile( 'bar.vvt', """
             #VVT: parameterize : isize = 1 2 4
             #VVT: analyze : --analyze
@@ -289,7 +272,6 @@ class parameter_tests( vtu.vvtestTestCase ):
             else:
                 print ( "execute isize = "+vvt.isize )
             """ )
-        time.sleep(1)
 
         def check_params( testname ):
             ""
@@ -304,15 +286,10 @@ class parameter_tests( vtu.vvtestTestCase ):
             vtu.remove_results()
 
             vrun = vtu.runvvtest( "-p 'isize<=2'", batch=batch )
-            vrun.assertCounts( total=6, npass=6 )
+            vrun.assertCounts( total=3, npass=3 )
             tdir = vrun.resultsDir()
 
-            check_params( 'foo' )
             check_params( 'bar' )
-
-            vrun = vtu.runvvtest( "-R", batch=batch, chdir=tdir+'/foo' )
-            vrun.assertCounts( total=1, npass=1 )
-            check_params( 'foo' )
 
             vrun = vtu.runvvtest( "-R", batch=batch, chdir=tdir+'/bar' )
             vrun.assertCounts( total=1, npass=1 )
@@ -320,27 +297,23 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_using_parameterize_with_script_test(self):
         ""
-        util.writescript( 'params1.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params1.vvt', """
             #VVT: parameterize : animal = dog cat
             import os
             print ( "hello from "+os.path.basename(os.getcwd()) )
             """ )
-        util.writescript( 'params2.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params2.vvt', """
             #VVT: parameterize : A = dog cat
             #VVT: parameterize : V = carrot celery
             import os
             print ( "hello from "+os.path.basename(os.getcwd()) )
             """ )
-        util.writescript( 'params3.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params3.vvt', """
             #VVT: parameterize : B,X = dog,carrot cat,celery
             import os
             print ( "hello from "+os.path.basename(os.getcwd()) )
             """ )
-        util.writescript( 'params4.vvt', """
-            #!"""+sys.executable+"""
+        util.write_py_script( 'params4.vvt', """
             #VVT: parameterize : C, Y, Z = 1 ,2,3  4,5,6
             #VVT::                         7 , 8 , 9   10, 11,12
             import os
@@ -447,12 +420,12 @@ class parameter_tests( vtu.vvtestTestCase ):
 
         # duplicates are now silently removed [Apr 2022]
         parser = parsevvt.ScriptTestParser( 'err4.vvt' )
-        pset = parser.parseParameterSet( 'err4' )
+        pset,_ = parser.parseParameterSet( 'err4' )
         self.assertEqual( pset.getParameters(), {('animal',): [['dog'], ['cat']]} )
 
         # duplicates are now silently removed [Apr 2022]
         parser = parsevvt.ScriptTestParser( 'err4b.vvt' )
-        pset = parser.parseParameterSet( 'err4b' )
+        pset,_ = parser.parseParameterSet( 'err4b' )
         self.assertEqual( pset.getParameters(),
             {('thing1', 'thing2'): [['dog', 'cat'], ['pig', 'cat']]} )
 
@@ -487,11 +460,6 @@ class parameter_tests( vtu.vvtestTestCase ):
 
     def test_for_invalid_parameters_expression(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize foo="bar baz"/>
-              <execute parameters="foo=b$ar"> echo "hello" </execute>
-            </rtest>""" )
         util.writefile( 'btest.vvt', """
             #VVT: parameterize : foo = bar baz
             #VVT: depends on (parameters="foo=b$ar") : blah
@@ -504,61 +472,23 @@ class parameter_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : foo = bar baz
             #VVT: depends on (parameters="foo=b*ar") : blah
             """ )
-        time.sleep(1)
 
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'atest.xml' )
         self.assertRaises( TestSpecError,
                            vtu.parse_single_test_file, 'btest.vvt' )
         assert len( vtu.create_tests_from_file( 'ctest.vvt' ) ) == 2
         self.assertRaises( TestSpecError,
                            vtu.parse_single_test_file, 'dtest.vvt' )
 
-    def test_for_duplicate_parameters_in_xml_form(self):
-        ""
-        util.writefile( 'err1.xml', """
-            <rtest name="err1">
-              <parameterize np="1 4 1"/>
-              <execute> echo "execute np = $np" </execute>
-            </rtest>""" )
-        util.writefile( 'ok1.xml', """
-            <rtest name="ok1">
-              <parameterize np="1 1" nt="2 4"/>
-              <execute> echo "execute np = $np" </execute>
-            </rtest>""" )
-        util.writefile( 'err2.xml', """
-            <rtest name="err2">
-              <parameterize np="1 2 1" nt="2 4 2"/>
-              <execute> echo "execute np = $np" </execute>
-            </rtest>""" )
-        time.sleep(1)
-
-        parser = parsexml.XMLTestParser( 'err1.xml' )
-        self.assertRaises( TestSpecError,
-                           parser.parseParameterSet, 'err1' )
-
-        parser = parsexml.XMLTestParser( 'ok1.xml' )
-        parser.parseParameterSet( 'ok1' )
-
-        parser = parsexml.XMLTestParser( 'err2.xml' )
-        self.assertRaises( TestSpecError,
-                           parser.parseParameterSet, 'err2' )
-
     def test_command_line_non_alphanumeric_parameter_values(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-                <parameterize foo="bar^6"/>
-                <execute> echo "hello" </execute>
-            </rtest>""" )
         util.writefile( 'btest.vvt', """
             #VVT: parameterize : foo = bar^6
             """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest( "-p foo=bar^6" )
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == ['atest.foo=bar^6', 'btest.foo=bar^6']
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == ['btest.foo=bar^6']
 
         vrun = vtu.runvvtest( "-w -p foo@=bar^6", raise_on_error=False )
         assert vrun.x != 0

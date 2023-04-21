@@ -8,8 +8,8 @@ import os, sys
 import time
 from os.path import join as pjoin
 
+from . import logger
 from . import outpututils
-print3 = outpututils.print3
 
 
 class JUnitWriter:
@@ -67,7 +67,7 @@ class JUnitWriter:
 
         tcaseL = atestlist.getActiveTests()
 
-        print3( "Writing", len(tcaseL), "tests to JUnit file", self.filename )
+        logger.info( "Writing", len(tcaseL), "tests to JUnit file", self.filename )
 
         parts = outpututils.partition_tests_by_result( tcaseL )
 

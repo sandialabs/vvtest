@@ -95,8 +95,6 @@ class JsonWriter:
             "release": uname[2],
             "version": uname[3],
             "arch": uname[4],
-            "SNLSYSTEM": os.getenv("SNLSYSTEM"),
-            "SNLCLUSTER": os.getenv("SNLCLUSTER"),
         }
 
         data["python"] = {

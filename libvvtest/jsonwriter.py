@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import zlib
+import io
 
 try:
     from shlex import quote
@@ -204,12 +205,12 @@ class JsonWriter:
         if logfile is None or not os.path.exists(logfile):
             log = ["Log file {0} not found!".format(logfile)]
         else:
-            log = open(logfile, errors="ignore").readlines()
+            log = io.open(logfile, errors="ignore").readlines()
         # Attempt to reconstruct the log file
         test_path = os.path.dirname(logfile)
         confile = os.path.join(test_path, name + ".con")
         if os.path.exists(confile):
-            con = open(confile, errors="ignore").readlines()
+            con = io.open(confile, errors="ignore").readlines()
             for (i, line) in enumerate(log):
                 if line.startswith("==> Starting"):
                     log = log[: i + 2] + con + log[i + 2 :]

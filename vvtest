@@ -40,10 +40,11 @@ windows_platform = platform.uname()[0].lower().startswith('win')
 
 
 class RuntimeData:
-    def __init__(self, curdir, exepath):
+    def __init__(self, argv, curdir, exepath):
         ""
         self.curdir  = curdir   # current working directory at vvtest startup
         self.exepath = exepath  # path to vvtest (without following soft link)
+        self.cmdargv = argv     # vvtest command line (just sys.argv)
 
         self.loc            = None   # Locator object
         self.userconfig     = None   # list of user config directories
@@ -72,7 +73,7 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     curdir = os.getcwd()
     start_epoch = time.time()
 
-    rtdata = RuntimeData( curdir, exepath )
+    rtdata = RuntimeData( argv, curdir, exepath )
 
     check_load_bootstrap_file( curdir, exepath )
 
@@ -84,7 +85,7 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     insert_configdirs_into_sys_path( configdirs )
     construct_runtime_config( rtdata, opts, optD )
     process_cache_file( rtdata, opts, optD )
-    construct_runtime_info( rtdata, argv, vvtestdir, start_epoch )
+    construct_runtime_info( rtdata, vvtestdir, start_epoch )
     create_configuration( rtdata.rtconfig, opts, optD, vvtestdir, configdirs )
 
     construct_platform( rtdata, opts, optD )
@@ -214,12 +215,12 @@ def check_options_not_allowed_for_restart( opts, optD ):
         raise FatalError( 'cannot use -g in a TestResults directory' )
 
 
-def construct_runtime_info( rtdata, argv, vvtestdir, start_epoch ):
+def construct_runtime_info( rtdata, vvtestdir, start_epoch ):
     ""
     from libvvtest.runinfo import RuntimeInfo
 
     rtinfo = RuntimeInfo( startepoch=start_epoch,
-                          cmdline=argv,
+                          cmdline=rtdata.cmdargv,
                           vvtestdir=vvtestdir,
                           curdir=rtdata.curdir )
 
@@ -771,7 +772,7 @@ def extract_test_files( param_dict, target_dir, rtdata ):
 
 def run_tests( opts, optD, rtdata ):
     ""
-    rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
+    rtdata.plugin.callPrologue( rtdata.cmdargv )
 
     tlist = rtdata.tlm.makeTestList()
 
@@ -805,7 +806,7 @@ def restart_tests( opts, optD, rtdata ):
     batchid = opts.batch_id
 
     if batchid is None:
-        rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
+        rtdata.plugin.callPrologue( rtdata.cmdargv )
 
     adjust_filter_settings_for_restart( opts, rtdata.rtconfig )
 
@@ -913,7 +914,7 @@ def information_output( opts, optD, rtdata ):
 
 def output_timings( opts, optD, rtdata ):
     ""
-    rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
+    rtdata.plugin.callPrologue( rtdata.cmdargv )
     tlist = rtdata.tlm.makeTestList()
 
     if not rtdata.isrestart:

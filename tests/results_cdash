@@ -60,10 +60,11 @@ class unit_tests( vtu.vvtestTestCase ):
                               hostname='sparky',
                               rundir='/path/to/testresultsdir',
                               finishepoch=tm+73 )
+        wr.setInfoObjects( rtinfo )
 
         testlist = TestList( TestCaseFactory() )
 
-        wr.postrun( testlist, rtinfo )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
 
@@ -86,7 +87,7 @@ class unit_tests( vtu.vvtestTestCase ):
         tcase = vtu.make_fake_TestCase( name='ctest', result='notrun' )
         testlist.addTest( tcase )
 
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
 
@@ -116,7 +117,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
         wr = make_CDashWriter( 'file.xml',
                                subclass_submitter=OverrideFileSubmitter() )
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         assert os.path.isfile( 'file.xml' )
         assert len( records ) == 0
@@ -124,7 +125,7 @@ class unit_tests( vtu.vvtestTestCase ):
         wr = make_CDashWriter( 'http://localhost/cdash',
                                subclass_submitter=OverrideFileSubmitter(),
                                project='CoolProj' )
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         assert len( records ) == 1
         assert records[0][0] == 'urllib'
@@ -134,7 +135,7 @@ class unit_tests( vtu.vvtestTestCase ):
         wr = make_CDashWriter( 'http://localhost2/cdash,method=curl',
                                subclass_submitter=OverrideFileSubmitter(),
                                project='CoolProj' )
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         assert len( records ) == 2
         assert records[1][0] == 'curl'
@@ -342,9 +343,8 @@ class unit_tests( vtu.vvtestTestCase ):
                                ',site=redstorm' + \
                                ',name=smoke_tests' )
 
-        rtinfo = RuntimeInfo()
         testlist = TestList( TestCaseFactory() )
-        wr.postrun( testlist, rtinfo )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
         assert extract_build_stamp( xml ).startswith( '2017' )
@@ -358,10 +358,11 @@ class unit_tests( vtu.vvtestTestCase ):
         tstart = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
         wr = make_CDashWriter( 'file.xml', datestamp=rdate )
-
         rtinfo = RuntimeInfo( startepoch=tstart )
+        wr.setInfoObjects( rtinfo )
+
         testlist = TestList( TestCaseFactory() )
-        wr.postrun( testlist, rtinfo )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
         assert extract_build_stamp( xml ).startswith( '2017' )
@@ -715,6 +716,7 @@ def make_CDashWriter( destination, subclass_submitter=None,
     else:
         wr.setSubmitter( cdashutil.FileSubmitter() )
 
+    wr.setInfoObjects( RuntimeInfo() )
     wr.initialize( destination, project=project, datestamp=datestamp )
 
     return wr

@@ -357,9 +357,9 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         recorder = []
 
         class RecordingGitLabWriter( gitlabwriter.GitLabWriter ):
-            def _write_files(self, atestlist, runinfo, logfunc):
+            def _write_files(self, atestlist, logfunc):
                 recorder.append( 'files' )
-            def _dispatch_submission(self, atestlist, runinfo, logfunc):
+            def _dispatch_submission(self, atestlist, logfunc):
                 recorder.append( 'submit' )
 
         wr = RecordingGitLabWriter( location, None, None )
@@ -370,32 +370,32 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         ""
         wr,recorder = self.make_recording_GitLabWriter( 'destdir' )
 
-        wr.prerun( None, None, 0 )
+        wr.prerun( None, 0 )
         assert recorder == []
 
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == []
 
-        wr.postrun( None, None )
+        wr.postrun( None )
         assert recorder == [ 'files' ]
 
-        wr.info( None, None )
+        wr.info( None )
         assert recorder == [ 'files', 'files' ]
 
     def test_trigger_url_submission_on_prerun_and_postrun_and_info(self):
         ""
         wr,recorder = self.make_recording_GitLabWriter( 'file:///some/dir' )
 
-        wr.prerun( None, None, 0 )
+        wr.prerun( None, 0 )
         assert recorder == [ 'submit' ]
 
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == [ 'submit' ]
 
-        wr.postrun( None, None )
+        wr.postrun( None )
         assert recorder == [ 'submit', 'submit' ]
 
-        wr.info( None, None )
+        wr.info( None )
         assert recorder == [ 'submit', 'submit', 'submit' ]
 
     def test_trigger_url_submission_on_midrun(self):
@@ -403,16 +403,16 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         wr,recorder = self.make_recording_GitLabWriter( 'file:///some/dir' )
         wr.setOutputPeriod( 2 )
 
-        wr.prerun( None, None, 0 )
+        wr.prerun( None, 0 )
         assert recorder == [ 'submit' ]
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == ['submit']
         time.sleep(3)
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == [ 'submit', 'submit' ]
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == [ 'submit', 'submit' ]
-        wr.postrun( None, None )
+        wr.postrun( None )
         assert recorder == [ 'submit', 'submit', 'submit' ]
 
     def test_making_submit_info(self):
@@ -449,10 +449,10 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         util.writefile( 'faketestresults/mark.txt', 'nothing' )
 
         class OverrideGitLabWriter( gitlabwriter.GitLabWriter ):
-            def _convert_files(self, destdir, atestlist, runinfo, logfunc):
+            def _convert_files(self, destdir, atestlist, logfunc):
                 ""
                 fp = open( destdir+'/info.txt', 'wt' )
-                gitlabwriter.write_run_attributes( fp, runinfo )
+                gitlabwriter.write_run_attributes( fp, self.rtinfo )
                 fp.close()
 
         wr = OverrideGitLabWriter( url, 'faketestresults', None )
@@ -465,7 +465,8 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         rtinfo = RuntimeInfo( startepoch=1559822821.99,  # Thu Jun  6 06:07:01 2019
                               curdir='my value' )
-        wr._dispatch_submission( None, rtinfo, logger.info )
+        wr.setInfoObjects( rtinfo )
+        wr._dispatch_submission( None, logger.info )
 
         git = clone_repo( url, 'checkrepo' )
         branch = get_results_branch( git )
@@ -480,28 +481,29 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
     def test_submit_to_a_faulty_gitlab_url(self):
         ""
         class OverrideGitLabWriter( gitlabwriter.GitLabWriter ):
-            def _convert_files(self, destdir, atestlist, runinfo, logfunc):
+            def _convert_files(self, destdir, atestlist, logfunc):
                 util.writefile( destdir+'/ok.txt', "file contents" )
 
         badurl = 'file:///some/path/ladofgidskjslasdf'
         wr = OverrideGitLabWriter( badurl, 'faketestresults', None )
+        wr.setInfoObjects( RuntimeInfo( startepoch=1559822821.99 ) )
         rtn,out,err = util.call_capture_output(
-            wr._dispatch_submission,
-            None, { 'startepoch':1559822821.99 }, logger.info )
+            wr._dispatch_submission, None, logger.info )
 
         assert 'WARNING' in err and 'error submitting' in err
 
     def test_submit_a_second_time_when_no_files_are_different(self):
         ""
         wr,url = self.make_git_repo_and_overridden_GitLabWriter()
-
         rtinfo = RuntimeInfo( startepoch=1559822821.99 )  # Thu Jun  6 06:07:01 2019
-        wr._dispatch_submission( None, rtinfo, logger.info )
+
+        wr.setInfoObjects( rtinfo )
+        wr._dispatch_submission( None, logger.info )
 
         time.sleep(1)
 
         rtn,out,err = util.call_capture_output(
-            wr._dispatch_submission, None, rtinfo, logger.info )
+            wr._dispatch_submission, None, logger.info )
 
         assert 'WARNING' not in out
 

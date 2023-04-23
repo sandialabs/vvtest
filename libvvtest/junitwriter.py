@@ -26,23 +26,27 @@ class JUnitWriter:
         ""
         self.datestamp = datestamp
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def setInfoObjects(self, rtinfo):
+        ""
+        self.rtinfo = rtinfo
+
+    def prerun(self, atestlist, verbosity):
         ""
         pass
 
-    def midrun(self, atestlist, rtinfo):
+    def midrun(self, atestlist):
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo, rtconfig=None):
+    def postrun(self, atestlist):
         ""
-        self.writeFile( atestlist, rtinfo )
+        self.writeFile( atestlist )
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        self.writeFile( atestlist, rtinfo )
+        self.writeFile( atestlist )
 
-    def writeFile(self, atestlist, rtinfo):
+    def writeFile(self, atestlist):
         """
         This collects information from the given test list (a python list of
         TestExec objects), then writes a file in the format of JUnit XML files.
@@ -61,7 +65,7 @@ class JUnitWriter:
             https://github.com/jenkinsci/junit-plugin/
                         tree/master/src/test/resources/hudson/tasks/junit
         """
-        datestamp = rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.getInfo( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp,
                                                "%Y-%m-%dT%H:%M:%S" )
 

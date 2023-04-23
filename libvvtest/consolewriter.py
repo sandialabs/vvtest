@@ -22,6 +22,10 @@ class ConsoleWriter:
         self.sortspec = None
         self.maxnonpass = 32
 
+    def setInfoObjects(self, rtinfo):
+        ""
+        self.rtinfo = rtinfo
+
     def setSortingSpecification(self, sortspec):
         ""
         self.sortspec = sortspec
@@ -31,27 +35,27 @@ class ConsoleWriter:
         assert num > 0
         self.maxnonpass = num
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def prerun(self, atestlist, verbosity):
         ""
         level = get_prerun_list_level( verbosity, self.verbose )
 
         self._write_test_list_results( atestlist, level )
         self._write_summary( atestlist, 'Test list:' )
 
-    def midrun(self, atestlist, rtinfo):
+    def midrun(self, atestlist):
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo, rtconfig=None):
+    def postrun(self, atestlist):
         ""
         if atestlist.numActive() > 0:
             level = 1 + self.verbose
             self._write_test_list_results( atestlist, level )
             self._write_summary( atestlist, 'Summary:' )
 
-        logger.info( make_finish_info_string( rtinfo ) )
+        logger.info( make_finish_info_string( self.rtinfo ) )
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
         level = 1 + self.verbose
         self._write_test_list_results( atestlist, level )

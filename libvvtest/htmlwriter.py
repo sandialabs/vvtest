@@ -19,27 +19,31 @@ class HTMLWriter:
         self.filename = os.path.normpath( os.path.abspath( output_filename ) )
         self.testdir = results_test_dir
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def setInfoObjects(self, rtinfo):
+        ""
+        self.rtinfo = rtinfo
+
+    def prerun(self, atestlist, verbosity):
         ""
         pass
 
-    def midrun(self, atestlist, rtinfo):
+    def midrun(self, atestlist):
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo, rtconfig=None):
+    def postrun(self, atestlist):
         ""
-        self.writeDocument( atestlist, rtinfo )
+        self.writeDocument( atestlist )
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        self.writeDocument( atestlist, rtinfo )
+        self.writeDocument( atestlist )
 
-    def writeDocument(self, tlist, rtinfo):
+    def writeDocument(self, tlist):
         """
         Opens and writes an HTML summary file in the test directory.
         """
-        datestamp = rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.getInfo( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, None,
                                                "%Y-%m-%d %H:%M:%S" )
 

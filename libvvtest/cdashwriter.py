@@ -34,6 +34,10 @@ class CDashWriter:
         ""
         self.subm = submitter
 
+    def setInfoObjects(self, rtinfo):
+        ""
+        self.rtinfo = rtinfo
+
     def initialize(self, destination, project=None,
                                       datestamp=None,
                                       options=[],
@@ -51,32 +55,32 @@ class CDashWriter:
 
         return err
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def prerun(self, atestlist, verbosity):
         ""
         pass
 
-    def midrun(self, atestlist, rtinfo):
+    def midrun(self, atestlist):
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo, rtconfig=None):
+    def postrun(self, atestlist):
         ""
-        self._create_and_fill_formatter( atestlist, rtinfo )
-        self._write_data( self.fmtr, rtinfo )
+        self._create_and_fill_formatter( atestlist )
+        self._write_data( self.fmtr )
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        self._create_and_fill_formatter( atestlist, rtinfo )
-        self._write_data( self.fmtr, rtinfo )
+        self._create_and_fill_formatter( atestlist )
+        self._write_data( self.fmtr )
 
-    def _create_and_fill_formatter(self, atestlist, rtinfo):
+    def _create_and_fill_formatter(self, atestlist):
         ""
         logger.info('\nComposing CDash submission data...')
 
-        set_global_data( self.fmtr, self.dspecs, rtinfo )
+        set_global_data( self.fmtr, self.dspecs, self.rtinfo )
         set_test_list( self.fmtr, self.dspecs, atestlist, self.testdir )
 
-    def _write_data(self, fmtr, rtinfo):
+    def _write_data(self, fmtr):
         ""
         if self.dspecs.url:
 

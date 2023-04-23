@@ -38,30 +38,34 @@ class JsonWriter:
         """"""
         self.datestamp = datestamp
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def setInfoObjects(self, rtinfo, rtconfig):
+        ""
+        self.rtinfo = rtinfo
+        self.rtconfig = rtconfig
+
+    def prerun(self, atestlist, verbosity):
         """"""
         pass
 
-    def midrun(self, atestlist, rtinfo):
+    def midrun(self, atestlist):
         """"""
         pass
 
-    def postrun(self, atestlist, rtinfo, rtconfig=None):
+    def postrun(self, atestlist):
         """"""
-        self.writeFile(atestlist, rtinfo, rtconfig=rtconfig)
+        self.writeFile(atestlist)
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         """"""
-        self.writeFile(atestlist, rtinfo)
+        self.writeFile(atestlist)
 
-    def writeFile(self, atestlist, rtinfo, rtconfig=None):
+    def writeFile(self, atestlist):
         """
         This collects information from the given test list (a python list of
         TestExec objects), then writes a file in json format
-
         """
         data = {}
-        top = rtinfo.asDict()
+        top = self.rtinfo.asDict()
         for var in (
             "PYTHONPATH",
             "PATH",
@@ -82,10 +86,10 @@ class JsonWriter:
         top["returncode"] = execute.encode_integer_warning(atestlist)
         data.update(top)
 
-        if rtconfig is not None:
-            data["onopts"] = " ".join(rtconfig.getAttr("onopts"))
-            data["offopts"] = " ".join(rtconfig.getAttr("offopts"))
-            data["testargs"] = " ".join(rtconfig.getAttr("testargs"))
+        if self.rtconfig is not None:
+            data["onopts"] = " ".join( self.rtconfig.getAttr("onopts") )
+            data["offopts"] = " ".join( self.rtconfig.getAttr("offopts") )
+            data["testargs"] = " ".join( self.rtconfig.getAttr("testargs") )
 
         uname = os.uname()
         data["machine"] = {

@@ -213,8 +213,9 @@ class save_results_output( vtu.vvtestTestCase ):
 
         lwr = listwriter.ListWriter( Locator(os.getcwd()),
                                      perm, 'odir', abspath('tdir') )
+        lwr.setInfoObjects( rtinfo )
 
-        lwr.writeList( tlist, rtinfo )
+        lwr.writeList( tlist )
         fL = util.grepfiles( 'adir/sdir/atest.np=4', 'odir/results.*' )
         assert len(fL) == 1
 
@@ -248,7 +249,9 @@ class save_results_output( vtu.vvtestTestCase ):
         lwr = listwriter.ListWriter( Locator(os.getcwd()),
                                      perm, 'sparky:'+abspath('odir'),
                                      abspath('tdir'), scpexe=abspath('fakescp') )
-        lwr.writeList( tlist, rtinfo )
+        lwr.setInfoObjects( rtinfo )
+
+        lwr.writeList( tlist )
 
         fL = util.grepfiles( 'adir/sdir/atest.np=4', 'odir/results.*.scp' )
         assert len(fL) == 1

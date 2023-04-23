@@ -49,31 +49,35 @@ class ListWriter:
         ""
         self.datestamp = datestamp
 
+    def setInfoObjects(self, rtinfo):
+        ""
+        self.rtinfo = rtinfo
+
     def setNamingTags(self, on_option_list, final_tag):
         ""
         self.onopts = on_option_list
         self.ftag = final_tag
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def prerun(self, atestlist, verbosity):
         ""
-        self.writeList( atestlist, rtinfo, inprogress=True )
+        self.writeList( atestlist, inprogress=True )
 
-    def midrun(self, atestlist, rtinfo):
+    def midrun(self, atestlist):
         ""
         pass
 
-    def postrun(self, atestlist, rtinfo, rtconfig=None):
+    def postrun(self, atestlist):
         ""
         if atestlist.numActive() > 0:
-            self.writeList( atestlist, rtinfo )
+            self.writeList( atestlist )
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        self.writeList( atestlist, rtinfo )
+        self.writeList( atestlist )
 
-    def writeList(self, atestlist, rtinfo, inprogress=False):
+    def writeList(self, atestlist, inprogress=False):
         ""
-        datestamp = rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.getInfo( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp )
 
         if is_target_like_scp( self.outdir ):
@@ -81,16 +85,14 @@ class ListWriter:
         else:
             todir = self.outdir
 
-        fname = self.makeFilename( datestr, rtinfo )
+        fname = self.makeFilename( datestr )
 
-        self._write_results_to_file( atestlist, rtinfo, inprogress,
-                                     todir, fname )
+        self._write_results_to_file( atestlist, inprogress, todir, fname )
 
         if todir != self.outdir:
             scp_file_to_remote( self.scpexe, todir, fname, self.outdir )
 
-    def _write_results_to_file(self, atestlist, rtinfo, inprogress,
-                                     todir, fname):
+    def _write_results_to_file(self, atestlist, inprogress, todir, fname):
         ""
         if not os.path.isdir( todir ):
             os.mkdir( todir )
@@ -100,15 +102,15 @@ class ListWriter:
         try:
             tcaseL = atestlist.getActiveTests()
             logger.info( "Writing results of", len(tcaseL), "tests to", tofile )
-            self.writeTestResults( tcaseL, tofile, rtinfo, inprogress )
+            self.writeTestResults( tcaseL, tofile, inprogress )
 
         finally:
             self.permsetter.apply( tofile )
 
-    def makeFilename(self, datestr, rtinfo):
+    def makeFilename(self, datestr):
         ""
-        pname = rtinfo.getInfo( 'platform' )
-        cplr = rtinfo.getInfo( 'compiler' )
+        pname = self.rtinfo.getInfo( 'platform' )
+        cplr = self.rtinfo.getInfo( 'compiler' )
 
         if cplr:
             opL = [ cplr ]
@@ -127,7 +129,7 @@ class ListWriter:
 
         return basename
 
-    def writeTestResults(self, tcaseL, filename, rtinfo, inprogress):
+    def writeTestResults(self, tcaseL, filename, inprogress):
         ""
         dcache = {}
         tr = fmtresults.TestResults()
@@ -138,8 +140,8 @@ class ListWriter:
             if rootrel:
                 tr.addTest( tcase, rootrel )
 
-        pname = rtinfo.getInfo( 'platform' )
-        cplr = rtinfo.getInfo( 'compiler' )
+        pname = self.rtinfo.getInfo( 'platform' )
+        cplr = self.rtinfo.getInfo( 'compiler' )
         mach = os.uname()[1]
 
         tr.writeResults( filename, pname, cplr, mach, self.testdir, inprogress )

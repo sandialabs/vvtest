@@ -169,20 +169,20 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         assert consolewriter.get_prerun_list_level( 1, 2 ) == 3
 
         conwr = ConsoleWriter( os.getcwd() )
-        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, RuntimeInfo(), 0 )
+        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, 0 )
         cnts = vtu.parse_vvtest_counts( out )
         assert cnts['total'] == 0
         self.assert_test_list_summary( out )
         assert 'Test list:' in out and 'Summary:' not in out
 
         conwr = ConsoleWriter( os.getcwd() )
-        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, RuntimeInfo(), 1 )
+        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, 1 )
         self.assert_test_list_counts_for_active( out )
         assert 'Test list:' in out and 'Summary:' not in out
         self.assert_test_list_summary( out )
 
         conwr = ConsoleWriter( os.getcwd(), verbose=2 )
-        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, RuntimeInfo(), 1 )
+        rtn,out,err = util.call_capture_output( conwr.prerun, tlist, 1 )
         self.assert_test_list_counts_for_all( out )
         assert 'Test list:' in out and 'Summary:' not in out
         self.assert_test_list_summary( out )
@@ -192,13 +192,13 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         tlist = MockTestList( self.getFakeTestList() )
 
         conwr = ConsoleWriter( os.getcwd() )
-        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist )
         self.assert_test_list_counts_for_nonpass( out )
         self.assert_test_list_summary( out )
         assert 'Test list:' not in out and 'Summary:' in out
 
         conwr = ConsoleWriter( os.getcwd(), verbose=1 )
-        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist )
         self.assert_test_list_counts_for_active( out )
         self.assert_test_list_summary( out )
         assert 'Test list:' not in out and 'Summary:' in out
@@ -209,7 +209,7 @@ class consolue_output_tests( vtu.vvtestTestCase ):
 
         conwr = ConsoleWriter( os.getcwd() )
         tm = time.time()
-        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist )
 
         print3( out )
         assert 'Summary:' not in out
@@ -224,7 +224,7 @@ class consolue_output_tests( vtu.vvtestTestCase ):
 
         conwr = ConsoleWriter( os.getcwd() )
         conwr.setMaxNonPass( 2 )
-        rtn,out,err = util.call_capture_output( conwr.postrun, tlist, RuntimeInfo() )
+        rtn,out,err = util.call_capture_output( conwr.postrun, tlist )
 
         print3( out )
         cntD = vtu.parse_vvtest_counts( out )
@@ -238,10 +238,12 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         rtinfo = RuntimeInfo( finishepoch=tm-10, startepoch=tm )
 
         conwr = ConsoleWriter( os.getcwd(), verbose=0 )
-        rtn,out1,err = util.call_capture_output( conwr.postrun, tlist, rtinfo )
+        conwr.setInfoObjects( rtinfo )
+        rtn,out1,err = util.call_capture_output( conwr.postrun, tlist )
 
         conwr = ConsoleWriter( os.getcwd(), verbose=0 )
-        rtn,out2,err = util.call_capture_output( conwr.info, tlist, rtinfo )
+        conwr.setInfoObjects( rtinfo )
+        rtn,out2,err = util.call_capture_output( conwr.info, tlist )
 
         self.assert_test_list_counts_for_nonpass( out1 )
         self.assert_test_list_counts_for_nonpass( out2 )
@@ -249,10 +251,12 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         # now bump the verbosity
 
         conwr = ConsoleWriter( os.getcwd(), verbose=1 )
-        rtn,out1,err = util.call_capture_output( conwr.postrun, tlist, rtinfo )
+        conwr.setInfoObjects( rtinfo )
+        rtn,out1,err = util.call_capture_output( conwr.postrun, tlist )
 
         conwr = ConsoleWriter( os.getcwd(), verbose=1 )
-        rtn,out2,err = util.call_capture_output( conwr.info, tlist, rtinfo )
+        conwr.setInfoObjects( rtinfo )
+        rtn,out2,err = util.call_capture_output( conwr.info, tlist )
 
         self.assert_test_list_counts_for_active( out1 )
         self.assert_test_list_counts_for_active( out2 )

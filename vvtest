@@ -482,107 +482,131 @@ def construct_results_writers( rtdata, opts, optD ):
     writers = resultsout.ResultsWriters()
 
     if need_console_output( opts ):
-        conobj = construct_console_writer( rtdata.testdir, opts, optD )
+        conobj = construct_console_writer( rtdata, opts, optD )
         writers.addWriter( conobj )
 
     if opts.batch_id is None:
 
         if opts.html:
-            htmlobj = construct_html_writer( rtdata.testdir, opts, optD,
-                                             rtdata.perms )
+            htmlobj = construct_html_writer( rtdata, opts, optD )
             writers.addWriter( htmlobj )
 
         if opts.junit:
-            junitobj = construct_junit_writer( rtdata.testdir, opts, optD,
-                                               rtdata.perms )
+            junitobj = construct_junit_writer( rtdata, opts, optD )
             writers.addWriter( junitobj )
 
         if opts.json:
-            jsonobj = construct_json_writer(rtdata.testdir, opts, optD, rtdata.perms)
+            jsonobj = construct_json_writer( rtdata, opts, optD )
             writers.addWriter(jsonobj)
 
         if opts.gitlab:
-            wr = construct_gitlab_writer( rtdata.testdir, opts, optD,
-                                          rtdata.perms )
+            wr = construct_gitlab_writer( rtdata, opts, optD )
             writers.addWriter( wr )
 
         if opts.cdash:
-            wr = construct_cdash_writer( rtdata.testdir, opts, optD,
-                                         rtdata.perms )
+            wr = construct_cdash_writer( rtdata, opts, optD )
             writers.addWriter( wr )
 
         if opts.save_results:
-            wr = construct_testlist_writer( rtdata, opts, optD,
-                                            rtdata.perms, rtdata.plat )
+            wr = construct_testlist_writer( rtdata, opts, optD )
             writers.addWriter( wr )
 
     rtdata.results_writer = writers
 
 
-def construct_console_writer( test_dir, opts, optD ):
+def construct_console_writer( rtdata, opts, optD ):
     ""
     import libvvtest.consolewriter as consolewriter
 
     verb = get_output_verbosity_integer( opts.dash_v )
+    test_dir = rtdata.testdir
+    rtinfo = rtdata.rtinfo
 
     conobj = consolewriter.ConsoleWriter( test_dir, verb )
 
+    conobj.setInfoObjects( rtinfo )
     conobj.setSortingSpecification( optD['sort_letters'] )
 
     return conobj
 
 
-def construct_html_writer( test_dir, opts, optD, perms ):
+def construct_html_writer( rtdata, opts, optD ):
     ""
     import libvvtest.htmlwriter as htmlwriter
 
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
+
     htmlobj = htmlwriter.HTMLWriter( perms, opts.html, test_dir )
+    htmlobj.setInfoObjects( rtinfo )
 
     return htmlobj
 
 
-def construct_junit_writer( test_dir, opts, optD, perms ):
+def construct_junit_writer( rtdata, opts, optD ):
     ""
     import libvvtest.junitwriter as junitwriter
+
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
 
     junitobj = junitwriter.JUnitWriter( perms, opts.junit, test_dir )
 
     junitobj.setOutputDate( opts.results_date )
+    junitobj.setInfoObjects( rtinfo )
 
     return junitobj
 
 
-def construct_json_writer(test_dir, opts, optD, perms):
+def construct_json_writer( rtdata, opts, optD ):
     ""
     import libvvtest.jsonwriter as jsonwriter
 
-    jsonobj = jsonwriter.JsonWriter(perms, opts.json, test_dir)
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
+    rtconfig = rtdata.rtconfig
+
+    jsonobj = jsonwriter.JsonWriter( perms, opts.json, test_dir )
     jsonobj.setOutputDate(opts.results_date)
+    jsonobj.setInfoObjects( rtinfo, rtconfig )
     return jsonobj
 
 
-def construct_gitlab_writer( test_dir, opts, optD, perms ):
+def construct_gitlab_writer( rtdata, opts, optD ):
     ""
     import libvvtest.gitlabwriter as gitlabwriter
+
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
 
     gitlabobj = gitlabwriter.GitLabWriter( opts.gitlab, test_dir, perms )
 
     gitlabobj.setSortingSpecification( optD['sort_letters'] )
     gitlabobj.setOutputDate( opts.results_date )
     gitlabobj.setNamingTags( optD['onopts'], opts.results_tag )
+    gitlabobj.setInfoObjects( rtinfo )
 
     return gitlabobj
 
 
-def construct_cdash_writer( test_dir, opts, optD, perms ):
+def construct_cdash_writer( rtdata, opts, optD ):
     ""
     import libvvtest.cdashwriter as cdashwriter
     import cdashutil
+
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
 
     cdashobj = cdashwriter.CDashWriter( test_dir, perms )
 
     cdashobj.setFormatter( cdashutil.TestResultsFormatter() )
     cdashobj.setSubmitter( cdashutil.FileSubmitter() )
+    cdashobj.setInfoObjects( rtinfo )
 
     err = cdashobj.initialize( opts.cdash,
                                project=opts.cdash_project,
@@ -596,9 +620,14 @@ def construct_cdash_writer( test_dir, opts, optD, perms ):
     return cdashobj
 
 
-def construct_testlist_writer( rtdata, opts, optD, perms, platobj ):
+def construct_testlist_writer( rtdata, opts, optD ):
     ""
     import libvvtest.listwriter as listwriter
+
+    platobj = rtdata.plat
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
 
     todir = get_testing_directory( opts, platobj )
 
@@ -609,6 +638,7 @@ def construct_testlist_writer( rtdata, opts, optD, perms, platobj ):
 
     wlistobj.setOutputDate( opts.results_date )
     wlistobj.setNamingTags( optD['onopts'], opts.results_tag )
+    wlistobj.setInfoObjects( rtinfo )
 
     return wlistobj
 
@@ -705,7 +735,7 @@ def generate_test_list( opts, optD, rtdata ):
     tlist.connectDependencies()
     rtdata.tlm.writeTestList()
 
-    rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
+    rtdata.results_writer.prerun( tlist, verbosity=1 )
     logger.info()
 
     handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
@@ -821,7 +851,7 @@ def baseline_tests( opts, optD, rtdata ):
     rtdata.selector.applyBaselineFilter( tlist )
     tlist.connectDependencies( check_dependencies=False )
 
-    rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
+    rtdata.results_writer.prerun( tlist, verbosity=1 )
     logger.info()
 
     if tlist.numActive() > 0:
@@ -874,7 +904,7 @@ def information_output( opts, optD, rtdata ):
         print_test_files( tlist )
 
     else:
-        rtdata.results_writer.info( tlist, rtdata.rtinfo )
+        rtdata.results_writer.info( tlist )
         exitcode = execute.encode_integer_warning( tlist )
         rtdata.plugin.callEpilogue( rtdata.testdir, tlist.getTests() )
 
@@ -904,7 +934,7 @@ def output_timings( opts, optD, rtdata ):
     rtdata.timehandler.setTimeouts( tlist.getTests() )
     tlist.setResultsDate()
 
-    cwriter = construct_console_writer( rtdata.testdir, opts, optD )
+    cwriter = construct_console_writer( rtdata, opts, optD )
     cwriter.timings( tlist )
 
 
@@ -1085,7 +1115,7 @@ def run_test_exec_list( opts, optD, rtdata ):
 
     tlist.connectDependencies( check_dependencies=(opts.batch_id is None) )
 
-    rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=0 )
+    rtdata.results_writer.prerun( tlist, verbosity=0 )
     logger.info()
 
     xstat = 0
@@ -1119,7 +1149,7 @@ def run_test_exec_list( opts, optD, rtdata ):
 
     logger.info()
     rtdata.rtinfo.setInfo( finishepoch=time.time() )
-    rtdata.results_writer.postrun( tlist, rtdata.rtinfo, rtconfig=rtdata.rtconfig )
+    rtdata.results_writer.postrun( tlist )
 
     return xstat
 

@@ -39,7 +39,7 @@ class JsonWriter:
         self.datestamp = datestamp
 
     def setInfoObjects(self, rtinfo, rtconfig):
-        ""
+        """"""
         self.rtinfo = rtinfo
         self.rtconfig = rtconfig
 
@@ -87,9 +87,9 @@ class JsonWriter:
         data.update(top)
 
         if self.rtconfig is not None:
-            data["onopts"] = " ".join( self.rtconfig.getAttr("onopts") )
-            data["offopts"] = " ".join( self.rtconfig.getAttr("offopts") )
-            data["testargs"] = " ".join( self.rtconfig.getAttr("testargs") )
+            data["onopts"] = " ".join(self.rtconfig.getAttr("onopts"))
+            data["offopts"] = " ".join(self.rtconfig.getAttr("offopts"))
+            data["testargs"] = " ".join(self.rtconfig.getAttr("testargs"))
 
         uname = os.uname()
         data["machine"] = {
@@ -204,22 +204,12 @@ class JsonWriter:
 
     @staticmethod
     def compress_logfile(name, logfile, kb_to_keep):
-        if logfile is None or not os.path.exists(logfile):
-            log = ["Log file {0} not found!".format(logfile)]
+        if logfile is None:
+            log = "No log file found!"
+        elif not os.path.exists(logfile):
+            log = "Log file {0} not found!".format(logfile)
         else:
-            log = io.open(logfile, errors="ignore").readlines()
-        # Attempt to reconstruct the log file
-        test_path = os.path.dirname(logfile)
-        confile = os.path.join(test_path, name + ".con")
-        if os.path.exists(confile):
-            con = io.open(confile, errors="ignore").readlines()
-            for (i, line) in enumerate(log):
-                if line.startswith("==> Starting"):
-                    log = log[: i + 2] + con + log[i + 2 :]
-                    break
-            else:
-                log.extend(con)
-        log = "".join(log)
+            log = io.open(logfile, errors="ignore").read()
         kb = 1024
         bytes_to_keep = kb_to_keep * kb
         if len(log) > bytes_to_keep:

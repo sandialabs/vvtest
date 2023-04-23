@@ -276,9 +276,9 @@ def set_global_data( fmtr, dspecs, rtinfo ):
     ""
     if dspecs.date:
         bdate = dspecs.date
-        tstart = rtinfo.getInfo( 'startepoch', bdate )
+        tstart = rtinfo.get( 'startepoch', bdate )
     else:
-        bdate = rtinfo.getInfo( 'startepoch', time.time() )
+        bdate = rtinfo.get( 'startepoch', time.time() )
         tstart = bdate
 
     if dspecs.group:
@@ -289,12 +289,12 @@ def set_global_data( fmtr, dspecs, rtinfo ):
     if dspecs.site:
         site = dspecs.site
     else:
-        site = rtinfo.getInfo( 'hostname', None )
+        site = rtinfo.get( 'hostname', None )
 
     if dspecs.name:
         bname = dspecs.name
     else:
-        rdir = rtinfo.getInfo( 'rundir', None )
+        rdir = rtinfo.get( 'rundir', None )
         if rdir:
             rdir = basename( rdir )
         bname = rdir
@@ -304,7 +304,7 @@ def set_global_data( fmtr, dspecs, rtinfo ):
                      site_name=site,
                      build_name=bname )
 
-    fmtr.setTime( tstart, rtinfo.getInfo( 'finishepoch', None ) )
+    fmtr.setTime( tstart, rtinfo.get( 'finishepoch', None ) )
 
 
 def set_test_list( fmtr, dspecs, atestlist, testdir ):

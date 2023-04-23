@@ -134,11 +134,11 @@ class GitLabWriter:
 
 def make_submit_info( rtinfo, onopts, nametag ):
     ""
-    start = rtinfo.getInfo( 'startepoch' )
+    start = rtinfo.get( 'startepoch' )
 
     sfxL = []
 
-    plat = rtinfo.getInfo( 'platform', None )
+    plat = rtinfo.get( 'platform', None )
     if plat:
         sfxL.append( plat )
 
@@ -240,7 +240,7 @@ class GitLabMarkDownConverter:
 
 def write_run_attributes( fp, rtinfo ):
     ""
-    nvL = list( rtinfo.asDict().items() )
+    nvL = list( rtinfo.items() )
     nvL.sort()
     for name,value in nvL:
         fp.write( '* '+name+' = '+str(value)+'\n' )
@@ -248,8 +248,8 @@ def write_run_attributes( fp, rtinfo ):
     tm = time.time()
     fp.write( '* currentepoch = '+str(tm)+'\n' )
 
-    t0 = rtinfo.getInfo( 'startepoch', None )
-    t1 = rtinfo.getInfo( 'finishepoch', None )
+    t0 = rtinfo.get( 'startepoch', None )
+    t1 = rtinfo.get( 'finishepoch', None )
     if t0 and t1:
         fp.write( '* elapsed = '+outpututils.pretty_time( t1-t0 )+'\n' )
 

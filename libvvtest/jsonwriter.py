@@ -38,10 +38,9 @@ class JsonWriter:
         """"""
         self.datestamp = datestamp
 
-    def setInfoObjects(self, rtinfo, rtconfig):
+    def setInfoObjects(self, rtinfo):
         """"""
         self.rtinfo = rtinfo
-        self.rtconfig = rtconfig
 
     def prerun(self, atestlist, verbosity):
         """"""
@@ -65,7 +64,7 @@ class JsonWriter:
         TestExec objects), then writes a file in json format
         """
         data = {}
-        top = self.rtinfo.asDict()
+        top = dict( self.rtinfo )
         for var in (
             "PYTHONPATH",
             "PATH",
@@ -86,10 +85,9 @@ class JsonWriter:
         top["returncode"] = execute.encode_integer_warning(atestlist)
         data.update(top)
 
-        if self.rtconfig is not None:
-            data["onopts"] = " ".join(self.rtconfig.getAttr("onopts"))
-            data["offopts"] = " ".join(self.rtconfig.getAttr("offopts"))
-            data["testargs"] = " ".join(self.rtconfig.getAttr("testargs"))
+        data["onopts"] = ' '.join( self.rtinfo["onopts"] )
+        data["offopts"] = ' '.join( self.rtinfo["offopts"] )
+        data["testargs"] = ' '.join( self.rtinfo["testargs"] )
 
         uname = os.uname()
         data["machine"] = {

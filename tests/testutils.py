@@ -695,7 +695,23 @@ def read_json_file( filename ):
     ""
     import json
     with open(filename) as fh:
-        return json.load(fh)
+        val = json.load(fh)
+        if sys.version_info[0] < 3:
+            val = uni2str(val)
+        return val
+
+def uni2str( obj ):
+    """
+    only necessary in Python 2.7 to avoid unicode strings from JSON load
+    """
+    if type(obj) == list:
+        return [ uni2str(i) for i in obj ]
+    elif type(obj) == dict:
+        return dict( [ (uni2str(k),uni2str(v)) for k,v in obj.items() ] )
+    elif type(obj) == unicode:
+        return str(obj)
+    else:
+        return obj
 
 
 def read_xml_file( filename ):

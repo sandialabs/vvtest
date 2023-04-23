@@ -50,7 +50,7 @@ class RuntimeData:
         self.userconfig     = None   # list of user config directories
         self.testdir        = None   # top level test execution directory
         self.cash           = None   # CacheFileHandler object
-        self.rtinfo         = None   # RuntimeInfo object
+        self.rtinfo         = None   # dictionary of runtime information
         self.rtconfig       = None   # RuntimeConfig object
         self.plat           = None   # Platform object
         self.plugin         = None   # UserPluginBridge object
@@ -85,8 +85,8 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     insert_configdirs_into_sys_path( configdirs )
     construct_runtime_config( rtdata, opts, optD )
     process_cache_file( rtdata, opts, optD )
-    construct_runtime_info( rtdata, vvtestdir, start_epoch )
     create_configuration( rtdata.rtconfig, opts, optD, vvtestdir, configdirs )
+    construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch )
 
     construct_platform( rtdata, opts, optD )
     compute_testing_directory( rtdata, opts, optD )
@@ -215,18 +215,6 @@ def check_options_not_allowed_for_restart( opts, optD ):
         raise FatalError( 'cannot use -g in a TestResults directory' )
 
 
-def construct_runtime_info( rtdata, vvtestdir, start_epoch ):
-    ""
-    from libvvtest.runinfo import RuntimeInfo
-
-    rtinfo = RuntimeInfo( startepoch=start_epoch,
-                          cmdline=rtdata.cmdargv,
-                          vvtestdir=vvtestdir,
-                          curdir=rtdata.curdir )
-
-    rtdata.rtinfo = rtinfo
-
-
 def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
     ""
     rtconfig.setAttr( 'vvtestdir', vvtestdir )
@@ -251,6 +239,23 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
         for args in opts.test_args:
             argL.extend( shlex.split( args ) )
         rtconfig.setAttr( 'testargs', argL )
+
+
+def construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch ):
+    ""
+    from libvvtest.runinfo import RuntimeInfo
+
+    rtinfo = RuntimeInfo( startepoch=start_epoch,
+                          startdate=time.ctime(start_epoch),
+                          cmdline=rtdata.cmdargv,
+                          vvtestdir=vvtestdir,
+                          curdir=rtdata.curdir )
+
+    rtinfo['onopts'] = optD['onopts']
+    rtinfo['offopts'] = optD['offopts']
+    rtinfo['testargs'] = rtdata.rtconfig.getAttr( 'testargs', [] )
+
+    rtdata.rtinfo = rtinfo
 
 
 def construct_platform( rtdata, opts, optD ):
@@ -286,8 +291,8 @@ def construct_platform( rtdata, opts, optD ):
 
     rtdata.rtconfig.setMaxSize( plat.getMaxSize() )
 
-    rtdata.rtinfo.setInfo( platform=plat.getName(),
-                           compiler=plat.getCompiler() )
+    rtdata.rtinfo['platform'] = plat.getName()
+    rtdata.rtinfo['compiler'] = plat.getCompiler()
 
     rtdata.plat = plat
 
@@ -302,7 +307,7 @@ def compute_testing_directory( rtdata, opts, optD ):
                                          optD['offopts'],
                                          rtdata.plat.getName() )
 
-    rtdata.rtinfo.setInfo( rundir=td )
+    rtdata.rtinfo['rundir'] = td
     rtdata.testdir = td
 
 
@@ -572,7 +577,7 @@ def construct_json_writer( rtdata, opts, optD ):
 
     jsonobj = jsonwriter.JsonWriter( perms, opts.json, test_dir )
     jsonobj.setOutputDate(opts.results_date)
-    jsonobj.setInfoObjects( rtinfo, rtconfig )
+    jsonobj.setInfoObjects( rtinfo )
     return jsonobj
 
 
@@ -708,8 +713,7 @@ class TestListManager:
 
     def writeTestList(self):
         ""
-        attrs = self.rtinfo.asDict()
-        fn = self.tlist.stringFileWrite( **attrs )
+        fn = self.tlist.stringFileWrite( **(self.rtinfo) )
         self.perms.apply( fn )
 
     def addBatchFileLinksToTests(self, batchid):
@@ -889,7 +893,7 @@ def information_output( opts, optD, rtdata ):
 
         rtdata.tlm.readTestList()
         attrs = rtdata.tlm.readAndMergePreviouslyRunTests()
-        rtdata.rtinfo.setInfo( **attrs )
+        rtdata.rtinfo.update( attrs )
 
     else:
         logger.warn( 'WARNING: previous test results directory not found,',
@@ -1149,7 +1153,9 @@ def run_test_exec_list( opts, optD, rtdata ):
         xstat = tlrun.run()
 
     logger.info()
-    rtdata.rtinfo.setInfo( finishepoch=time.time() )
+    tm = time.time()
+    rtdata.rtinfo['finishepoch'] = tm
+    rtdata.rtinfo['finishdate'] = time.ctime(tm)
     rtdata.results_writer.postrun( tlist )
 
     return xstat

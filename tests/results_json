@@ -165,7 +165,7 @@ def validate_output(arg):
     first_level_keys = list(arg.keys())
     assert first_level_keys == ["vvtest"]
     for parent_key in json_output_schema["vvtest"]:
-        assert parent_key in arg["vvtest"]
+        assert parent_key in arg["vvtest"], 'parent_key '+repr(parent_key)+' not in vvtest schema'
         if parent_key in ("machine", "tests"):
             for child, value2 in arg["vvtest"][parent_key].items():
                 expected_type = json_output_schema["vvtest"][parent_key][child]
@@ -259,8 +259,6 @@ json_output_schema = {
             "release": str,
             "version": str,
             "arch": str,
-            "SNLSYSTEM": str_or_none,
-            "SNLCLUSTER": str_or_none,
         },
         "python": {
             "executable": str,
@@ -315,11 +313,15 @@ def write_three_test_files():
     )
 
 
-def expand64(raw):
-    bytes_str = base64.b64decode(raw.encode("utf-8"))
-    hex_str = bytes_str.hex()
-    s = zlib.decompress(bytes.fromhex(hex_str))
-    return s.decode("utf-8")
+if sys.version_info[0] < 3:
+    def expand64(raw):
+        return zlib.decompress( base64.b64decode(raw) )
+else:
+    def expand64(raw):
+        bytes_str = base64.b64decode(raw.encode("utf-8"))
+        hex_str = bytes_str.hex()
+        s = zlib.decompress(bytes.fromhex(hex_str))
+        return s.decode("utf-8")
 
 
 ############################################################################

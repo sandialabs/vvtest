@@ -77,7 +77,7 @@ class ListWriter:
 
     def writeList(self, atestlist, inprogress=False):
         ""
-        datestamp = self.rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.get( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp )
 
         if is_target_like_scp( self.outdir ):
@@ -109,8 +109,8 @@ class ListWriter:
 
     def makeFilename(self, datestr):
         ""
-        pname = self.rtinfo.getInfo( 'platform' )
-        cplr = self.rtinfo.getInfo( 'compiler' )
+        pname = self.rtinfo.get( 'platform' )
+        cplr = self.rtinfo.get( 'compiler' )
 
         if cplr:
             opL = [ cplr ]
@@ -140,8 +140,8 @@ class ListWriter:
             if rootrel:
                 tr.addTest( tcase, rootrel )
 
-        pname = self.rtinfo.getInfo( 'platform' )
-        cplr = self.rtinfo.getInfo( 'compiler' )
+        pname = self.rtinfo.get( 'platform' )
+        cplr = self.rtinfo.get( 'compiler' )
         mach = os.uname()[1]
 
         tr.writeResults( filename, pname, cplr, mach, self.testdir, inprogress )

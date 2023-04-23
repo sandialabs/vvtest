@@ -43,7 +43,7 @@ class HTMLWriter:
         """
         Opens and writes an HTML summary file in the test directory.
         """
-        datestamp = self.rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.get( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, None,
                                                "%Y-%m-%d %H:%M:%S" )
 

@@ -31,7 +31,7 @@ class TestListRunner:
         self.starttime = time.time()
         logger.info("Start time: {0}".format(time.ctime()))
 
-        rfile = self.tlist.initializeResultsFile( **(self.rtinfo.asDict()) )
+        rfile = self.tlist.initializeResultsFile( **(self.rtinfo) )
         self.perms.apply( os.path.abspath( rfile ) )
 
     def total_time_expired(self):

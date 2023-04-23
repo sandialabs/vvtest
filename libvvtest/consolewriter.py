@@ -216,12 +216,12 @@ def make_finish_info_string( rtinfo ):
     ""
     s = '\n'
 
-    fin = rtinfo.getInfo( 'finishepoch', None )
+    fin = rtinfo.get( 'finishepoch', None )
     if fin != None:
         fdate = time.ctime( fin )
         s += 'Finish date: '+fdate
 
-        start = rtinfo.getInfo( 'startepoch', None )
+        start = rtinfo.get( 'startepoch', None )
         if start != None:
             dt = fin - start
             elapsed = outpututils.pretty_time( dt )

@@ -243,19 +243,21 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
 
 def construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch ):
     ""
-    from libvvtest.runinfo import RuntimeInfo
+    rtdata.rtinfo = {
+        'hostname'      : platform.uname()[1],
+        'curdir'        : os.getcwd(),
+        'python'        : sys.executable,
 
-    rtinfo = RuntimeInfo( startepoch=start_epoch,
-                          startdate=time.ctime(start_epoch),
-                          cmdline=rtdata.cmdargv,
-                          vvtestdir=vvtestdir,
-                          curdir=rtdata.curdir )
+        'startepoch'    : start_epoch,
+        'startdate'     : time.ctime(start_epoch),
+        'cmdline'       : rtdata.cmdargv,
+        'vvtestdir'     : vvtestdir,
+        'curdir'        : rtdata.curdir,
 
-    rtinfo['onopts'] = optD['onopts']
-    rtinfo['offopts'] = optD['offopts']
-    rtinfo['testargs'] = rtdata.rtconfig.getAttr( 'testargs', [] )
-
-    rtdata.rtinfo = rtinfo
+        'onopts'        : optD['onopts'],
+        'offopts'       : optD['offopts'],
+        'testargs'      : rtdata.rtconfig.getAttr( 'testargs', [] ),
+    }
 
 
 def construct_platform( rtdata, opts, optD ):

@@ -581,7 +581,6 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         assert len( util.greplines( 'finishdate', val ) ) == 1
         assert len( util.greplines( ' vvtestdir =', val ) ) == 1
         assert len( util.greplines( ' python =', val ) ) == 1
-        assert len( util.greplines( ' PATH =', val ) ) == 1
         elap = util.greplines( 'elapsed', val )[0].split('=')[1].strip()
         assert int( elap[:-1] ) > 1
 

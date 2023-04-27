@@ -52,9 +52,6 @@ class JsonWriter:
         data = {}
         top = dict( self.rtinfo )
         for var in (
-            "PYTHONPATH",
-            "PATH",
-            "LOADEDMODULES",
             "platform",
             "hostname",
             "python",

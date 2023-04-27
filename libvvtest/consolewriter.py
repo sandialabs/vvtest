@@ -13,27 +13,16 @@ from . import outpututils
 
 class ConsoleWriter:
 
-    def __init__(self, results_test_dir, verbose=0):
+    def __init__(self):
         ""
-        self.testdir = results_test_dir
+        pass
 
-        self.verbose = verbose
-
-        self.sortspec = None
-        self.maxnonpass = 32
-
-    def setInfoObjects(self, rtinfo):
+    def initialize(self, rtinfo, verbose=0, sortspec=None, maxnonpass=32):
         ""
         self.rtinfo = rtinfo
-
-    def setSortingSpecification(self, sortspec):
-        ""
+        self.verbose = verbose
         self.sortspec = sortspec
-
-    def setMaxNonPass(self, num):
-        ""
-        assert num > 0
-        self.maxnonpass = num
+        self.maxnonpass = maxnonpass
 
     def prerun(self, atestlist, verbosity):
         ""
@@ -41,10 +30,6 @@ class ConsoleWriter:
 
         self._write_test_list_results( atestlist, level )
         self._write_summary( atestlist, 'Test list:' )
-
-    def midrun(self, atestlist):
-        ""
-        pass
 
     def postrun(self, atestlist):
         ""
@@ -65,7 +50,7 @@ class ConsoleWriter:
         ""
         cwd = os.getcwd()
 
-        tosum,tL = collect_timing_list( atestlist, self.testdir, cwd )
+        tosum,tL = collect_timing_list( atestlist, self.rtinfo['rundir'], cwd )
 
         fmt = '%8s %8s %s'
         logger.info( fmt % ('TIMEOUT','RUNTIME','TEST') )
@@ -208,7 +193,7 @@ class ConsoleWriter:
 
     def writeTest(self, tcase, cwd):
         ""
-        astr = outpututils.XstatusString( tcase, self.testdir, cwd )
+        astr = outpututils.XstatusString( tcase, self.rtinfo['rundir'], cwd )
         logger.info( astr )
 
 

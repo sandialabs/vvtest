@@ -27,28 +27,14 @@ class JsonWriter:
 
     """
 
-    def __init__(self, permsetter, output_filename, results_test_dir):
+    def __init__(self, permsetter):
         """"""
         self.permsetter = permsetter
-        self.filename = os.path.normpath(os.path.abspath(output_filename))
-        self.testdir = results_test_dir
-        self.datestamp = None
 
-    def setOutputDate(self, datestamp):
-        """"""
-        self.datestamp = datestamp
-
-    def setInfoObjects(self, rtinfo):
+    def initialize(self, rtinfo, output_filename, datestamp):
         """"""
         self.rtinfo = rtinfo
-
-    def prerun(self, atestlist, verbosity):
-        """"""
-        pass
-
-    def midrun(self, atestlist):
-        """"""
-        pass
+        self.filename = os.path.normpath(os.path.abspath(output_filename))
 
     def postrun(self, atestlist):
         """"""
@@ -143,7 +129,7 @@ class JsonWriter:
         """Convert the testcase to a dictionary"""
         spec = testcase.getSpec()
         stat = testcase.getStat()
-        logfile = outpututils.get_log_file_path(self.testdir, spec)
+        logfile = outpututils.get_log_file_path(self.rtinfo['rundir'], spec)
         result = stat.getResultStatus()
         skip = bool(stat.skipTest())
         starttime = stat.getStartDate(None) or -1

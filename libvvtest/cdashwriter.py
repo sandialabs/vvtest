@@ -16,33 +16,21 @@ from . import outpututils
 
 class CDashWriter:
 
-    def __init__(self, results_test_dir, permsetter):
+    def __init__(self, permsetter, formatter, submitter):
         ""
-        self.fmtr = None
-        self.subm = None
-
-        self.testdir = results_test_dir
         self.permsetter = permsetter
-
-        self.dspecs = None
-
-    def setFormatter(self, formatter):
-        ""
         self.fmtr = formatter
-
-    def setSubmitter(self, submitter):
-        ""
         self.subm = submitter
 
-    def setInfoObjects(self, rtinfo):
+    def initialize(self, rtinfo,
+                         destination,
+                         project=None,
+                         datestamp=None,
+                         options=[],
+                         tag=None ):
         ""
         self.rtinfo = rtinfo
 
-    def initialize(self, destination, project=None,
-                                      datestamp=None,
-                                      options=[],
-                                      tag=None ):
-        ""
         self.dspecs,err = construct_destination_specs( destination,
                                                        project=project,
                                                        datestamp=datestamp,
@@ -54,14 +42,6 @@ class CDashWriter:
                   'destination is an http URL'
 
         return err
-
-    def prerun(self, atestlist, verbosity):
-        ""
-        pass
-
-    def midrun(self, atestlist):
-        ""
-        pass
 
     def postrun(self, atestlist):
         ""
@@ -78,13 +58,13 @@ class CDashWriter:
         logger.info('\nComposing CDash submission data...')
 
         set_global_data( self.fmtr, self.dspecs, self.rtinfo )
-        set_test_list( self.fmtr, self.dspecs, atestlist, self.testdir )
+        set_test_list( self.fmtr, self.dspecs, atestlist, self.rtinfo['rundir'] )
 
     def _write_data(self, fmtr):
         ""
         if self.dspecs.url:
 
-            fname = pjoin( self.testdir, 'vvtest_cdash_submit.xml' )
+            fname = pjoin( self.rtinfo['rundir'], 'vvtest_cdash_submit.xml' )
 
             try:
                 logger.info('Writing CDash submission file: {0}'.format(fname))

@@ -32,7 +32,6 @@ from libvvtest.gitlabwriter import make_submit_info
 from libvvtest.teststatus import TestStatus, DIFF_EXIT_STATUS
 from libvvtest.testcase import TestCase
 from gitinterface import clone_repo, get_remote_branches
-from libvvtest.runinfo import RuntimeInfo
 
 
 class gitlab_output_format_tests( vtu.vvtestTestCase ):
@@ -333,7 +332,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
     def test_test_run_attributes(self):
         ""
         conv = gitlabwriter.GitLabMarkDownConverter( '.', '.' )
-        conv.saveResults( [], RuntimeInfo() )
+        conv.saveResults( [], {} )
         time.sleep(1)
 
         fval = util.readfile( 'README.md' ).strip()
@@ -342,8 +341,8 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         conv = gitlabwriter.GitLabMarkDownConverter( '.', '.' )
         tm = time.time()
-        rtinfo = RuntimeInfo( startdate=str(tm)+' / '+time.ctime(tm),
-                              finishdate=str(tm+10)+' / '+time.ctime(tm+10) )
+        rtinfo = { 'startdate':str(tm)+' / '+time.ctime(tm),
+                   'finishdate':str(tm+10)+' / '+time.ctime(tm+10) }
         conv.saveResults( [], rtinfo )
         time.sleep(1)
 
@@ -352,7 +351,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         assert len( util.greplines( 'startdate', val ) ) == 1
         assert len( util.greplines( 'finishdate', val ) ) == 1
 
-    def make_recording_GitLabWriter(self, location):
+    def make_recording_GitLabWriter(self, location, output_period=None):
         ""
         recorder = []
 
@@ -362,7 +361,11 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
             def _dispatch_submission(self, atestlist, logfunc):
                 recorder.append( 'submit' )
 
-        wr = RecordingGitLabWriter( location, None, None )
+        wr = RecordingGitLabWriter( None )
+        if output_period is None:
+            wr.initialize( {}, location )
+        else:
+            wr.initialize( {}, location, output_period=output_period )
 
         return wr,recorder
 
@@ -400,8 +403,9 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
     def test_trigger_url_submission_on_midrun(self):
         ""
-        wr,recorder = self.make_recording_GitLabWriter( 'file:///some/dir' )
-        wr.setOutputPeriod( 2 )
+        wr,recorder = self.make_recording_GitLabWriter(
+                                            'file:///some/dir',
+                                            output_period=2 )
 
         wr.prerun( None, 0 )
         assert recorder == [ 'submit' ]
@@ -419,18 +423,18 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         ""
         tm = time.time()
 
-        rtinfo = RuntimeInfo( startepoch=tm, platform='xbox' )
+        rtinfo = { 'startepoch':tm, 'platform':'xbox' }
         start,sfx,msg = make_submit_info( rtinfo, ['dbg'], None )
         assert abs( tm - start ) < 2
         print3( 'sfx', sfx )
         assert 'xbox' in sfx and 'dbg' in sfx
         assert 'vvtest' in msg
 
-        rtinfo = RuntimeInfo( startepoch=tm, platform='xbox' )
+        rtinfo = { 'startepoch':tm, 'platform':'xbox' }
         start,sfx,msg = make_submit_info( rtinfo, ['dbg'], 'blue' )
         assert 'xbox' in sfx and 'dbg' in sfx and 'blue' in sfx
 
-        rtinfo = RuntimeInfo( startepoch=tm )
+        rtinfo = { 'startepoch':tm }
         start,sfx,msg = make_submit_info( rtinfo, [], None )
         assert abs( tm - start ) < 2
         assert not sfx
@@ -442,7 +446,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         return url
 
-    def make_git_repo_and_overridden_GitLabWriter(self):
+    def make_git_repo_and_overridden_GitLabWriter(self, rtinfo):
         ""
         url = self.make_git_repo()
 
@@ -455,17 +459,18 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
                 gitlabwriter.write_run_attributes( fp, self.rtinfo )
                 fp.close()
 
-        wr = OverrideGitLabWriter( url, 'faketestresults', None )
+        wr = OverrideGitLabWriter( None )
+        wr.initialize( rtinfo, url )
 
         return wr,url
 
     def test_submit_to_git_repository(self):
         ""
-        wr,url = self.make_git_repo_and_overridden_GitLabWriter()
+        rtinfo = { 'rundir':'faketestresults',
+                   'startepoch':1559822821.99,  # Thu Jun  6 06:07:01 2019
+                   'curdir':'my value' }
+        wr,url = self.make_git_repo_and_overridden_GitLabWriter( rtinfo )
 
-        rtinfo = RuntimeInfo( startepoch=1559822821.99,  # Thu Jun  6 06:07:01 2019
-                              curdir='my value' )
-        wr.setInfoObjects( rtinfo )
         wr._dispatch_submission( None, logger.info )
 
         git = clone_repo( url, 'checkrepo' )
@@ -484,9 +489,12 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
             def _convert_files(self, destdir, atestlist, logfunc):
                 util.writefile( destdir+'/ok.txt', "file contents" )
 
+        wr = OverrideGitLabWriter( None )
+        rtinfo = { 'rundir':'faketestresults',
+                   'startepoch':1559822821.99 }
         badurl = 'file:///some/path/ladofgidskjslasdf'
-        wr = OverrideGitLabWriter( badurl, 'faketestresults', None )
-        wr.setInfoObjects( RuntimeInfo( startepoch=1559822821.99 ) )
+        wr.initialize( rtinfo, badurl )
+
         rtn,out,err = util.call_capture_output(
             wr._dispatch_submission, None, logger.info )
 
@@ -494,10 +502,11 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
     def test_submit_a_second_time_when_no_files_are_different(self):
         ""
-        wr,url = self.make_git_repo_and_overridden_GitLabWriter()
-        rtinfo = RuntimeInfo( startepoch=1559822821.99 )  # Thu Jun  6 06:07:01 2019
+        rtinfo = { 'rundir':'faketestresults',
+                   'startepoch':1559822821.99 }  # Thu Jun  6 06:07:01 2019
+        wr,url = self.make_git_repo_and_overridden_GitLabWriter( rtinfo )
 
-        wr.setInfoObjects( rtinfo )
+        # wr.setInfoObjects( rtinfo )
         wr._dispatch_submission( None, logger.info )
 
         time.sleep(1)

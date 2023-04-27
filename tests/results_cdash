@@ -24,7 +24,6 @@ import cdashutil
 
 from libvvtest.TestList import TestList
 from libvvtest.permsetter import PermissionSetter
-from libvvtest.runinfo import RuntimeInfo
 from libvvtest.tcfactory import TestCaseFactory
 
 
@@ -52,15 +51,13 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def test_sitename_buildname_start_end_elapsed(self):
         ""
-        wr = make_CDashWriter( 'file.xml' )
-
         tm = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
-        rtinfo = RuntimeInfo( startepoch=tm,
-                              hostname='sparky',
-                              rundir='/path/to/testresultsdir',
-                              finishepoch=tm+73 )
-        wr.setInfoObjects( rtinfo )
+        rtinfo = { 'startepoch':tm,
+                   'hostname':'sparky',
+                   'rundir':'/path/to/testresultsdir',
+                   'finishepoch':tm+73 }
+        wr = make_CDashWriter( 'file.xml', rtinfo=rtinfo )
 
         testlist = TestList( TestCaseFactory() )
 
@@ -322,15 +319,15 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def test_a_URL_without_a_project_name_is_an_error(self):
         ""
-        wr = cdashwriter.CDashWriter( os.getcwd(), None )
+        wr = cdashwriter.CDashWriter( None, None, None )
 
-        err = wr.initialize( 'http://localhost/cdash' )
+        err = wr.initialize( {}, 'http://localhost/cdash' )
         assert err
 
-        err = wr.initialize( 'http://localhost/cdash', project='CoolProj' )
+        err = wr.initialize( {}, 'http://localhost/cdash', project='CoolProj' )
         assert not err
 
-        err = wr.initialize( 'http://localhost/cdash,project=CoolProj' )
+        err = wr.initialize( {}, 'http://localhost/cdash,project=CoolProj' )
         assert not err
 
     def test_cdash_specification_data_flow(self):
@@ -357,9 +354,8 @@ class unit_tests( vtu.vvtestTestCase ):
         rdate  = 1512812080.2058824  # Sat Dec  9 02:34:40 2017 MDT
         tstart = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
-        wr = make_CDashWriter( 'file.xml', datestamp=rdate )
-        rtinfo = RuntimeInfo( startepoch=tstart )
-        wr.setInfoObjects( rtinfo )
+        rtinfo = { 'startepoch':tstart, 'rundir':os.getcwd() }
+        wr = make_CDashWriter( 'file.xml', datestamp=rdate, rtinfo=rtinfo )
 
         testlist = TestList( TestCaseFactory() )
         wr.postrun( testlist )
@@ -704,20 +700,22 @@ class integration_tests( vtu.vvtestTestCase ):
 
 
 def make_CDashWriter( destination, subclass_submitter=None,
-                      project=None, datestamp=None ):
+                      project=None, datestamp=None, rtinfo=None ):
     ""
     perms = PermissionSetter( os.getcwd(), None )
 
-    wr = cdashwriter.CDashWriter( os.getcwd(), perms )
-
-    wr.setFormatter( cdashutil.TestResultsFormatter() )
+    fmtr = cdashutil.TestResultsFormatter()
     if subclass_submitter:
-        wr.setSubmitter( subclass_submitter )
+        subm = subclass_submitter
     else:
-        wr.setSubmitter( cdashutil.FileSubmitter() )
+        subm = cdashutil.FileSubmitter()
 
-    wr.setInfoObjects( RuntimeInfo() )
-    wr.initialize( destination, project=project, datestamp=datestamp )
+    wr = cdashwriter.CDashWriter( perms, fmtr, subm )
+
+    if rtinfo is None:
+        rtinfo = { 'rundir':os.getcwd() }
+
+    wr.initialize( rtinfo, destination, project=project, datestamp=datestamp )
 
     return wr
 

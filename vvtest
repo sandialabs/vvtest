@@ -525,13 +525,9 @@ def construct_console_writer( rtdata, opts, optD ):
     import libvvtest.consolewriter as consolewriter
 
     verb = get_output_verbosity_integer( opts.dash_v )
-    test_dir = rtdata.testdir
-    rtinfo = rtdata.rtinfo
 
-    conobj = consolewriter.ConsoleWriter( test_dir, verb )
-
-    conobj.setInfoObjects( rtinfo )
-    conobj.setSortingSpecification( optD['sort_letters'] )
+    conobj = consolewriter.ConsoleWriter()
+    conobj.initialize( rtdata.rtinfo, verb, optD['sort_letters'] )
 
     return conobj
 
@@ -540,12 +536,8 @@ def construct_html_writer( rtdata, opts, optD ):
     ""
     import libvvtest.htmlwriter as htmlwriter
 
-    test_dir = rtdata.testdir
-    perms = rtdata.perms
-    rtinfo = rtdata.rtinfo
-
-    htmlobj = htmlwriter.HTMLWriter( perms, opts.html, test_dir )
-    htmlobj.setInfoObjects( rtinfo )
+    htmlobj = htmlwriter.HTMLWriter( rtdata.perms )
+    htmlobj.initialize( rtdata.rtinfo, opts.html )
 
     return htmlobj
 
@@ -554,14 +546,8 @@ def construct_junit_writer( rtdata, opts, optD ):
     ""
     import libvvtest.junitwriter as junitwriter
 
-    test_dir = rtdata.testdir
-    perms = rtdata.perms
-    rtinfo = rtdata.rtinfo
-
-    junitobj = junitwriter.JUnitWriter( perms, opts.junit, test_dir )
-
-    junitobj.setOutputDate( opts.results_date )
-    junitobj.setInfoObjects( rtinfo )
+    junitobj = junitwriter.JUnitWriter( rtdata.perms )
+    junitobj.initialize( rtdata.rtinfo, opts.junit, opts.results_date )
 
     return junitobj
 
@@ -570,14 +556,9 @@ def construct_json_writer( rtdata, opts, optD ):
     ""
     import libvvtest.jsonwriter as jsonwriter
 
-    test_dir = rtdata.testdir
-    perms = rtdata.perms
-    rtinfo = rtdata.rtinfo
-    rtconfig = rtdata.rtconfig
+    jsonobj = jsonwriter.JsonWriter( rtdata.perms )
+    jsonobj.initialize( rtdata.rtinfo, opts.json, opts.results_date )
 
-    jsonobj = jsonwriter.JsonWriter( perms, opts.json, test_dir )
-    jsonobj.setOutputDate(opts.results_date)
-    jsonobj.setInfoObjects( rtinfo )
     return jsonobj
 
 
@@ -585,16 +566,14 @@ def construct_gitlab_writer( rtdata, opts, optD ):
     ""
     import libvvtest.gitlabwriter as gitlabwriter
 
-    test_dir = rtdata.testdir
-    perms = rtdata.perms
-    rtinfo = rtdata.rtinfo
+    gitlabobj = gitlabwriter.GitLabWriter( rtdata.perms )
 
-    gitlabobj = gitlabwriter.GitLabWriter( opts.gitlab, test_dir, perms )
-
-    gitlabobj.setSortingSpecification( optD['sort_letters'] )
-    gitlabobj.setOutputDate( opts.results_date )
-    gitlabobj.setNamingTags( optD['onopts'], opts.results_tag )
-    gitlabobj.setInfoObjects( rtinfo )
+    gitlabobj.initialize( rtdata.rtinfo,
+                          opts.gitlab,
+                          datestamp=opts.results_date,
+                          sortspec=optD['sort_letters'],
+                          onopts=optD['onopts'],
+                          name_tag=opts.results_tag );
 
     return gitlabobj
 
@@ -604,17 +583,12 @@ def construct_cdash_writer( rtdata, opts, optD ):
     import libvvtest.cdashwriter as cdashwriter
     import cdashutil
 
-    test_dir = rtdata.testdir
-    perms = rtdata.perms
-    rtinfo = rtdata.rtinfo
+    cdashobj = cdashwriter.CDashWriter( rtdata.perms,
+                                        cdashutil.TestResultsFormatter(),
+                                        cdashutil.FileSubmitter() )
 
-    cdashobj = cdashwriter.CDashWriter( test_dir, perms )
-
-    cdashobj.setFormatter( cdashutil.TestResultsFormatter() )
-    cdashobj.setSubmitter( cdashutil.FileSubmitter() )
-    cdashobj.setInfoObjects( rtinfo )
-
-    err = cdashobj.initialize( opts.cdash,
+    err = cdashobj.initialize( rtdata.rtinfo,
+                               opts.cdash,
                                project=opts.cdash_project,
                                datestamp=opts.results_date,
                                options=optD['onopts'],
@@ -640,11 +614,12 @@ def construct_testlist_writer( rtdata, opts, optD ):
     if not listwriter.is_target_like_scp( todir ):
         todir = normpath( abspath( todir ) )
 
-    wlistobj = listwriter.ListWriter( rtdata.loc, perms, todir, rtdata.testdir )
+    wlistobj = listwriter.ListWriter( rtdata.loc, rtdata.perms )
 
-    wlistobj.setOutputDate( opts.results_date )
-    wlistobj.setNamingTags( optD['onopts'], opts.results_tag )
-    wlistobj.setInfoObjects( rtinfo )
+    wlistobj.initialize( rtinfo, todir,
+                         opts.results_date,
+                         optD['onopts'],
+                         opts.results_tag )
 
     return wlistobj
 

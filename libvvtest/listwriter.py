@@ -33,38 +33,28 @@ class ListWriter:
     is given on the vvtest command line, then that date is used instead.
     """
 
-    def __init__(self, loc, permsetter, output_dir, results_test_dir, scpexe='scp'):
+    def __init__(self, loc, permsetter):
         ""
         self.loc = loc
         self.permsetter = permsetter
-        self.outdir = output_dir
-        self.testdir = results_test_dir
-        self.scpexe = scpexe
 
-        self.datestamp = None
-        self.onopts = []
-        self.ftag = None
-
-    def setOutputDate(self, datestamp):
-        ""
-        self.datestamp = datestamp
-
-    def setInfoObjects(self, rtinfo):
+    def initialize(self, rtinfo,
+                         destination,
+                         datestamp=None,
+                         onopts=[],
+                         name_tag=None,
+                         scpexe='scp' ):
         ""
         self.rtinfo = rtinfo
-
-    def setNamingTags(self, on_option_list, final_tag):
-        ""
-        self.onopts = on_option_list
-        self.ftag = final_tag
+        self.outdir = destination
+        self.datestamp = datestamp
+        self.onopts = onopts
+        self.ftag = name_tag
+        self.scpexe = scpexe
 
     def prerun(self, atestlist, verbosity):
         ""
         self.writeList( atestlist, inprogress=True )
-
-    def midrun(self, atestlist):
-        ""
-        pass
 
     def postrun(self, atestlist):
         ""
@@ -81,7 +71,7 @@ class ListWriter:
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp )
 
         if is_target_like_scp( self.outdir ):
-            todir = self.testdir
+            todir = self.rtinfo['rundir']
         else:
             todir = self.outdir
 
@@ -144,7 +134,7 @@ class ListWriter:
         cplr = self.rtinfo.get( 'compiler' )
         mach = os.uname()[1]
 
-        tr.writeResults( filename, pname, cplr, mach, self.testdir, inprogress )
+        tr.writeResults( filename, pname, cplr, mach, self.rtinfo['rundir'], inprogress )
 
 
 def is_target_like_scp( tdir ):

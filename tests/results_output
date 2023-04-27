@@ -23,7 +23,6 @@ import libvvtest.outpututils as outpututils
 import libvvtest.listwriter as listwriter
 from libvvtest.TestList import TestList
 import libvvtest.fmtresults as fmtresults
-from libvvtest.runinfo import RuntimeInfo
 from libvvtest.location import Locator
 
 
@@ -209,11 +208,12 @@ class save_results_output( vtu.vvtestTestCase ):
         tcase,tlist = self.prep_testlist( 'adir' )
 
         perm = MockPermissionSetter()
-        rtinfo = RuntimeInfo( platform='Xbox', compiler='gcc' )
+        rtinfo = { 'rundir':abspath('tdir'),
+                   'platform':'Xbox',
+                   'compiler':'gcc' }
 
-        lwr = listwriter.ListWriter( Locator(os.getcwd()),
-                                     perm, 'odir', abspath('tdir') )
-        lwr.setInfoObjects( rtinfo )
+        lwr = listwriter.ListWriter( Locator(os.getcwd()), perm )
+        lwr.initialize( rtinfo, 'odir' )
 
         lwr.writeList( tlist )
         fL = util.grepfiles( 'adir/sdir/atest.np=4', 'odir/results.*' )
@@ -244,12 +244,14 @@ class save_results_output( vtu.vvtestTestCase ):
         tcase,tlist = self.prep_testlist( 'adir' )
 
         perm = MockPermissionSetter()
-        rtinfo = RuntimeInfo( platform='Xbox', compiler='gcc' )
+        rtinfo = { 'rundir':abspath('tdir'),
+                   'platform':'Xbox',
+                   'compiler':'gcc' }
 
-        lwr = listwriter.ListWriter( Locator(os.getcwd()),
-                                     perm, 'sparky:'+abspath('odir'),
-                                     abspath('tdir'), scpexe=abspath('fakescp') )
-        lwr.setInfoObjects( rtinfo )
+        lwr = listwriter.ListWriter( Locator(os.getcwd()), perm )
+        lwr.initialize( rtinfo,
+                        'sparky:'+abspath('odir'),
+                        scpexe=abspath('fakescp') )
 
         lwr.writeList( tlist )
 

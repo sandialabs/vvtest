@@ -17,8 +17,20 @@ import gitresults
 
 class GitLabWriter:
 
-    def __init__(self, destination, results_test_dir, permsetter):
+    def __init__(self, permsetter):
         ""
+        self.permsetter = permsetter
+
+    def initialize(self, rtinfo,
+                         destination,
+                         datestamp=None,
+                         output_period=60*60,
+                         sortspec=None,
+                         onopts=[],
+                         name_tag=None ):
+        ""
+        self.rtinfo = rtinfo
+
         if is_gitlab_url( destination ):
             self.outurl = destination
             self.outdir = None
@@ -26,36 +38,11 @@ class GitLabWriter:
             self.outurl = None
             self.outdir = os.path.normpath( os.path.abspath( destination ) )
 
-        self.testdir = results_test_dir
-        self.permsetter = permsetter
-
-        self.sortspec = None
-        self.datestamp = None
-        self.onopts = []
-        self.nametag = None
-
-        self.period = 60*60
-
-    def setSortingSpecification(self, sortspec):
-        ""
-        self.sortspec = sortspec
-
-    def setOutputDate(self, datestamp):
-        ""
         self.datestamp = datestamp
-
-    def setNamingTags(self, option_list, name_tag):
-        ""
-        self.onopts = option_list
+        self.period = output_period
+        self.sortspec = sortspec
+        self.onopts = onopts
         self.nametag = name_tag
-
-    def setOutputPeriod(self, period_in_seconds):
-        ""
-        self.period = period_in_seconds
-
-    def setInfoObjects(self, rtinfo):
-        ""
-        self.rtinfo = rtinfo
 
     def prerun(self, atestlist, verbosity):
         ""
@@ -100,7 +87,7 @@ class GitLabWriter:
         logfunc( "Writing", len(tcaseL),
                  "tests in GitLab format to", destdir )
 
-        conv = GitLabMarkDownConverter( self.testdir, destdir )
+        conv = GitLabMarkDownConverter( self.rtinfo['rundir'], destdir )
         conv.saveResults( tcaseL, self.rtinfo )
 
     def _dispatch_submission(self, atestlist, logfunc):
@@ -109,7 +96,7 @@ class GitLabWriter:
             start,sfx,msg = make_submit_info( self.rtinfo, self.onopts, self.nametag )
             epoch = self._submission_epoch( start )
 
-            gr = gitresults.GitResults( self.outurl, self.testdir )
+            gr = gitresults.GitResults( self.outurl, self.rtinfo['rundir'] )
             try:
                 rdir = gr.createBranchLocation( directory_suffix=sfx,
                                                 epochdate=epoch )

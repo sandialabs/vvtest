@@ -122,7 +122,8 @@ class timing_output_tests( vtu.vvtestTestCase ):
         class MockTestList:
             def getTests(self): return tL
 
-        conwr = consolewriter.ConsoleWriter( os.getcwd() )
+        conwr = consolewriter.ConsoleWriter()
+        conwr.initialize( {'rundir':os.getcwd()} )
         rtn,out,err = util.call_capture_output( conwr.timings, MockTestList() )
 
         print3( out )

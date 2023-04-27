@@ -14,29 +14,15 @@ from . import outpututils
 
 class JUnitWriter:
 
-    def __init__(self, permsetter, output_filename, results_test_dir):
+    def __init__(self, permsetter):
         ""
         self.permsetter = permsetter
-        self.filename = os.path.normpath( os.path.abspath( output_filename ) )
-        self.testdir = results_test_dir
 
-        self.datestamp = None
-
-    def setOutputDate(self, datestamp):
-        ""
-        self.datestamp = datestamp
-
-    def setInfoObjects(self, rtinfo):
+    def initialize(self, rtinfo, output_filename, datestamp):
         ""
         self.rtinfo = rtinfo
-
-    def prerun(self, atestlist, verbosity):
-        ""
-        pass
-
-    def midrun(self, atestlist):
-        ""
-        pass
+        self.filename = os.path.normpath( os.path.abspath( output_filename ) )
+        self.datestamp = datestamp
 
     def postrun(self, atestlist):
         ""
@@ -83,7 +69,7 @@ class JUnitWriter:
         for tcase in tcaseL:
             tsum += max( 0.0, tcase.getStat().getRuntime( 0.0 ) )
 
-        tdir = os.path.basename( self.testdir )
+        tdir = os.path.basename( self.rtinfo['rundir'] )
         tdir = tdir.replace( '.', '_' )  # a dot is a Java class separator
 
         fp = open( self.filename, 'w' )
@@ -137,7 +123,7 @@ class JUnitWriter:
 
     def make_execute_log_section(self, tcase, max_KB):
         ""
-        logfile = outpututils.get_log_file_path( self.testdir, tcase.getSpec() )
+        logfile = outpututils.get_log_file_path( self.rtinfo['rundir'], tcase.getSpec() )
 
         try:
             sysout = outpututils.file_read_with_limit( logfile, max_KB )

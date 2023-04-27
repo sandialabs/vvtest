@@ -18,19 +18,23 @@ class ResultsWriters:
     def prerun(self, atestlist, verbosity):
         ""
         for wr in self.writers:
-            wr.prerun( atestlist, verbosity )
+            if hasattr( wr, 'prerun' ):
+                wr.prerun( atestlist, verbosity )
 
     def midrun(self, atestlist):
         ""
         for wr in self.writers:
-            wr.midrun( atestlist )
+            if hasattr( wr, 'midrun' ):
+                wr.midrun( atestlist )
 
     def postrun(self, atestlist):
         ""
         for wr in self.writers:
-            wr.postrun( atestlist )
+            if hasattr( wr, 'postrun' ):
+                wr.postrun( atestlist )
 
     def info(self, atestlist):
         ""
         for wr in self.writers:
-            wr.info( atestlist )
+            if hasattr( wr, 'info' ):
+                wr.info( atestlist )

@@ -14,6 +14,7 @@ import base64
 import zlib
 import os
 import time
+from types import NoneType
 
 import vvtestutils as vtu
 import testutils as util
@@ -139,7 +140,7 @@ class json_output_format_tests(vtu.vvtestTestCase):
         time.sleep(1)
         for batch in [False, True]:
             vtu.remove_results()
-            vrun = vtu.runvvtest("--json results.json", batch=batch)
+            vrun = vtu.runvvtest("-N 4 --json results.json", batch=batch)
             vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
             data = util.read_json_file("results.json")
             validate_output(data)
@@ -151,14 +152,14 @@ def validate_type(name, value, expected_type):
             raise AssertionError(
                 "Expected {0}={1} to be of type {2}".format(name, value, expected_type)
             )
-        else:
-            # will throw if not valid
-            try:
-                expected_type(value)
-            except AssertionError:
-                raise AssertionError(
-                    "Cannot cast {0}={1} to {2}".format(name, value, expected_type)
-                )
+    else:
+        # will throw if not valid
+        try:
+            expected_type(value)
+        except AssertionError:
+            raise AssertionError(
+                "Cannot cast {0}={1} to {2}".format(name, value, expected_type)
+            )
 
 
 def validate_output(arg):
@@ -166,7 +167,7 @@ def validate_output(arg):
     assert first_level_keys == ["vvtest"]
     for parent_key in json_output_schema["vvtest"]:
         assert parent_key in arg["vvtest"], 'parent_key '+repr(parent_key)+' not in vvtest schema'
-        if parent_key in ("machine", "tests"):
+        if parent_key in ("machine", "tests", "python"):
             for child, value2 in arg["vvtest"][parent_key].items():
                 expected_type = json_output_schema["vvtest"][parent_key][child]
                 validate_type(
@@ -176,24 +177,6 @@ def validate_output(arg):
             value = arg["vvtest"][parent_key]
             expected_type = json_output_schema["vvtest"][parent_key]
             validate_type(parent_key, value, expected_type)
-
-
-class list_of:
-    item_type = None
-
-    def __init__(self, arg):
-        assert isinstance(arg, list)
-        for item in arg:
-            assert isinstance(item, self.item_type)
-        self.arg = arg
-
-
-class list_of_str(list_of):
-    item_type = str
-
-
-class list_of_int(list_of):
-    item_type = int
 
 
 class list_of_testcases:
@@ -206,34 +189,36 @@ class list_of_testcases:
             assert isinstance(item.pop("id"), str)
             assert isinstance(item.pop("root"), str)
             assert isinstance(item.pop("path"), str)
-            assert isinstance(list_of_str(item.pop("keywords")), list_of_str)
+            keywords = item.pop("keywords")
+            assert isinstance(keywords, list)
+            for keyword in keywords:
+                assert isinstance(keyword, str)
             assert isinstance(item.pop("parameters"), dict)
             assert isinstance(item.pop("starttime"), float)
             assert isinstance(item.pop("endtime"), float)
             assert isinstance(item.pop("returncode"), int)
             assert isinstance(item.pop("result"), str)
             assert isinstance(item.pop("timeout"), int)
-            assert isinstance(item.pop("resources"), dict)
-            resources = item["resources"]
-            assert isinstance(resources.pop("processors"), int)
-            assert isinstance(list_of_int(resources.pop("processor ids")), list_of_int)
-            assert isinstance(resources.pop("total processors"), int)
-            assert isinstance(resources.pop("devices"), int)
-            assert isinstance(list_of_int(resources.pop("device ids")), list_of_int)
-            assert isinstance(resources.pop("total devices"), int)
-            assert isinstance(item.pop("command"), dict)
-            assert isinstance(item.pop("log"), dict)
+            resources = item.pop("resources", None)
+            assert isinstance(resources, dict)
+            assert isinstance(resources.pop("processors"), (int, NoneType))
+            processor_ids = resources.pop("processor ids")
+            assert isinstance(processor_ids, (NoneType, list))
+            for processor_id in processor_ids or []:
+                assert isinstance(processor_id, int)
+            assert isinstance(resources.pop("max processors per test"), (int, NoneType))
+            assert isinstance(resources.pop("devices"), (int, NoneType))
+            device_ids = resources.pop("device ids")
+            assert isinstance(device_ids, (NoneType, list))
+            for device_id in device_ids or []:
+                assert isinstance(device_id, int)
+            assert isinstance(resources.pop("max devices per test"), (int, NoneType))
+            assert isinstance(item.pop("command"), str)
+            assert isinstance(item.pop("log"), str)
             assert not item
 
 
-class str_or_none:
-    def __init__(self, arg):
-        if arg is not None:
-            assert isinstance(arg, str)
-        self.arg = arg
-
-
-primitive_types = (str, float, list, dict, bool, int)
+primitive_types = (str, float, list, dict, bool, int, (str, NoneType))
 
 
 json_output_schema = {
@@ -242,7 +227,7 @@ json_output_schema = {
         "startdate": str,
         "command": str,
         "vvtestdir": str,
-        "compiler": str_or_none,
+        "compiler": (str, NoneType),
         "rundir": str,
         "starttime": float,
         "endtime": float,

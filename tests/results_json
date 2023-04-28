@@ -14,10 +14,11 @@ import base64
 import zlib
 import os
 import time
-from types import NoneType
 
 import vvtestutils as vtu
 import testutils as util
+
+nonetype = type(None)
 
 
 class json_output_format_tests(vtu.vvtestTestCase):
@@ -201,24 +202,24 @@ class list_of_testcases:
             assert isinstance(item.pop("timeout"), int)
             resources = item.pop("resources", None)
             assert isinstance(resources, dict)
-            assert isinstance(resources.pop("processors"), (int, NoneType))
+            assert isinstance(resources.pop("processors"), (int, nonetype))
             processor_ids = resources.pop("processor ids")
-            assert isinstance(processor_ids, (NoneType, list))
+            assert isinstance(processor_ids, (nonetype, list))
             for processor_id in processor_ids or []:
                 assert isinstance(processor_id, int)
-            assert isinstance(resources.pop("max processors per test"), (int, NoneType))
-            assert isinstance(resources.pop("devices"), (int, NoneType))
+            assert isinstance(resources.pop("total processors"), (int, nonetype))
+            assert isinstance(resources.pop("devices"), (int, nonetype))
             device_ids = resources.pop("device ids")
-            assert isinstance(device_ids, (NoneType, list))
+            assert isinstance(device_ids, (nonetype, list))
             for device_id in device_ids or []:
                 assert isinstance(device_id, int)
-            assert isinstance(resources.pop("max devices per test"), (int, NoneType))
+            assert isinstance(resources.pop("total devices"), (int, nonetype))
             assert isinstance(item.pop("command"), str)
             assert isinstance(item.pop("log"), str)
             assert not item
 
 
-primitive_types = (str, float, list, dict, bool, int, (str, NoneType))
+primitive_types = (str, float, list, dict, bool, int, (str, nonetype))
 
 
 json_output_schema = {
@@ -227,7 +228,7 @@ json_output_schema = {
         "startdate": str,
         "command": str,
         "vvtestdir": str,
-        "compiler": (str, NoneType),
+        "compiler": (str, nonetype),
         "rundir": str,
         "starttime": float,
         "endtime": float,

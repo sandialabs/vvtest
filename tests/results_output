@@ -17,7 +17,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.outpututils as outpututils
 import libvvtest.listwriter as listwriter
@@ -68,7 +67,6 @@ class misc_tests( vtu.vvtestTestCase ):
             line one is number one
             line two is last one wins
             """ )
-        time.sleep(1)
 
         buf = outpututils.file_read_with_limit( 'afile.txt', 10 )
         assert len( buf.splitlines() ) > 2
@@ -82,7 +80,6 @@ class misc_tests( vtu.vvtestTestCase ):
             fp.write( 'The Overlook Hotel.\n' )
             fp.write( line * 10000 )
             fp.write( 'REDRUM!  REDRUM!\n' )
-        time.sleep(1)
 
         assert getfsize( 'afile.txt' ) > 1*1024
         buf = outpututils.file_read_with_limit( 'afile.txt', 1 )
@@ -99,13 +96,11 @@ class html_output_format_tests( vtu.vvtestTestCase ):
     def test_producing_an_HTML_results_file(self):
         ""
         write_three_test_files()
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
 
         vrun = vtu.runvvtest( '-i --html=../tr.htm', chdir=vrun.resultsDir() )
-        time.sleep(1)
 
         doc = util.read_xml_file( 'tr.htm' )
         lines = get_status_lines_from_html( doc )
@@ -124,7 +119,6 @@ class html_output_format_tests( vtu.vvtestTestCase ):
     def test_producing_an_HTML_results_file_as_part_of_execution(self):
         ""
         write_three_test_files()
-        time.sleep(1)
 
         for batch in [False,True]:
 
@@ -132,7 +126,6 @@ class html_output_format_tests( vtu.vvtestTestCase ):
 
             vrun = vtu.runvvtest( '--html tr.html' )
             vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
-            time.sleep(1)
 
             doc = util.read_xml_file( 'tr.html' )
             lines = get_status_lines_from_html( doc )
@@ -156,7 +149,6 @@ class save_results_output( vtu.vvtestTestCase ):
             def load_specifications( specs, platname, cplrname, options ):
                 specs['testingdir'] = '"""+abspath('plugout')+"""'
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, npass=2 )
@@ -183,7 +175,6 @@ class save_results_output( vtu.vvtestTestCase ):
     def test_getting_relative_root_path_with_marker_file(self):
         ""
         tcase = make_fake_test_in_subdir( 'adir' )
-        time.sleep(1)
 
         rel = fmtresults.determine_rootrel( abspath('adir/sdir'), {} )
         assert not rel
@@ -199,7 +190,6 @@ class save_results_output( vtu.vvtestTestCase ):
 
         tlist = TestList( 'testlist' )
         tlist.addTest( tcase )
-        time.sleep(1)
 
         return tcase, tlist
 
@@ -294,15 +284,14 @@ def write_three_test_files():
         time.sleep(2)
         raise Exception( 'pitch a fake exception' )
         """)
-    util.writefile( "DiffTest.xml", """
-        <rtest name="DiffTest">
-            <parameterize np="1 2"/>
-            <execute>
-                sleep 3
-                echo "fake difference of 29"
-                set have_diff = yes
-            </execute>
-        </rtest>""")
+    util.writefile( "DiffTest.vvt", """
+        #VVT: parameterize : np = 1 2
+        import sys, time
+        import vvtest_util as vvt
+        time.sleep(3)
+        print ( "fake difference of 29" )
+        sys.exit( vvt.diff_exit_status )
+        """ )
 
 
 def get_status_lines_from_html( htmldoc ):

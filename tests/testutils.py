@@ -359,6 +359,8 @@ def call_capture_output( func, *args, **kwargs ):
     of = 'stdout'+str(outid)+'.log'
     ef = 'stderr'+str(outid)+'.log'
 
+    sys.stdout.flush() ; sys.stderr.flush()
+
     with redirect_output( of, ef ):
         try:
             rtn = func( *args, **kwargs )
@@ -366,6 +368,7 @@ def call_capture_output( func, *args, **kwargs ):
             traceback.print_exc()
         except SystemExit:
             traceback.print_exc()
+        sys.stdout.flush() ; sys.stderr.flush()
 
     time.sleep(1)
 

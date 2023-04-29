@@ -18,7 +18,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.results as results
 
@@ -57,12 +56,10 @@ class test_results_tests( vtu.vvtestTestCase ):
         assert not os.path.exists('tsrc/two/'+timesfname)
 
         # add a test to 'one', rerun the tests, then save runtimes at the top level
-        util.writefile( "tsrc/one/ferret.xml", """
-            <rtest name="ferret">
-                <execute>
-                    sleep 1
-                </execute>
-            </rtest>""" )
+        util.writefile( "tsrc/one/ferret.vvt", """
+            import time
+            time.sleep(1)
+            """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-w tsrc' )
@@ -425,29 +422,29 @@ class test_results_tests( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '-w --save-results' )
         vrun.assertCounts( total=3, npass=3 )
         rfile2 = ru.get_latest_results_filename()
-        print3( 'results files:', rfile1, rfile2 )
+        print( 'results files: '+str(rfile1)+' '+str(rfile2) )
         assert rfile2 != rfile1
 
         vrun = vtu.runvvtest(
             '-w --save-results --results-date 2016_07_15' )
         vrun.assertCounts( total=3, npass=3 )
         rfile3 = ru.get_latest_results_filename()
-        print3( 'results files:', rfile1, rfile2, rfile3 )
+        print( 'results files: '+str(rfile1)+' '+str(rfile2)+' '+str(rfile3) )
         assert '2016_07_15' in rfile3
         assert rfile3 not in [ rfile1, rfile2 ]
 
     def test_that_timeout_only_reported_if_two_or_more_times_in_a_row(self):
         ""
-        util.writefile( "subdir/test1.xml", """
-            <rtest name="test1">
-              <timeout value="5"/>
-              <execute> sleep 2 </execute>
-            </rtest>""" )
-        util.writefile( "subdir/test2.xml", """
-            <rtest name="test2">
-              <timeout value="10"/>
-              <execute> sleep 1 </execute>
-            </rtest>""" )
+        util.writefile( "subdir/test1.vvt", """
+            #VVT: timeout : 5
+            import time
+            time.sleep(2)
+            """ )
+        util.writefile( "subdir/test2.vvt", """
+            #VVT: timeout : 10
+            import time
+            time.sleep(1)
+            """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest( 'subdir' )
@@ -474,11 +471,11 @@ class test_results_tests( vtu.vvtestTestCase ):
         assert len( util.greplines( 'test2', out ) ) == 0
 
         # now make a test timeout
-        util.writefile( "subdir/test1.xml", """
-            <rtest name="test1">
-                <timeout value="5"/>
-                <execute> sleep 10 </execute>
-            </rtest>""" )
+        util.writefile( "subdir/test1.vvt", """
+            #VVT: timeout : 5
+            import time
+            time.sleep(10)
+            """ )
         time.sleep(1)
 
         vrun = vtu.runvvtest( '-w --save-results subdir' )
@@ -507,38 +504,38 @@ class test_results_tests( vtu.vvtestTestCase ):
 
 def write_cat_dog_ferret_tests():
     ""
-    util.writefile( "one/cat.xml", """
-        <rtest name="cat">
-            <execute> sleep 1 </execute>
-        </rtest>""" )
+    util.writefile( "one/cat.vvt", """
+        import time
+        time.sleep(1)
+        """ )
 
-    util.writefile( "one/dog.xml", """
-        <rtest name="dog">
-            <execute> set have_diff = yes </execute>
-        </rtest>""" )
+    util.writefile( "one/dog.vvt", """
+        import sys
+        import vvtest_util as vvt
+        sys.exit( vvt.diff_exit_status )
+        """ )
 
-    util.writefile( "one/ferret.xml", """
-        <rtest name="ferret">
-            <execute> exit 1 </execute>
-        </rtest>""" )
+    util.writefile( "one/ferret.vvt", """
+        raise Exception( 'fake exception' )
+        """ )
 
 
 def write_cat_dog_circle_tests():
     ""
-    util.writefile( "cat.xml", """
-        <rtest name="cat">
-            <execute> sleep 1 </execute>
-        </rtest>""" )
+    util.writefile( "cat.vvt", """
+        import time
+        time.sleep(1)
+        """ )
 
-    util.writefile( "dog.xml", """
-        <rtest name="dog">
-            <execute> sleep 2 </execute>
-        </rtest>""" )
+    util.writefile( "dog.vvt", """
+        import time
+        time.sleep(2)
+        """ )
 
-    util.writefile( "circle.xml", """
-        <rtest name="circle">
-            <execute> sleep 3 </execute>
-        </rtest>""" )
+    util.writefile( "circle.vvt", """
+        import time
+        time.sleep(3)
+        """ )
 
 
 ############################################################################

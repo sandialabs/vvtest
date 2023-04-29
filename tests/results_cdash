@@ -17,7 +17,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.cdashwriter as cdashwriter
 import cdashutil
@@ -440,7 +439,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
         lines = cdashwriter.list_directory_as_strings( '.' )
         for line in lines:
-            print3( line )
+            print( line )
         assert len( lines ) == 4
         out = '\n'.join( lines )
         assert len( util.greplines( 'alink*subdir', out ) ) == 1
@@ -488,7 +487,7 @@ class unit_tests( vtu.vvtestTestCase ):
         assert displ == 'sdir/atest.np=4'
 
         out = attrs['output']
-        print3( out )
+        print( out )
         yr = time.strftime( "%Y", time.localtime() )
         assert len( util.greplines( yr+'* execute.log', out ) ) == 1
         assert len( util.greplines( '$ cat*execute.log', out ) ) == 1
@@ -520,7 +519,7 @@ class unit_tests( vtu.vvtestTestCase ):
         displ,attrs = list(fmtr.tests.items())[0]
         assert displ == 'sdir/atest.np=4'
         out = attrs['output']
-        print3( out )
+        print( out )
         assert len( util.greplines( 'bunch of info', out ) ) == 1
 
     def test_output_file_size_is_limited(self):
@@ -545,7 +544,7 @@ class unit_tests( vtu.vvtestTestCase ):
         displ,attrs = list(fmtr.tests.items())[0]
 
         out = attrs['output']
-        print3( out )
+        print( out )
         assert 'middle of this file has been removed' in out
 
         fmtr = MockFormatter()
@@ -556,7 +555,7 @@ class unit_tests( vtu.vvtestTestCase ):
         displ,attrs = list(fmtr.tests.items())[0]
 
         out = attrs['output']
-        print3( out )
+        print( out )
         assert 'middle of this file has been removed' not in out
 
 

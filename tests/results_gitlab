@@ -23,7 +23,6 @@ except Exception:
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.logger as logger
 import libvvtest.gitlabwriter as gitlabwriter
@@ -65,7 +64,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         ""
         tcase = self.makeTest( 'pass', 5 )
         line = gitlabwriter.format_gitlab_table_line( tcase, True )
-        print3( line )
+        print( line )
         sL = [ s.strip() for s in line.split( '|' )[1:-1] ]
         assert len(sL) == 4
         assert sL[0] == 'pass' and sL[2] == '0:05'
@@ -73,7 +72,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         tcase = self.makeTest( 'fail', 7 )
         line = gitlabwriter.format_gitlab_table_line( tcase, True )
-        print3( line )
+        print( line )
         sL = [ s.strip() for s in line.split( '|' )[1:-1] ]
         assert len(sL) == 4
         assert sL[0] == 'fail' and sL[2] == '0:07'
@@ -81,7 +80,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         tcase = self.makeTest( 'fail', 7 )
         line = gitlabwriter.format_gitlab_table_line( tcase, False )
-        print3( line )
+        print( line )
         sL = [ s.strip() for s in line.split( '|' )[1:-1] ]
         assert len(sL) == 4
         assert sL[0] == 'fail' and sL[2] == '0:07'
@@ -96,7 +95,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_results_table( sio, 'mixed', tL, 100 )
 
         val = sio.getvalue()
-        print3( val )
+        print( val )
         assert len( util.greplines( 'Result*Date*Time*Path', val ) ) == 1
         assert len( util.greplines( '| sdir/good.np=4 |', val ) ) == 1
         line = grepforline( 'sdir/bad.np=4', val ).rstrip()
@@ -113,7 +112,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_results_table( sio, 'diff', tL, 2 )
 
         val = sio.getvalue()
-        print3( val )
+        print( val )
 
         line = grepforline( 'sdir/testA.np=4', val ).rstrip()
         assert line.endswith( '[sdir/testA.np=4](sdir_testA.np=4.md) |' )
@@ -162,7 +161,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         time.sleep(1)
 
         val = sio.getvalue()
-        print3( val )
+        print( val )
         assert len( util.greplines( 'Tests that fail', val ) ) == 1
         assert len( util.greplines( 'Result*Date*Time*Path', val ) ) == 0
 
@@ -178,17 +177,17 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         assert width == 12
 
         meta = gitlabwriter.get_file_meta_data_string( 'subdir/zeebra.txt', 10 )
-        print3( meta )
+        print( meta )
 
         meta = gitlabwriter.get_file_meta_data_string( 'subdir/foobar.txt', 10 )
-        print3( meta )
+        print( meta )
         assert 'error: ' in meta
 
         os.symlink( 'ardvaark.txt', 'subdir/ardvark.txt' )
         time.sleep(1)
 
         meta = gitlabwriter.get_file_meta_data_string( 'subdir/ardvark.txt', 10 )
-        print3( meta )
+        print( meta )
         assert 'error:' not in meta
 
     def test_write_gitlab_collapsable_file_contents(self):
@@ -205,7 +204,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, True, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert len( util.greplines( '<code>label', val ) ) == 1
         assert fn not in val
         assert 'Text with a' in val
@@ -217,7 +216,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, False, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert len( util.greplines( '<code>label', val ) ) == 1
         assert fn not in val
         assert 'Text with a' not in val
@@ -230,7 +229,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, True, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert fn in val
         assert 'error reading file:' in val
         assert 'Traceback' in val
@@ -247,7 +246,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, True, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert 'Another line' in val
         assert val.count( '```' ) == 2 and val.count( "'''" ) == 1
 
@@ -264,7 +263,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.stream_gitlab_files( sio, '.', MockSelector(), 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert 'This is line two' in val
         assert 'file.txt' in val
         assert 'execute.log' in val
@@ -294,7 +293,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.stream_gitlab_files( sio, '.', MockSelector(), 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert 'This is line two' not in val
         assert 'execute.log' in val
 
@@ -426,7 +425,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         rtinfo = { 'startepoch':tm, 'platform':'xbox' }
         start,sfx,msg = make_submit_info( rtinfo, ['dbg'], None )
         assert abs( tm - start ) < 2
-        print3( 'sfx', sfx )
+        print( 'sfx '+str(sfx) )
         assert 'xbox' in sfx and 'dbg' in sfx
         assert 'vvtest' in msg
 
@@ -621,16 +620,13 @@ def write_three_test_files():
         import time
         time.sleep(1)
         """ )
-    util.writefile( 'FailTest.xml', """
-        <rtest name="FailTest">
-            <execute>
-                sleep 2
-                foreach i (1 2 3 4 5 6 7 8 9)
-                    echo "exit with fake failure"
-                end
-                exit 1
-            </execute>
-        </rtest>""" )
+    util.writefile( 'FailTest.vvt', """
+        import sys, time
+        time.sleep(2)
+        for i in range(1,10):
+            print ( "exit with fake failure" )
+        sys.exit(1)
+        """ )
     util.writefile( 'DiffTest.vvt', """
         #VVT: parameterize (staged): np = 1 2
         import time, sys

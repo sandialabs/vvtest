@@ -14,7 +14,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 
 class suite( vtu.vvtestTestCase ):
@@ -45,15 +44,14 @@ def write_three_test_files():
         time.sleep(2)
         raise Exception( 'pitch a fake exception' )
         """)
-    util.writefile( "DiffTest.xml", """
-        <rtest name="DiffTest">
-            <parameterize np="1 2"/>
-            <execute>
-                sleep 3
-                echo "fake difference of 29"
-                set have_diff = yes
-            </execute>
-        </rtest>""")
+    util.writefile( "DiffTest.vvt", """
+        #VVT: parameterize : np = 1 2
+        import sys, time
+        import vvtest_util as vvt
+        time.sleep(3)
+        print ( "fake difference of 29" )
+        sys.exit( vvt.diff_exit_status )
+        """ )
 
 
 ############################################################################

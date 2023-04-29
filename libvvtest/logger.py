@@ -37,6 +37,7 @@ def emit(*args, **kwargs):
     file = kwargs.get("file", sys.stdout)
     message = " ".join(str(_) for _ in args)
     file.write("{0}{1}{2}".format(pre, message, end))
+    file.flush()
 
 
 def trace(*args, **kwargs):

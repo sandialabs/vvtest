@@ -25,13 +25,11 @@ class json_output_format_tests(vtu.vvtestTestCase):
     def test_producing_a_json_results_file(self):
         """"""
         write_three_test_files()
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
 
         vrun = vtu.runvvtest("-i --json=../results.json", chdir=vrun.resultsDir())
-        time.sleep(1)
 
         data = util.read_json_file("results.json")
         self.assert_json_test_names(data)
@@ -40,7 +38,6 @@ class json_output_format_tests(vtu.vvtestTestCase):
     def test_producing_a_json_results_file_as_part_of_the_execution(self):
         """"""
         write_three_test_files()
-        time.sleep(1)
 
         for batch in [False, True]:
 
@@ -92,7 +89,6 @@ class json_output_format_tests(vtu.vvtestTestCase):
             pass
             """,
         )
-        time.sleep(1)
 
         for batch in [False, True]:
 
@@ -138,7 +134,7 @@ class json_output_format_tests(vtu.vvtestTestCase):
     def test_output_schema(self):
         """Test that guarantees the contracted output schema does not change"""
         write_three_test_files()
-        time.sleep(1)
+
         for batch in [False, True]:
             vtu.remove_results()
             vrun = vtu.runvvtest("-N 4 --json results.json", batch=batch)
@@ -286,16 +282,15 @@ def write_three_test_files():
         """,
     )
     util.writefile(
-        "DiffTest.xml",
+        "DiffTest.vvt",
         """
-        <rtest name="DiffTest">
-            <parameterize np="1 2"/>
-            <execute>
-                sleep 3
-                echo "fake difference of 29"
-                set have_diff = yes
-            </execute>
-        </rtest>""",
+        #VVT: parameterize : np = 1 2
+        import sys, time
+        import vvtest_util as vvt
+        time.sleep(3)
+        print ( "fake difference of 29" )
+        sys.exit( vvt.diff_exit_status )
+        """,
     )
 
 

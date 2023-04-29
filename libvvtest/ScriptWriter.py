@@ -16,12 +16,13 @@ except Exception:
 from .teststatus import DIFF_EXIT_STATUS, SKIP_EXIT_STATUS
 
 
-def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
+def writeScript( testcase, filename, lang, rtconfig, plat, loc ):
     """
     Writes a helper script for the test.  The script language is based on
     the 'lang' argument.
     """
     tspec = testcase.getSpec()
+    tstat = testcase.getStat()
     tname = tspec.getName()
 
     troot = tspec.getRootpath()
@@ -29,14 +30,14 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
 
     test_dir = loc.getTestingDirectory()
 
-    configdirs = rtconfig.getAttr('configdir')  # magic: examine
+    configdirs = rtconfig.getAttr('configdir')
 
-    tdir = rtconfig.getAttr('vvtestdir')  # magic: ensure absolute ??
+    tdir = rtconfig.getAttr('vvtestdir')
     assert tdir
 
-    trigdir = pjoin( tdir, 'trig' )  # magic: must be absolute
+    trigdir = pjoin( tdir, 'trig' )
 
-    projdir = rtconfig.getAttr('exepath')  # magic: examine
+    projdir = rtconfig.getAttr('exepath')
     if projdir is None:
         projdir = ''
     else:
@@ -50,7 +51,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
 
     timeout = testcase.getStat().getAttr( 'timeout', -1 )
 
-    dep_list = testcase.getDepDirectories()  # magic: examine
+    dep_list = testcase.getDepDirectories()
 
     w = LineWriter()
 
@@ -63,7 +64,7 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
                'PLATFORM = '+repr(platname),
                'COMPILER = '+repr(cplrname),
                'VVTESTSRC = '+repr(tdir),
-               'TESTROOT = '+repr(test_dir),  # magic: can test_dir be relative??
+               'TESTROOT = '+repr(test_dir),
                'PROJECT = '+repr(projdir),
                'OPTIONS = '+repr( onopts ),
                'OPTIONS_OFF = '+repr( offopts ),
@@ -78,7 +79,6 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
                'sys.path.insert( 0, '+repr(trigdir)+' )',
                'sys.path.insert( 0, VVTESTSRC )' )
         for d in configdirs[::-1]:
-            # magic: config dirs must be abs by this point
             w.add( 'sys.path.insert( 0, '+repr(d)+' )' )
 
         w.add( '',
@@ -119,27 +119,27 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
                     n2 = '_'.join( n )
                     w.add( 'PARAM_'+n2+' = ' + repr(L) )
 
-        L = generate_dependency_list( dep_list, test_dir )  # magic: examine
+        L = generate_dependency_list( dep_list, test_dir )
         w.add( '', 'DEPDIRS = '+repr(L) )
 
-        D = generate_dependency_map( dep_list, test_dir )  # magic: examine
+        D = generate_dependency_map( dep_list, test_dir )
         w.add( '', 'DEPDIRMAP = '+repr(D) )
 
         w.add( '',
-               'RESOURCE_np = '+repr( len(resourceobj.procs) ),
-               'RESOURCE_IDS_np = '+repr(resourceobj.procs),
-               'RESOURCE_TOTAL_np = '+repr(resourceobj.maxprocs) )
+               'RESOURCE_np = '+repr( len(tstat.getAttr('processor ids')) ),
+               'RESOURCE_IDS_np = '+repr(tstat.getAttr('processor ids')),
+               'RESOURCE_TOTAL_np = '+repr(tstat.getAttr('total processors')) )
 
-        if resourceobj.devices is None:
+        if tstat.getAttr('device ids',None):
+            w.add( '',
+               'RESOURCE_ndevice = '+repr( len(tstat.getAttr('device ids')) ),
+               'RESOURCE_IDS_ndevice = '+repr(tstat.getAttr('device ids')),
+               'RESOURCE_TOTAL_ndevice = '+repr(tstat.getAttr('total devices')) )
+        else:
             w.add( '',
                'RESOURCE_ndevice = 0',
                'RESOURCE_IDS_ndevice = []',
                'RESOURCE_TOTAL_ndevice = 0' )
-        else:
-            w.add( '',
-               'RESOURCE_ndevice = '+repr( len(resourceobj.devices) ),
-               'RESOURCE_IDS_ndevice = '+repr(resourceobj.devices),
-               'RESOURCE_TOTAL_ndevice = '+repr(resourceobj.maxdevices) )
 
         ###################################################################
     
@@ -232,23 +232,23 @@ def writeScript( testcase, resourceobj, filename, lang, rtconfig, plat, loc ):
         L = generate_dependency_list( dep_list, test_dir )
         w.add( '', 'DEPDIRS="'+' '.join(L)+'"' )
 
-        sprocs = [ str(procid) for procid in resourceobj.procs ]
+        sprocs = [ str(procid) for procid in tstat.getAttr('processor ids') ]
         w.add( '',
-               'RESOURCE_np="'+str( len(resourceobj.procs) )+'"',
+               'RESOURCE_np="'+str( len(sprocs) )+'"',
                'RESOURCE_IDS_np="'+' '.join(sprocs)+'"',
-               'RESOURCE_TOTAL_np="'+str(resourceobj.maxprocs)+'"' )
+               'RESOURCE_TOTAL_np="'+str(tstat.getAttr('total processors'))+'"' )
 
-        if resourceobj.devices is None:
+        if tstat.getAttr('device ids',None):
+            sdevs = [ str(devid) for devid in tstat.getAttr('device ids') ]
+            w.add( '',
+               'RESOURCE_ndevice="'+str( len(sdevs) )+'"',
+               'RESOURCE_IDS_ndevice="'+' '.join(sdevs)+'"',
+               'RESOURCE_TOTAL_ndevice="'+str(tstat.getAttr('total devices'))+'"' )
+        else:
             w.add( '',
                'RESOURCE_ndevice="0"',
                'RESOURCE_IDS_ndevice=""',
                'RESOURCE_TOTAL_ndevice="0"' )
-        else:
-            sdevs = [ str(devid) for devid in resourceobj.devices ]
-            w.add( '',
-               'RESOURCE_ndevice="'+str( len(resourceobj.devices) )+'"',
-               'RESOURCE_IDS_ndevice="'+' '.join(sdevs)+'"',
-               'RESOURCE_TOTAL_ndevice="'+str(resourceobj.maxdevices)+'"' )
 
         # the name script_util_plugin.sh is now deprecated, Dec 2021
         for d in configdirs[::-1]:

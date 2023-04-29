@@ -151,21 +151,17 @@ class JsonWriter:
             test["parameter set"] = p
 
         resources = test.setdefault("resources", {})
-        resources["processors"] = None
-        resources["processor ids"] = None
-        resources["total processors"] = None
+        resources["processors"] = len( stat.getAttr( 'processor ids' ) )
+        resources["processor ids"] = stat.getAttr( 'processor ids' )
+        resources["total processors"] = stat.getAttr( 'total processors' )
         resources["devices"] = None
         resources["device ids"] = None
         resources["total devices"] = None
-        if testcase.resource_obj:
-            resource = testcase.resource_obj
-            resources["processors"] = len(resource.procs)
-            resources["processor ids"] = resource.procs
-            resources["total processors"] = resource.maxprocs
-            if resource.devices:
-                resources["devices"] = len(resource.devices)
-                resources["device ids"] = resource.devices
-                resources["total devices"] = resource.maxdevices
+        if stat.getAttr( 'device ids', None ):
+            resources["device"] = len( stat.getAttr( 'device ids' ) )
+            resources["device ids"] = stat.getAttr( 'device ids' )
+            resources["total devices"] = stat.getAttr( 'total devices' )
+
         if skip:
             test["skip"] = True
             test["skip_reason"] = stat.getReasonForSkipTest()

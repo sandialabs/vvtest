@@ -17,7 +17,6 @@ except Exception:
     from pipes import quote
 
 from . import outpututils
-from . import execute
 
 
 class JsonWriter:
@@ -65,7 +64,7 @@ class JsonWriter:
             top["duration"] = top["endtime"] - top["starttime"]
         else:
             top["duration"] = -1
-        top["returncode"] = execute.encode_integer_warning(atestlist)
+        top["returncode"] = top.pop("returncode",-1)
         data.update(top)
 
         data["onopts"] = ' '.join( self.rtinfo["onopts"] )

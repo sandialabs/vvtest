@@ -110,7 +110,10 @@ class BatchRunner( TestListRunner ):
 
         self.info.printBatchRemainders( NS, NF, nrL )
 
-        return encode_integer_warning( self.tlist )
+        rtn = encode_integer_warning( self.tlist )
+        self.rtinfo['returncode'] = rtn
+
+        return rtn
 
     def sleep_with_info_check(self):
         ""
@@ -179,7 +182,10 @@ class DirectRunner( TestListRunner ):
 
         self.info.printRemainders( nrL )
 
-        return encode_integer_warning( self.tlist )
+        rtn = encode_integer_warning( self.tlist )
+        self.rtinfo['returncode'] = rtn
+
+        return rtn
 
     def start_next(self, texec):
         ""

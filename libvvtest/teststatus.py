@@ -6,8 +6,6 @@
 
 import time
 
-from .wordcheck import check_variable_name
-
 
 RESULTS_KEYWORDS = [ 'notrun', 'notdone',
                      'fail', 'diff', 'pass',
@@ -53,10 +51,7 @@ class TestStatus:
         self.attrs = {}
 
     def setAttr(self, name, value):
-        """
-        Set a name to value pair.  The name can only contain a-zA-Z0-9 and _.
-        """
-        check_variable_name( name )
+        ""
         self.attrs[name] = value
 
     def hasAttr(self, name):
@@ -302,8 +297,7 @@ def copy_test_results( to_tstat, from_tstat ):
     from_attrs = from_tstat.getAttrs()
 
     for k,v in from_attrs.items():
-        if k in ['state','xtime','xdate','xvalue','result','timeout']:
-            to_tstat.setAttr( k, v )
+        to_tstat.setAttr( k, v )
 
     if 'skip' in from_attrs:
         to_tstat.setAttr( 'skip', from_attrs['skip'] )

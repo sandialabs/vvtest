@@ -13,33 +13,28 @@ from . import outpututils
 
 class HTMLWriter:
 
-    def __init__(self, permsetter, output_filename, results_test_dir):
+    def __init__(self, permsetter):
         ""
         self.permsetter = permsetter
+
+    def initialize(self, rtinfo, output_filename):
+        ""
+        self.rtinfo = rtinfo
         self.filename = os.path.normpath( os.path.abspath( output_filename ) )
-        self.testdir = results_test_dir
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def postrun(self, atestlist):
         ""
-        pass
+        self.writeDocument( atestlist )
 
-    def midrun(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        pass
+        self.writeDocument( atestlist )
 
-    def postrun(self, atestlist, rtinfo):
-        ""
-        self.writeDocument( atestlist, rtinfo )
-
-    def info(self, atestlist, rtinfo):
-        ""
-        self.writeDocument( atestlist, rtinfo )
-
-    def writeDocument(self, tlist, rtinfo):
+    def writeDocument(self, tlist):
         """
         Opens and writes an HTML summary file in the test directory.
         """
-        datestamp = rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.get( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, None,
                                                "%Y-%m-%d %H:%M:%S" )
 
@@ -59,7 +54,7 @@ class HTMLWriter:
             fp.write( "<h1>Summary</h1>\n" )
             fp.write( "  <ul>\n" )
             fp.write( "  <li> Test date: " + datestr + " </li>\n" )
-            fp.write( "  <li> Directory: " + self.testdir + " </li>\n" )
+            fp.write( "  <li> Directory: " + self.rtinfo['rundir'] + " </li>\n" )
             fp.write( "  <li> " + sumstr + "</li>\n" )
             fp.write( "  </ul>\n" )
 
@@ -95,12 +90,12 @@ class HTMLWriter:
 
         for tcase in tlist:
 
-            xs = outpututils.XstatusString( tcase, self.testdir, cwd )
+            xs = outpututils.XstatusString( tcase, self.rtinfo['rundir'], cwd )
             fp.write( '  <li><code>' + xs + '</code>\n' )
 
             tspec = tcase.getSpec()
 
-            tdir = pjoin( self.testdir, tspec.getExecuteDirectory() )
+            tdir = pjoin( self.rtinfo['rundir'], tspec.getExecuteDirectory() )
             assert cwd == tdir[:len(cwd)]
             reltdir = tdir[len(cwd)+1:]
 
@@ -116,7 +111,7 @@ class HTMLWriter:
             kwlist = tspec.getKeywords() + tcase.getStat().getResultsKeywords()
             fp.write( '  <li>Keywords: <code>' + ' '.join( kwlist ) + \
                        '</code></li>\n' )
-            xs = outpututils.XstatusString( tcase, self.testdir, cwd )
+            xs = outpututils.XstatusString( tcase, self.rtinfo['rundir'], cwd )
             fp.write( '  <li>Status: <code>' + xs + '</code></li>\n' )
             fp.write( '  <li> Files:' )
             if os.path.exists(reltdir):

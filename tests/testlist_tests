@@ -18,7 +18,6 @@ import struct
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.testlistio as tio
 import libvvtest.TestList as TestList

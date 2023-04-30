@@ -61,6 +61,13 @@ class TestExec:
         ""
         self.resource_obj = obj
 
+        st = self.tcase.getStat()
+        st.setAttr( 'processor ids', obj.procs )
+        st.setAttr( 'total processors', obj.maxprocs )
+        if obj.devices:
+            st.setAttr( 'device ids', obj.devices )
+            st.setAttr( 'total devices', obj.maxdevices )
+
     def getResourceObject(self):
         ""
         return self.resource_obj

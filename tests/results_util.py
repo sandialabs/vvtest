@@ -12,7 +12,6 @@ import datetime
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.fmtresults as fmtresults
 

@@ -13,45 +13,34 @@ from . import outpututils
 
 class ConsoleWriter:
 
-    def __init__(self, results_test_dir, verbose=0):
+    def __init__(self):
         ""
-        self.testdir = results_test_dir
+        pass
 
+    def initialize(self, rtinfo, verbose=0, sortspec=None, maxnonpass=32):
+        ""
+        self.rtinfo = rtinfo
         self.verbose = verbose
-
-        self.sortspec = None
-        self.maxnonpass = 32
-
-    def setSortingSpecification(self, sortspec):
-        ""
         self.sortspec = sortspec
+        self.maxnonpass = maxnonpass
 
-    def setMaxNonPass(self, num):
-        ""
-        assert num > 0
-        self.maxnonpass = num
-
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def prerun(self, atestlist, verbosity):
         ""
         level = get_prerun_list_level( verbosity, self.verbose )
 
         self._write_test_list_results( atestlist, level )
         self._write_summary( atestlist, 'Test list:' )
 
-    def midrun(self, atestlist, rtinfo):
-        ""
-        pass
-
-    def postrun(self, atestlist, rtinfo):
+    def postrun(self, atestlist):
         ""
         if atestlist.numActive() > 0:
             level = 1 + self.verbose
             self._write_test_list_results( atestlist, level )
             self._write_summary( atestlist, 'Summary:' )
 
-        logger.info( make_finish_info_string( rtinfo ) )
+        logger.info( make_finish_info_string( self.rtinfo ) )
 
-    def info(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
         level = 1 + self.verbose
         self._write_test_list_results( atestlist, level )
@@ -61,7 +50,7 @@ class ConsoleWriter:
         ""
         cwd = os.getcwd()
 
-        tosum,tL = collect_timing_list( atestlist, self.testdir, cwd )
+        tosum,tL = collect_timing_list( atestlist, self.rtinfo['rundir'], cwd )
 
         fmt = '%8s %8s %s'
         logger.info( fmt % ('TIMEOUT','RUNTIME','TEST') )
@@ -204,7 +193,7 @@ class ConsoleWriter:
 
     def writeTest(self, tcase, cwd):
         ""
-        astr = outpututils.XstatusString( tcase, self.testdir, cwd )
+        astr = outpututils.XstatusString( tcase, self.rtinfo['rundir'], cwd )
         logger.info( astr )
 
 
@@ -212,12 +201,12 @@ def make_finish_info_string( rtinfo ):
     ""
     s = '\n'
 
-    fin = rtinfo.getInfo( 'finishepoch', None )
+    fin = rtinfo.get( 'finishepoch', None )
     if fin != None:
         fdate = time.ctime( fin )
         s += 'Finish date: '+fdate
 
-        start = rtinfo.getInfo( 'startepoch', None )
+        start = rtinfo.get( 'startepoch', None )
         if start != None:
             dt = fin - start
             elapsed = outpututils.pretty_time( dt )

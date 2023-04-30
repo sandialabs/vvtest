@@ -1,0 +1,276 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+# RUNTEST: vvtest
+
+import sys
+
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import base64
+import zlib
+import os
+import time
+
+import vvtestutils as vtu
+import testutils as util
+
+import libvvtest.jsonwriter as jsonwriter
+
+nonetype = type(None)
+
+
+class json_output_format_tests(vtu.vvtestTestCase):
+    def test_producing_a_json_results_file(self):
+        """"""
+        write_three_test_files()
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
+
+        vrun = vtu.runvvtest("-i --json=../results.json", chdir=vrun.resultsDir())
+
+        data = util.read_json_file("results.json")
+        jsonwriter.assert_schema_conformance( data )
+        self.assert_json_test_names(data)
+        self.assert_output_for_diff_and_fail_tests(data)
+
+    def test_producing_a_json_results_file_as_part_of_the_execution(self):
+        """"""
+        write_three_test_files()
+
+        for batch in [False, True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest("--json results.json", batch=batch)
+            vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
+
+            data = util.read_json_file("results.json")
+            jsonwriter.assert_schema_conformance( data )
+            self.assert_json_test_names(data)
+
+    def assert_json_test_names(self, data):
+        """"""
+        info = []
+        for case in data["vvtest"]["tests"]["cases"]:
+            info.append((case.get("case"), case["endtime"] - case["starttime"]))
+        info.sort()
+        expected_names = [
+            "DiffTest.np=1",
+            "DiffTest.np=2",
+            "FailTest",
+            "param.hello=mars",
+            "param.hello=world",
+        ]
+        for i, item in enumerate(info):
+            assert item[0] == expected_names[i]
+
+        fac = [4, 4, 3, 2, 2]
+        for i, item in enumerate(info):
+            assert abs(int(item[1]) - fac[i]) <= 2, "{0} - {1} > 2".format(
+                item[1], fac[i]
+            )
+
+    def assert_output_for_diff_and_fail_tests(self, data):
+        """"""
+        for case in data["vvtest"]["tests"]["cases"]:
+            if case["name"].startswith("DiffTest"):
+                assert "fake difference of 29" in expand64(case["log"])
+            elif case["name"].startswith("FailTest"):
+                assert "pitch a fake exception" in expand64(case["log"])
+
+    def test_no_tests_to_run_still_produces_a_json_file(self):
+        """"""
+        util.writefile(
+            "subdir/param.vvt",
+            """
+            # error on purpose so vvtest skips this test
+            #VVT: parameterize : hello
+            pass
+            """,
+        )
+
+        for batch in [False, True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest("--json results.json")
+            vrun.assertCounts(total=0)
+
+            assert os.path.exists("results.json")
+            data = util.read_json_file("results.json")
+            jsonwriter.assert_schema_conformance( data )
+            assert len(data["vvtest"]["tests"]["cases"]) == 0
+
+    def test_execute_log_output_for_staged_tests(self):
+        """"""
+        util.writefile(
+            "subdir/foo.vvt",
+            """
+            #VVT: parameterize (staged): bar = A B
+
+            import vvtest_util as vvt
+            from script_util import exit_diff
+            print ( 'bar='+vvt.bar+' stage='+vvt.stage )
+            exit_diff()
+            """,
+        )
+
+        vrun = vtu.runvvtest("--json results.json subdir")
+        vrun.assertCounts(total=2, diff=2)
+
+        data = util.read_json_file("results.json")
+        jsonwriter.assert_schema_conformance( data )
+        flg = 0
+        for case in data["vvtest"]["tests"]["cases"]:
+            if "stage=1" in case["case"]:
+                txt = expand64(case["log"])
+                assert "bar=A stage=1" in txt
+                flg += 1
+            elif "stage=2" in case["case"]:
+                txt = expand64(case["log"])
+                assert "bar=B stage=2" in txt
+                flg += 100
+        assert flg == 101
+
+    def test_the_case_when_a_test_is_notrun(self):
+        """"""
+        util.writefile(
+            "atest.vvt",
+            """
+            import sys
+            sys.exit(1)
+            """,
+        )
+        util.writefile(
+            "btest.vvt",
+            """
+            #VVT: depends on : atest
+            pass
+            """,
+        )
+
+        vrun = vtu.runvvtest("--json results.json")
+        vrun.assertCounts( total=2, fail=1, notrun=1 )
+
+        assert os.path.exists("results.json")
+        data = util.read_json_file("results.json")
+        jsonwriter.assert_schema_conformance( data )
+        assert len(data["vvtest"]["tests"]["cases"]) == 2
+
+    def test_output_schema_checking_mechanism(self):
+        ""
+        checker = jsonwriter._assert_schema
+
+        checker( int, 3 )
+        self.assertRaises( AssertionError, checker, int, 'foo' )
+        checker( str, 'foo' )
+        self.assertRaises( AssertionError, checker, str, 3 )
+        checker( float, 3.3 )
+        self.assertRaises( AssertionError, checker, float, 'foo' )
+
+        checker( [int,], [3,] )
+        self.assertRaises( AssertionError, checker, [int,], [3,'foo'] )
+        checker( [str,], ['foo',] )
+        self.assertRaises( AssertionError, checker, [str,], [3,'foo',] )
+
+        checker( (None,int), None )
+        checker( (None,int), 3 )
+        self.assertRaises( AssertionError, checker, (None,int), 'foo' )
+        checker( (None,[int,]), [3,] )
+        self.assertRaises( AssertionError, checker, (None,[int,]), ['foo',] )
+        checker( (None,[str,]), ['foo',] )
+        self.assertRaises( AssertionError, checker, (None,[str,]), [3,] )
+
+        # multiple possible types for a value
+        checker( (None,int,str), None )
+        checker( (None,int,str), 3 )
+        checker( (None,int,str), 'foo' )
+        checker( (int,str), 'foo' )
+        checker( (int,float), 3 )
+        checker( (int,float), 3.3 )
+        self.assertRaises( AssertionError, checker, (int,str), None )
+
+        checker( {'foo':str, 'ival':int}, {'foo':'bar','ival':3} )
+        # currently, more entries can appear in a dict section that the schema
+        checker( {'foo':str}, {'foo':'bar', 'baz':'whatever'} )
+        self.assertRaises( AssertionError, checker, {'foo':str, 'ival':int}, {'foo':'bar'} )
+        self.assertRaises( AssertionError, checker, {'foo':str}, {'foo':3} )
+
+        # nested dict
+        checker( {'foo':{'bar':int}}, {'foo':{'bar':3}} )
+        self.assertRaises( AssertionError, checker, {'foo':{'bar':int}}, {'foo':'bar'} )
+        self.assertRaises( AssertionError, checker, {'foo':{'bar':int}}, {'foo':{'bar':'baz'}} )
+
+        # nested list of a dict
+        checker( [{'foo':int}], [{'foo':3},{'foo':5}] )
+        checker( [{'foo':int}], [] )
+        checker( [{'foo':int}], [{'foo':3},{'foo':5,'baz':'hmm'}] )
+        # for a list in the schema, it can only be length one
+        self.assertRaises( AssertionError, checker, [{'foo':int},{'bar':int}], [{'foo':3},{'foo':5}] )
+        self.assertRaises( AssertionError, checker, [{'foo':int}], [{'foo':3},{'foo':'hmm'}] )
+        self.assertRaises( AssertionError, checker, [{'foo':int}], [{'foo':3},{'bar':5}] )
+
+    def test_output_schema(self):
+        """Test that guarantees the contracted output schema does not change"""
+        write_three_test_files()
+
+        for batch in [False, True]:
+            vtu.remove_results()
+            vrun = vtu.runvvtest("-N 4 --json results.json", batch=batch)
+            vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
+
+            data = util.read_json_file("results.json")
+            jsonwriter.assert_schema_conformance( data )
+
+
+def write_three_test_files():
+    """"""
+    util.writefile(
+        "subdir/param.vvt",
+        """
+        #VVT: parameterize : hello = world mars
+        import time
+        time.sleep(1)
+        """,
+    )
+    util.writefile(
+        "FailTest.vvt",
+        """
+        import os, sys, time
+        import vvtest_util as vvt
+        time.sleep(2)
+        raise Exception( 'pitch a fake exception' )
+        """,
+    )
+    util.writefile(
+        "DiffTest.vvt",
+        """
+        #VVT: parameterize : np = 1 2
+        import sys, time
+        import vvtest_util as vvt
+        time.sleep(3)
+        print ( "fake difference of 29" )
+        sys.exit( vvt.diff_exit_status )
+        """,
+    )
+
+
+if sys.version_info[0] < 3:
+    def expand64(raw):
+        return zlib.decompress( base64.b64decode(raw) )
+else:
+    def expand64(raw):
+        bytes_str = base64.b64decode(raw.encode("utf-8"))
+        hex_str = bytes_str.hex()
+        s = zlib.decompress(bytes.fromhex(hex_str))
+        return s.decode("utf-8")
+
+
+############################################################################
+
+util.run_test_cases(sys.argv, sys.modules[__name__])

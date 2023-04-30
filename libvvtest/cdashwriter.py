@@ -16,29 +16,21 @@ from . import outpututils
 
 class CDashWriter:
 
-    def __init__(self, results_test_dir, permsetter):
+    def __init__(self, permsetter, formatter, submitter):
         ""
-        self.fmtr = None
-        self.subm = None
-
-        self.testdir = results_test_dir
         self.permsetter = permsetter
-
-        self.dspecs = None
-
-    def setFormatter(self, formatter):
-        ""
         self.fmtr = formatter
-
-    def setSubmitter(self, submitter):
-        ""
         self.subm = submitter
 
-    def initialize(self, destination, project=None,
-                                      datestamp=None,
-                                      options=[],
-                                      tag=None ):
+    def initialize(self, rtinfo,
+                         destination,
+                         project=None,
+                         datestamp=None,
+                         options=[],
+                         tag=None ):
         ""
+        self.rtinfo = rtinfo
+
         self.dspecs,err = construct_destination_specs( destination,
                                                        project=project,
                                                        datestamp=datestamp,
@@ -51,36 +43,28 @@ class CDashWriter:
 
         return err
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def postrun(self, atestlist):
         ""
-        pass
+        self._create_and_fill_formatter( atestlist )
+        self._write_data( self.fmtr )
 
-    def midrun(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        pass
+        self._create_and_fill_formatter( atestlist )
+        self._write_data( self.fmtr )
 
-    def postrun(self, atestlist, rtinfo):
-        ""
-        self._create_and_fill_formatter( atestlist, rtinfo )
-        self._write_data( self.fmtr, rtinfo )
-
-    def info(self, atestlist, rtinfo):
-        ""
-        self._create_and_fill_formatter( atestlist, rtinfo )
-        self._write_data( self.fmtr, rtinfo )
-
-    def _create_and_fill_formatter(self, atestlist, rtinfo):
+    def _create_and_fill_formatter(self, atestlist):
         ""
         logger.info('\nComposing CDash submission data...')
 
-        set_global_data( self.fmtr, self.dspecs, rtinfo )
-        set_test_list( self.fmtr, self.dspecs, atestlist, self.testdir )
+        set_global_data( self.fmtr, self.dspecs, self.rtinfo )
+        set_test_list( self.fmtr, self.dspecs, atestlist, self.rtinfo['rundir'] )
 
-    def _write_data(self, fmtr, rtinfo):
+    def _write_data(self, fmtr):
         ""
         if self.dspecs.url:
 
-            fname = pjoin( self.testdir, 'vvtest_cdash_submit.xml' )
+            fname = pjoin( self.rtinfo['rundir'], 'vvtest_cdash_submit.xml' )
 
             try:
                 logger.info('Writing CDash submission file: {0}'.format(fname))
@@ -272,9 +256,9 @@ def set_global_data( fmtr, dspecs, rtinfo ):
     ""
     if dspecs.date:
         bdate = dspecs.date
-        tstart = rtinfo.getInfo( 'startepoch', bdate )
+        tstart = rtinfo.get( 'startepoch', bdate )
     else:
-        bdate = rtinfo.getInfo( 'startepoch', time.time() )
+        bdate = rtinfo.get( 'startepoch', time.time() )
         tstart = bdate
 
     if dspecs.group:
@@ -285,12 +269,12 @@ def set_global_data( fmtr, dspecs, rtinfo ):
     if dspecs.site:
         site = dspecs.site
     else:
-        site = rtinfo.getInfo( 'hostname', None )
+        site = rtinfo.get( 'hostname', None )
 
     if dspecs.name:
         bname = dspecs.name
     else:
-        rdir = rtinfo.getInfo( 'rundir', None )
+        rdir = rtinfo.get( 'rundir', None )
         if rdir:
             rdir = basename( rdir )
         bname = rdir
@@ -300,7 +284,7 @@ def set_global_data( fmtr, dspecs, rtinfo ):
                      site_name=site,
                      build_name=bname )
 
-    fmtr.setTime( tstart, rtinfo.getInfo( 'finishepoch', None ) )
+    fmtr.setTime( tstart, rtinfo.get( 'finishepoch', None ) )
 
 
 def set_test_list( fmtr, dspecs, atestlist, testdir ):

@@ -14,35 +14,25 @@ from . import outpututils
 
 class JUnitWriter:
 
-    def __init__(self, permsetter, output_filename, results_test_dir):
+    def __init__(self, permsetter):
         ""
         self.permsetter = permsetter
-        self.filename = os.path.normpath( os.path.abspath( output_filename ) )
-        self.testdir = results_test_dir
 
-        self.datestamp = None
-
-    def setOutputDate(self, datestamp):
+    def initialize(self, rtinfo, output_filename, datestamp):
         ""
+        self.rtinfo = rtinfo
+        self.filename = os.path.normpath( os.path.abspath( output_filename ) )
         self.datestamp = datestamp
 
-    def prerun(self, atestlist, rtinfo, verbosity):
+    def postrun(self, atestlist):
         ""
-        pass
+        self.writeFile( atestlist )
 
-    def midrun(self, atestlist, rtinfo):
+    def info(self, atestlist):
         ""
-        pass
+        self.writeFile( atestlist )
 
-    def postrun(self, atestlist, rtinfo):
-        ""
-        self.writeFile( atestlist, rtinfo )
-
-    def info(self, atestlist, rtinfo):
-        ""
-        self.writeFile( atestlist, rtinfo )
-
-    def writeFile(self, atestlist, rtinfo):
+    def writeFile(self, atestlist):
         """
         This collects information from the given test list (a python list of
         TestExec objects), then writes a file in the format of JUnit XML files.
@@ -61,7 +51,7 @@ class JUnitWriter:
             https://github.com/jenkinsci/junit-plugin/
                         tree/master/src/test/resources/hudson/tasks/junit
         """
-        datestamp = rtinfo.getInfo( 'startepoch', time.time() )
+        datestamp = self.rtinfo.get( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp,
                                                "%Y-%m-%dT%H:%M:%S" )
 
@@ -79,7 +69,7 @@ class JUnitWriter:
         for tcase in tcaseL:
             tsum += max( 0.0, tcase.getStat().getRuntime( 0.0 ) )
 
-        tdir = os.path.basename( self.testdir )
+        tdir = os.path.basename( self.rtinfo['rundir'] )
         tdir = tdir.replace( '.', '_' )  # a dot is a Java class separator
 
         fp = open( self.filename, 'w' )
@@ -133,7 +123,7 @@ class JUnitWriter:
 
     def make_execute_log_section(self, tcase, max_KB):
         ""
-        logfile = outpututils.get_log_file_path( self.testdir, tcase.getSpec() )
+        logfile = outpututils.get_log_file_path( self.rtinfo['rundir'], tcase.getSpec() )
 
         try:
             sysout = outpututils.file_read_with_limit( logfile, max_KB )

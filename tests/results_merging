@@ -18,7 +18,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.results as results
 
@@ -51,17 +50,14 @@ class test_results_tests( vtu.vvtestTestCase ):
         time.sleep(1)  # force a gap between vvtest invocations
 
         # make the test diff this time
-        util.writefile( "one/cat.xml", """
-            <rtest name="cat">
-                <execute>
-                    sleep 1
-                    set have_diff = 1
-                </execute>
-            </rtest>""" )
+        util.writefile( "one/cat.vvt", """
+            import sys, time
+            import vvtest_util as vvt
+            time.sleep(1)
+            sys.exit( vvt.diff_exit_status )
+            """ )
 
-        os.remove( "one/cat.vvt" )
         os.remove( "one/dog.vvt" )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '-w' )
         vrun.assertCounts( total=1, diff=1 )
@@ -195,14 +191,10 @@ class test_results_tests( vtu.vvtestTestCase ):
         cat_t1 = ru.get_results_test_time_from_file( resultsfname, 'tsrc/one/cat' )
 
         # increase the run time of cat test and run vvtest again
-        util.writefile( "tsrc/one/cat.xml", """
-            <rtest name="cat">
-                <execute>
-                    sleep 4
-                </execute>
-            </rtest>""" )
-        os.remove( 'tsrc/one/cat.vvt' )
-        time.sleep(1)
+        util.writefile( "tsrc/one/cat.vvt", """
+            import time
+            time.sleep(4)
+            """ )
 
         vrun = vtu.runvvtest( '-w -k cat' )
         vrun.assertCounts( total=1, npass=1 )
@@ -228,14 +220,10 @@ class test_results_tests( vtu.vvtestTestCase ):
         assert abs( xt - (cat_t1+cat_t2)/2. ) < 1
 
         # modify a test then generate a multi platform results file
-        util.writefile( "tsrc/two/circle.xml", """
-            <rtest name="circle">
-                <execute>
-                    sleep 1
-                </execute>
-            </rtest>""" )
-        os.remove( 'tsrc/two/circle.vvt' )
-        time.sleep(1)
+        util.writefile( "tsrc/two/circle.vvt", """
+            import time
+            time.sleep(1)
+            """ )
 
         vrun = vtu.runvvtest( '-w' )
         vrun.assertCounts( total=3, npass=3 )

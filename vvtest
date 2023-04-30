@@ -40,16 +40,17 @@ windows_platform = platform.uname()[0].lower().startswith('win')
 
 
 class RuntimeData:
-    def __init__(self, curdir, exepath):
+    def __init__(self, argv, curdir, exepath):
         ""
         self.curdir  = curdir   # current working directory at vvtest startup
         self.exepath = exepath  # path to vvtest (without following soft link)
+        self.cmdargv = argv     # vvtest command line (just sys.argv)
 
         self.loc            = None   # Locator object
         self.userconfig     = None   # list of user config directories
         self.testdir        = None   # top level test execution directory
         self.cash           = None   # CacheFileHandler object
-        self.rtinfo         = None   # RuntimeInfo object
+        self.rtinfo         = None   # dictionary of runtime information
         self.rtconfig       = None   # RuntimeConfig object
         self.plat           = None   # Platform object
         self.plugin         = None   # UserPluginBridge object
@@ -72,7 +73,7 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     curdir = os.getcwd()
     start_epoch = time.time()
 
-    rtdata = RuntimeData( curdir, exepath )
+    rtdata = RuntimeData( argv, curdir, exepath )
 
     check_load_bootstrap_file( curdir, exepath )
 
@@ -84,8 +85,8 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     insert_configdirs_into_sys_path( configdirs )
     construct_runtime_config( rtdata, opts, optD )
     process_cache_file( rtdata, opts, optD )
-    construct_runtime_info( rtdata, argv, vvtestdir, start_epoch )
     create_configuration( rtdata.rtconfig, opts, optD, vvtestdir, configdirs )
+    construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch )
 
     construct_platform( rtdata, opts, optD )
     compute_testing_directory( rtdata, opts, optD )
@@ -107,6 +108,9 @@ def construct_vvtest( argv, vvtestdir, exepath ):
 def run_vvtest( rtdata, opts, optD ):
     ""
     exitstat = 0
+
+    # let applications know if they are being called in a vvtest context
+    os.environ["VVTEST_CONTEXT"] = "1"
 
     if information_mode( opts ):
         if opts.show_times:
@@ -211,18 +215,6 @@ def check_options_not_allowed_for_restart( opts, optD ):
         raise FatalError( 'cannot use -g in a TestResults directory' )
 
 
-def construct_runtime_info( rtdata, argv, vvtestdir, start_epoch ):
-    ""
-    from libvvtest.runinfo import RuntimeInfo
-
-    rtinfo = RuntimeInfo( startepoch=start_epoch,
-                          cmdline=argv,
-                          vvtestdir=vvtestdir,
-                          curdir=rtdata.curdir )
-
-    rtdata.rtinfo = rtinfo
-
-
 def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
     ""
     rtconfig.setAttr( 'vvtestdir', vvtestdir )
@@ -247,6 +239,25 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
         for args in opts.test_args:
             argL.extend( shlex.split( args ) )
         rtconfig.setAttr( 'testargs', argL )
+
+
+def construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch ):
+    ""
+    rtdata.rtinfo = {
+        'hostname'      : platform.uname()[1],
+        'curdir'        : os.getcwd(),
+        'python'        : sys.executable,
+
+        'startepoch'    : start_epoch,
+        'startdate'     : time.ctime(start_epoch),
+        'cmdline'       : rtdata.cmdargv,
+        'vvtestdir'     : vvtestdir,
+        'curdir'        : rtdata.curdir,
+
+        'onopts'        : optD['onopts'],
+        'offopts'       : optD['offopts'],
+        'testargs'      : rtdata.rtconfig.getAttr( 'testargs', [] ),
+    }
 
 
 def construct_platform( rtdata, opts, optD ):
@@ -282,8 +293,8 @@ def construct_platform( rtdata, opts, optD ):
 
     rtdata.rtconfig.setMaxSize( plat.getMaxSize() )
 
-    rtdata.rtinfo.setInfo( platform=plat.getName(),
-                           compiler=plat.getCompiler() )
+    rtdata.rtinfo['platform'] = plat.getName()
+    rtdata.rtinfo['compiler'] = plat.getCompiler()
 
     rtdata.plat = plat
 
@@ -298,7 +309,7 @@ def compute_testing_directory( rtdata, opts, optD ):
                                          optD['offopts'],
                                          rtdata.plat.getName() )
 
-    rtdata.rtinfo.setInfo( rundir=td )
+    rtdata.rtinfo['rundir'] = td
     rtdata.testdir = td
 
 
@@ -466,7 +477,7 @@ def need_console_output( opts ):
     ""
     if information_mode( opts ):
         if opts.html or opts.junit or opts.gitlab or \
-           opts.save_results or opts.cdash:
+           opts.save_results or opts.cdash or opts.json:
             return False
 
     return True
@@ -479,96 +490,107 @@ def construct_results_writers( rtdata, opts, optD ):
     writers = resultsout.ResultsWriters()
 
     if need_console_output( opts ):
-        conobj = construct_console_writer( rtdata.testdir, opts, optD )
+        conobj = construct_console_writer( rtdata, opts, optD )
         writers.addWriter( conobj )
 
     if opts.batch_id is None:
 
         if opts.html:
-            htmlobj = construct_html_writer( rtdata.testdir, opts, optD,
-                                             rtdata.perms )
+            htmlobj = construct_html_writer( rtdata, opts, optD )
             writers.addWriter( htmlobj )
 
         if opts.junit:
-            junitobj = construct_junit_writer( rtdata.testdir, opts, optD,
-                                               rtdata.perms )
+            junitobj = construct_junit_writer( rtdata, opts, optD )
             writers.addWriter( junitobj )
 
+        if opts.json:
+            jsonobj = construct_json_writer( rtdata, opts, optD )
+            writers.addWriter(jsonobj)
+
         if opts.gitlab:
-            wr = construct_gitlab_writer( rtdata.testdir, opts, optD,
-                                          rtdata.perms )
+            wr = construct_gitlab_writer( rtdata, opts, optD )
             writers.addWriter( wr )
 
         if opts.cdash:
-            wr = construct_cdash_writer( rtdata.testdir, opts, optD,
-                                         rtdata.perms )
+            wr = construct_cdash_writer( rtdata, opts, optD )
             writers.addWriter( wr )
 
         if opts.save_results:
-            wr = construct_testlist_writer( rtdata, opts, optD,
-                                            rtdata.perms, rtdata.plat )
+            wr = construct_testlist_writer( rtdata, opts, optD )
             writers.addWriter( wr )
 
     rtdata.results_writer = writers
 
 
-def construct_console_writer( test_dir, opts, optD ):
+def construct_console_writer( rtdata, opts, optD ):
     ""
     import libvvtest.consolewriter as consolewriter
 
     verb = get_output_verbosity_integer( opts.dash_v )
 
-    conobj = consolewriter.ConsoleWriter( test_dir, verb )
-
-    conobj.setSortingSpecification( optD['sort_letters'] )
+    conobj = consolewriter.ConsoleWriter()
+    conobj.initialize( rtdata.rtinfo, verb, optD['sort_letters'] )
 
     return conobj
 
 
-def construct_html_writer( test_dir, opts, optD, perms ):
+def construct_html_writer( rtdata, opts, optD ):
     ""
     import libvvtest.htmlwriter as htmlwriter
 
-    htmlobj = htmlwriter.HTMLWriter( perms, opts.html, test_dir )
+    htmlobj = htmlwriter.HTMLWriter( rtdata.perms )
+    htmlobj.initialize( rtdata.rtinfo, opts.html )
 
     return htmlobj
 
 
-def construct_junit_writer( test_dir, opts, optD, perms ):
+def construct_junit_writer( rtdata, opts, optD ):
     ""
     import libvvtest.junitwriter as junitwriter
 
-    junitobj = junitwriter.JUnitWriter( perms, opts.junit, test_dir )
-
-    junitobj.setOutputDate( opts.results_date )
+    junitobj = junitwriter.JUnitWriter( rtdata.perms )
+    junitobj.initialize( rtdata.rtinfo, opts.junit, opts.results_date )
 
     return junitobj
 
 
-def construct_gitlab_writer( test_dir, opts, optD, perms ):
+def construct_json_writer( rtdata, opts, optD ):
+    ""
+    import libvvtest.jsonwriter as jsonwriter
+
+    jsonobj = jsonwriter.JsonWriter( rtdata.perms )
+    jsonobj.initialize( rtdata.rtinfo, opts.json, opts.results_date )
+
+    return jsonobj
+
+
+def construct_gitlab_writer( rtdata, opts, optD ):
     ""
     import libvvtest.gitlabwriter as gitlabwriter
 
-    gitlabobj = gitlabwriter.GitLabWriter( opts.gitlab, test_dir, perms )
+    gitlabobj = gitlabwriter.GitLabWriter( rtdata.perms )
 
-    gitlabobj.setSortingSpecification( optD['sort_letters'] )
-    gitlabobj.setOutputDate( opts.results_date )
-    gitlabobj.setNamingTags( optD['onopts'], opts.results_tag )
+    gitlabobj.initialize( rtdata.rtinfo,
+                          opts.gitlab,
+                          datestamp=opts.results_date,
+                          sortspec=optD['sort_letters'],
+                          onopts=optD['onopts'],
+                          name_tag=opts.results_tag );
 
     return gitlabobj
 
 
-def construct_cdash_writer( test_dir, opts, optD, perms ):
+def construct_cdash_writer( rtdata, opts, optD ):
     ""
     import libvvtest.cdashwriter as cdashwriter
     import cdashutil
 
-    cdashobj = cdashwriter.CDashWriter( test_dir, perms )
+    cdashobj = cdashwriter.CDashWriter( rtdata.perms,
+                                        cdashutil.TestResultsFormatter(),
+                                        cdashutil.FileSubmitter() )
 
-    cdashobj.setFormatter( cdashutil.TestResultsFormatter() )
-    cdashobj.setSubmitter( cdashutil.FileSubmitter() )
-
-    err = cdashobj.initialize( opts.cdash,
+    err = cdashobj.initialize( rtdata.rtinfo,
+                               opts.cdash,
                                project=opts.cdash_project,
                                datestamp=opts.results_date,
                                options=optD['onopts'],
@@ -580,19 +602,26 @@ def construct_cdash_writer( test_dir, opts, optD, perms ):
     return cdashobj
 
 
-def construct_testlist_writer( rtdata, opts, optD, perms, platobj ):
+def construct_testlist_writer( rtdata, opts, optD ):
     ""
     import libvvtest.listwriter as listwriter
+
+    platobj = rtdata.plat
+    test_dir = rtdata.testdir
+    perms = rtdata.perms
+    rtinfo = rtdata.rtinfo
 
     todir = get_testing_directory( opts, platobj )
 
     if not listwriter.is_target_like_scp( todir ):
         todir = normpath( abspath( todir ) )
 
-    wlistobj = listwriter.ListWriter( rtdata.loc, perms, todir, rtdata.testdir )
+    wlistobj = listwriter.ListWriter( rtdata.loc, rtdata.perms )
 
-    wlistobj.setOutputDate( opts.results_date )
-    wlistobj.setNamingTags( optD['onopts'], opts.results_tag )
+    wlistobj.initialize( rtinfo, todir,
+                         opts.results_date,
+                         optD['onopts'],
+                         opts.results_tag )
 
     return wlistobj
 
@@ -661,8 +690,7 @@ class TestListManager:
 
     def writeTestList(self):
         ""
-        attrs = self.rtinfo.asDict()
-        fn = self.tlist.stringFileWrite( **attrs )
+        fn = self.tlist.stringFileWrite( **(self.rtinfo) )
         self.perms.apply( fn )
 
     def addBatchFileLinksToTests(self, batchid):
@@ -689,7 +717,7 @@ def generate_test_list( opts, optD, rtdata ):
     tlist.connectDependencies()
     rtdata.tlm.writeTestList()
 
-    rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
+    rtdata.results_writer.prerun( tlist, verbosity=1 )
     logger.info()
 
     handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
@@ -725,7 +753,7 @@ def extract_test_files( param_dict, target_dir, rtdata ):
 
 def run_tests( opts, optD, rtdata ):
     ""
-    rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
+    rtdata.plugin.callPrologue( rtdata.cmdargv )
 
     tlist = rtdata.tlm.makeTestList()
 
@@ -759,7 +787,7 @@ def restart_tests( opts, optD, rtdata ):
     batchid = opts.batch_id
 
     if batchid is None:
-        rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
+        rtdata.plugin.callPrologue( rtdata.cmdargv )
 
     adjust_filter_settings_for_restart( opts, rtdata.rtconfig )
 
@@ -805,7 +833,7 @@ def baseline_tests( opts, optD, rtdata ):
     rtdata.selector.applyBaselineFilter( tlist )
     tlist.connectDependencies( check_dependencies=False )
 
-    rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=1 )
+    rtdata.results_writer.prerun( tlist, verbosity=1 )
     logger.info()
 
     if tlist.numActive() > 0:
@@ -842,7 +870,7 @@ def information_output( opts, optD, rtdata ):
 
         rtdata.tlm.readTestList()
         attrs = rtdata.tlm.readAndMergePreviouslyRunTests()
-        rtdata.rtinfo.setInfo( **attrs )
+        rtdata.rtinfo.update( attrs )
 
     else:
         logger.warn( 'WARNING: previous test results directory not found,',
@@ -858,7 +886,7 @@ def information_output( opts, optD, rtdata ):
         print_test_files( tlist )
 
     else:
-        rtdata.results_writer.info( tlist, rtdata.rtinfo )
+        rtdata.results_writer.info( tlist )
         exitcode = execute.encode_integer_warning( tlist )
         rtdata.plugin.callEpilogue( rtdata.testdir, tlist.getTests() )
 
@@ -867,7 +895,7 @@ def information_output( opts, optD, rtdata ):
 
 def output_timings( opts, optD, rtdata ):
     ""
-    rtdata.plugin.callPrologue( rtdata.rtinfo.getInfo('cmdline') )
+    rtdata.plugin.callPrologue( rtdata.cmdargv )
     tlist = rtdata.tlm.makeTestList()
 
     if not rtdata.isrestart:
@@ -888,7 +916,7 @@ def output_timings( opts, optD, rtdata ):
     rtdata.timehandler.setTimeouts( tlist.getTests() )
     tlist.setResultsDate()
 
-    cwriter = construct_console_writer( rtdata.testdir, opts, optD )
+    cwriter = construct_console_writer( rtdata, opts, optD )
     cwriter.timings( tlist )
 
 
@@ -1069,7 +1097,7 @@ def run_test_exec_list( opts, optD, rtdata ):
 
     tlist.connectDependencies( check_dependencies=(opts.batch_id is None) )
 
-    rtdata.results_writer.prerun( tlist, rtdata.rtinfo, verbosity=0 )
+    rtdata.results_writer.prerun( tlist, verbosity=0 )
     logger.info()
 
     xstat = 0
@@ -1102,8 +1130,10 @@ def run_test_exec_list( opts, optD, rtdata ):
         xstat = tlrun.run()
 
     logger.info()
-    rtdata.rtinfo.setInfo( finishepoch=time.time() )
-    rtdata.results_writer.postrun( tlist, rtdata.rtinfo )
+    tm = time.time()
+    rtdata.rtinfo['finishepoch'] = tm
+    rtdata.rtinfo['finishdate'] = time.ctime(tm)
+    rtdata.results_writer.postrun( tlist )
 
     return xstat
 

@@ -475,6 +475,24 @@ class ParameterSet_getParameters( vtu.vvtestTestCase ):
         assert pD[ ('A','B') ] == [ ['a2','b2'] ]
         assert pD[ ('C',) ] == [ ['c2'], ['c3'] ]
 
+    def test_typed_params(self):
+        ""
+        pset = paramset.ParameterSet()
+        pset.addParameters(['A','B','C'], [ ['1','1.0','s1'], ['2','2.0','s2'] ])
+        pset.setParameterTypeMap({'A': int, 'B': float, 'C': str})
+        pD = pset.getParameters(typed=True)
+        assert len(pD) == 1
+        assert pD[('A','B','C')] == [ [1, 1.0, 's1'], [2, 2.0, 's2'] ]
+
+    def test_serializable_keys(self):
+        ""
+        pset = paramset.ParameterSet()
+        pset.addParameters(['A','B','C'], [ ['1','1.0','s1'], ['2','2.0','s2'] ])
+        pset.setParameterTypeMap({'A': int, 'B': float, 'C': str})
+        pD = pset.getParameters(typed=True, serializable=True)
+        assert len(pD) == 1
+        assert pD['A,B,C'] == [ [1, 1.0, 's1'], [2, 2.0, 's2'] ]
+
 
 class mark_staged( vtu.vvtestTestCase ):
 

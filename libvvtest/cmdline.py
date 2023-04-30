@@ -247,6 +247,8 @@ def create_parser( argvlist, vvtest_version ):
              'output formats. Can be seconds since epoch or a date string.' )
     grp.add_argument( '--junit', metavar='FILENAME',
         help='Writes a test summary file in the JUnit XML format.' )
+    grp.add_argument( '--json', metavar='FILENAME',
+        help='Writes a test summary file in json format.' )
     grp.add_argument( '--html', metavar='FILENAME',
         help='Write a test summary file in HTML format.' )
     grp.add_argument( '--gitlab', metavar='LOCATION',

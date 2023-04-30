@@ -23,7 +23,6 @@ except Exception:
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.logger as logger
 import libvvtest.gitlabwriter as gitlabwriter
@@ -32,7 +31,6 @@ from libvvtest.gitlabwriter import make_submit_info
 from libvvtest.teststatus import TestStatus, DIFF_EXIT_STATUS
 from libvvtest.testcase import TestCase
 from gitinterface import clone_repo, get_remote_branches
-from libvvtest.runinfo import RuntimeInfo
 
 
 class gitlab_output_format_tests( vtu.vvtestTestCase ):
@@ -66,7 +64,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         ""
         tcase = self.makeTest( 'pass', 5 )
         line = gitlabwriter.format_gitlab_table_line( tcase, True )
-        print3( line )
+        print( line )
         sL = [ s.strip() for s in line.split( '|' )[1:-1] ]
         assert len(sL) == 4
         assert sL[0] == 'pass' and sL[2] == '0:05'
@@ -74,7 +72,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         tcase = self.makeTest( 'fail', 7 )
         line = gitlabwriter.format_gitlab_table_line( tcase, True )
-        print3( line )
+        print( line )
         sL = [ s.strip() for s in line.split( '|' )[1:-1] ]
         assert len(sL) == 4
         assert sL[0] == 'fail' and sL[2] == '0:07'
@@ -82,7 +80,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         tcase = self.makeTest( 'fail', 7 )
         line = gitlabwriter.format_gitlab_table_line( tcase, False )
-        print3( line )
+        print( line )
         sL = [ s.strip() for s in line.split( '|' )[1:-1] ]
         assert len(sL) == 4
         assert sL[0] == 'fail' and sL[2] == '0:07'
@@ -97,7 +95,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_results_table( sio, 'mixed', tL, 100 )
 
         val = sio.getvalue()
-        print3( val )
+        print( val )
         assert len( util.greplines( 'Result*Date*Time*Path', val ) ) == 1
         assert len( util.greplines( '| sdir/good.np=4 |', val ) ) == 1
         line = grepforline( 'sdir/bad.np=4', val ).rstrip()
@@ -114,7 +112,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_results_table( sio, 'diff', tL, 2 )
 
         val = sio.getvalue()
-        print3( val )
+        print( val )
 
         line = grepforline( 'sdir/testA.np=4', val ).rstrip()
         assert line.endswith( '[sdir/testA.np=4](sdir_testA.np=4.md) |' )
@@ -163,7 +161,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         time.sleep(1)
 
         val = sio.getvalue()
-        print3( val )
+        print( val )
         assert len( util.greplines( 'Tests that fail', val ) ) == 1
         assert len( util.greplines( 'Result*Date*Time*Path', val ) ) == 0
 
@@ -179,17 +177,17 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         assert width == 12
 
         meta = gitlabwriter.get_file_meta_data_string( 'subdir/zeebra.txt', 10 )
-        print3( meta )
+        print( meta )
 
         meta = gitlabwriter.get_file_meta_data_string( 'subdir/foobar.txt', 10 )
-        print3( meta )
+        print( meta )
         assert 'error: ' in meta
 
         os.symlink( 'ardvaark.txt', 'subdir/ardvark.txt' )
         time.sleep(1)
 
         meta = gitlabwriter.get_file_meta_data_string( 'subdir/ardvark.txt', 10 )
-        print3( meta )
+        print( meta )
         assert 'error:' not in meta
 
     def test_write_gitlab_collapsable_file_contents(self):
@@ -206,7 +204,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, True, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert len( util.greplines( '<code>label', val ) ) == 1
         assert fn not in val
         assert 'Text with a' in val
@@ -218,7 +216,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, False, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert len( util.greplines( '<code>label', val ) ) == 1
         assert fn not in val
         assert 'Text with a' not in val
@@ -231,7 +229,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, True, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert fn in val
         assert 'error reading file:' in val
         assert 'Traceback' in val
@@ -248,7 +246,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.write_gitlab_formatted_file( sio, fn, True, 'label', 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert 'Another line' in val
         assert val.count( '```' ) == 2 and val.count( "'''" ) == 1
 
@@ -265,7 +263,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.stream_gitlab_files( sio, '.', MockSelector(), 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert 'This is line two' in val
         assert 'file.txt' in val
         assert 'execute.log' in val
@@ -295,7 +293,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         gitlabwriter.stream_gitlab_files( sio, '.', MockSelector(), 10 )
 
         val = sio.getvalue()
-        #print3( val )
+        #print( val )
         assert 'This is line two' not in val
         assert 'execute.log' in val
 
@@ -333,7 +331,7 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
     def test_test_run_attributes(self):
         ""
         conv = gitlabwriter.GitLabMarkDownConverter( '.', '.' )
-        conv.saveResults( [], RuntimeInfo() )
+        conv.saveResults( [], {} )
         time.sleep(1)
 
         fval = util.readfile( 'README.md' ).strip()
@@ -342,8 +340,8 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         conv = gitlabwriter.GitLabMarkDownConverter( '.', '.' )
         tm = time.time()
-        rtinfo = RuntimeInfo( startdate=str(tm)+' / '+time.ctime(tm),
-                              finishdate=str(tm+10)+' / '+time.ctime(tm+10) )
+        rtinfo = { 'startdate':str(tm)+' / '+time.ctime(tm),
+                   'finishdate':str(tm+10)+' / '+time.ctime(tm+10) }
         conv.saveResults( [], rtinfo )
         time.sleep(1)
 
@@ -352,17 +350,21 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         assert len( util.greplines( 'startdate', val ) ) == 1
         assert len( util.greplines( 'finishdate', val ) ) == 1
 
-    def make_recording_GitLabWriter(self, location):
+    def make_recording_GitLabWriter(self, location, output_period=None):
         ""
         recorder = []
 
         class RecordingGitLabWriter( gitlabwriter.GitLabWriter ):
-            def _write_files(self, atestlist, runinfo, logfunc):
+            def _write_files(self, atestlist, logfunc):
                 recorder.append( 'files' )
-            def _dispatch_submission(self, atestlist, runinfo, logfunc):
+            def _dispatch_submission(self, atestlist, logfunc):
                 recorder.append( 'submit' )
 
-        wr = RecordingGitLabWriter( location, None, None )
+        wr = RecordingGitLabWriter( None )
+        if output_period is None:
+            wr.initialize( {}, location )
+        else:
+            wr.initialize( {}, location, output_period=output_period )
 
         return wr,recorder
 
@@ -370,67 +372,68 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         ""
         wr,recorder = self.make_recording_GitLabWriter( 'destdir' )
 
-        wr.prerun( None, None, 0 )
+        wr.prerun( None, 0 )
         assert recorder == []
 
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == []
 
-        wr.postrun( None, None )
+        wr.postrun( None )
         assert recorder == [ 'files' ]
 
-        wr.info( None, None )
+        wr.info( None )
         assert recorder == [ 'files', 'files' ]
 
     def test_trigger_url_submission_on_prerun_and_postrun_and_info(self):
         ""
         wr,recorder = self.make_recording_GitLabWriter( 'file:///some/dir' )
 
-        wr.prerun( None, None, 0 )
+        wr.prerun( None, 0 )
         assert recorder == [ 'submit' ]
 
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == [ 'submit' ]
 
-        wr.postrun( None, None )
+        wr.postrun( None )
         assert recorder == [ 'submit', 'submit' ]
 
-        wr.info( None, None )
+        wr.info( None )
         assert recorder == [ 'submit', 'submit', 'submit' ]
 
     def test_trigger_url_submission_on_midrun(self):
         ""
-        wr,recorder = self.make_recording_GitLabWriter( 'file:///some/dir' )
-        wr.setOutputPeriod( 2 )
+        wr,recorder = self.make_recording_GitLabWriter(
+                                            'file:///some/dir',
+                                            output_period=2 )
 
-        wr.prerun( None, None, 0 )
+        wr.prerun( None, 0 )
         assert recorder == [ 'submit' ]
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == ['submit']
         time.sleep(3)
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == [ 'submit', 'submit' ]
-        wr.midrun( None, None )
+        wr.midrun( None )
         assert recorder == [ 'submit', 'submit' ]
-        wr.postrun( None, None )
+        wr.postrun( None )
         assert recorder == [ 'submit', 'submit', 'submit' ]
 
     def test_making_submit_info(self):
         ""
         tm = time.time()
 
-        rtinfo = RuntimeInfo( startepoch=tm, platform='xbox' )
+        rtinfo = { 'startepoch':tm, 'platform':'xbox' }
         start,sfx,msg = make_submit_info( rtinfo, ['dbg'], None )
         assert abs( tm - start ) < 2
-        print3( 'sfx', sfx )
+        print( 'sfx '+str(sfx) )
         assert 'xbox' in sfx and 'dbg' in sfx
         assert 'vvtest' in msg
 
-        rtinfo = RuntimeInfo( startepoch=tm, platform='xbox' )
+        rtinfo = { 'startepoch':tm, 'platform':'xbox' }
         start,sfx,msg = make_submit_info( rtinfo, ['dbg'], 'blue' )
         assert 'xbox' in sfx and 'dbg' in sfx and 'blue' in sfx
 
-        rtinfo = RuntimeInfo( startepoch=tm )
+        rtinfo = { 'startepoch':tm }
         start,sfx,msg = make_submit_info( rtinfo, [], None )
         assert abs( tm - start ) < 2
         assert not sfx
@@ -442,30 +445,32 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
 
         return url
 
-    def make_git_repo_and_overridden_GitLabWriter(self):
+    def make_git_repo_and_overridden_GitLabWriter(self, rtinfo):
         ""
         url = self.make_git_repo()
 
         util.writefile( 'faketestresults/mark.txt', 'nothing' )
 
         class OverrideGitLabWriter( gitlabwriter.GitLabWriter ):
-            def _convert_files(self, destdir, atestlist, runinfo, logfunc):
+            def _convert_files(self, destdir, atestlist, logfunc):
                 ""
                 fp = open( destdir+'/info.txt', 'wt' )
-                gitlabwriter.write_run_attributes( fp, runinfo )
+                gitlabwriter.write_run_attributes( fp, self.rtinfo )
                 fp.close()
 
-        wr = OverrideGitLabWriter( url, 'faketestresults', None )
+        wr = OverrideGitLabWriter( None )
+        wr.initialize( rtinfo, url )
 
         return wr,url
 
     def test_submit_to_git_repository(self):
         ""
-        wr,url = self.make_git_repo_and_overridden_GitLabWriter()
+        rtinfo = { 'rundir':'faketestresults',
+                   'startepoch':1559822821.99,  # Thu Jun  6 06:07:01 2019
+                   'curdir':'my value' }
+        wr,url = self.make_git_repo_and_overridden_GitLabWriter( rtinfo )
 
-        rtinfo = RuntimeInfo( startepoch=1559822821.99,  # Thu Jun  6 06:07:01 2019
-                              curdir='my value' )
-        wr._dispatch_submission( None, rtinfo, logger.info )
+        wr._dispatch_submission( None, logger.info )
 
         git = clone_repo( url, 'checkrepo' )
         branch = get_results_branch( git )
@@ -480,28 +485,33 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
     def test_submit_to_a_faulty_gitlab_url(self):
         ""
         class OverrideGitLabWriter( gitlabwriter.GitLabWriter ):
-            def _convert_files(self, destdir, atestlist, runinfo, logfunc):
+            def _convert_files(self, destdir, atestlist, logfunc):
                 util.writefile( destdir+'/ok.txt', "file contents" )
 
+        wr = OverrideGitLabWriter( None )
+        rtinfo = { 'rundir':'faketestresults',
+                   'startepoch':1559822821.99 }
         badurl = 'file:///some/path/ladofgidskjslasdf'
-        wr = OverrideGitLabWriter( badurl, 'faketestresults', None )
+        wr.initialize( rtinfo, badurl )
+
         rtn,out,err = util.call_capture_output(
-            wr._dispatch_submission,
-            None, { 'startepoch':1559822821.99 }, logger.info )
+            wr._dispatch_submission, None, logger.info )
 
         assert 'WARNING' in err and 'error submitting' in err
 
     def test_submit_a_second_time_when_no_files_are_different(self):
         ""
-        wr,url = self.make_git_repo_and_overridden_GitLabWriter()
+        rtinfo = { 'rundir':'faketestresults',
+                   'startepoch':1559822821.99 }  # Thu Jun  6 06:07:01 2019
+        wr,url = self.make_git_repo_and_overridden_GitLabWriter( rtinfo )
 
-        rtinfo = RuntimeInfo( startepoch=1559822821.99 )  # Thu Jun  6 06:07:01 2019
-        wr._dispatch_submission( None, rtinfo, logger.info )
+        # wr.setInfoObjects( rtinfo )
+        wr._dispatch_submission( None, logger.info )
 
         time.sleep(1)
 
         rtn,out,err = util.call_capture_output(
-            wr._dispatch_submission, None, rtinfo, logger.info )
+            wr._dispatch_submission, None, logger.info )
 
         assert 'WARNING' not in out
 
@@ -570,7 +580,6 @@ class gitlab_output_format_tests( vtu.vvtestTestCase ):
         assert len( util.greplines( 'finishdate', val ) ) == 1
         assert len( util.greplines( ' vvtestdir =', val ) ) == 1
         assert len( util.greplines( ' python =', val ) ) == 1
-        assert len( util.greplines( ' PATH =', val ) ) == 1
         elap = util.greplines( 'elapsed', val )[0].split('=')[1].strip()
         assert int( elap[:-1] ) > 1
 
@@ -611,16 +620,13 @@ def write_three_test_files():
         import time
         time.sleep(1)
         """ )
-    util.writefile( 'FailTest.xml', """
-        <rtest name="FailTest">
-            <execute>
-                sleep 2
-                foreach i (1 2 3 4 5 6 7 8 9)
-                    echo "exit with fake failure"
-                end
-                exit 1
-            </execute>
-        </rtest>""" )
+    util.writefile( 'FailTest.vvt', """
+        import sys, time
+        time.sleep(2)
+        for i in range(1,10):
+            print ( "exit with fake failure" )
+        sys.exit(1)
+        """ )
     util.writefile( 'DiffTest.vvt', """
         #VVT: parameterize (staged): np = 1 2
         import time, sys

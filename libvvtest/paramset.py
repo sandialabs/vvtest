@@ -101,13 +101,17 @@ class ParameterSet:
         """
         return self.instances
 
-    def getParameters(self, typed=False):
+    def getParameters(self, typed=False, serializable=False):
         """
         Returns the filtered parameters in a dictionary, such as
             {
               ('paramA',) : [ ['a1'], ['a2'], ... ] ],
-              ('paramB', paramC') : [ ['b1','c1'], ['b2','c2'], ... ] ],
+              ('paramB', 'paramC') : [ ['b1','c1'], ['b2','c2'], ... ] ],
             }
+
+        if ``serializable``, then the keys of the returned mappings will be
+        strings formed as:
+            ('key1', 'key2', ..., 'key3') -> 'key1,key2,...,key3'
         """
         instL = self.getInstances()
         filtered_params = {}
@@ -121,7 +125,8 @@ class ParameterSet:
                         valL = apply_value_types( self.type_map, nameT, valL )
                     L.append( valL )
 
-            filtered_params[ nameT ] = L
+            key = nameT if not serializable else  ",".join([str(_) for _ in nameT])
+            filtered_params[ key ] = L
 
         return filtered_params
 

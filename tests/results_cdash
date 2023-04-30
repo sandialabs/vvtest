@@ -17,14 +17,12 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.cdashwriter as cdashwriter
 import cdashutil
 
 from libvvtest.TestList import TestList
 from libvvtest.permsetter import PermissionSetter
-from libvvtest.runinfo import RuntimeInfo
 from libvvtest.tcfactory import TestCaseFactory
 
 
@@ -52,18 +50,17 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def test_sitename_buildname_start_end_elapsed(self):
         ""
-        wr = make_CDashWriter( 'file.xml' )
-
         tm = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
-        rtinfo = RuntimeInfo( startepoch=tm,
-                              hostname='sparky',
-                              rundir='/path/to/testresultsdir',
-                              finishepoch=tm+73 )
+        rtinfo = { 'startepoch':tm,
+                   'hostname':'sparky',
+                   'rundir':'/path/to/testresultsdir',
+                   'finishepoch':tm+73 }
+        wr = make_CDashWriter( 'file.xml', rtinfo=rtinfo )
 
         testlist = TestList( TestCaseFactory() )
 
-        wr.postrun( testlist, rtinfo )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
 
@@ -86,7 +83,7 @@ class unit_tests( vtu.vvtestTestCase ):
         tcase = vtu.make_fake_TestCase( name='ctest', result='notrun' )
         testlist.addTest( tcase )
 
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
 
@@ -116,7 +113,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
         wr = make_CDashWriter( 'file.xml',
                                subclass_submitter=OverrideFileSubmitter() )
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         assert os.path.isfile( 'file.xml' )
         assert len( records ) == 0
@@ -124,7 +121,7 @@ class unit_tests( vtu.vvtestTestCase ):
         wr = make_CDashWriter( 'http://localhost/cdash',
                                subclass_submitter=OverrideFileSubmitter(),
                                project='CoolProj' )
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         assert len( records ) == 1
         assert records[0][0] == 'urllib'
@@ -134,7 +131,7 @@ class unit_tests( vtu.vvtestTestCase ):
         wr = make_CDashWriter( 'http://localhost2/cdash,method=curl',
                                subclass_submitter=OverrideFileSubmitter(),
                                project='CoolProj' )
-        wr.postrun( testlist, RuntimeInfo() )
+        wr.postrun( testlist )
 
         assert len( records ) == 2
         assert records[1][0] == 'curl'
@@ -321,15 +318,15 @@ class unit_tests( vtu.vvtestTestCase ):
 
     def test_a_URL_without_a_project_name_is_an_error(self):
         ""
-        wr = cdashwriter.CDashWriter( os.getcwd(), None )
+        wr = cdashwriter.CDashWriter( None, None, None )
 
-        err = wr.initialize( 'http://localhost/cdash' )
+        err = wr.initialize( {}, 'http://localhost/cdash' )
         assert err
 
-        err = wr.initialize( 'http://localhost/cdash', project='CoolProj' )
+        err = wr.initialize( {}, 'http://localhost/cdash', project='CoolProj' )
         assert not err
 
-        err = wr.initialize( 'http://localhost/cdash,project=CoolProj' )
+        err = wr.initialize( {}, 'http://localhost/cdash,project=CoolProj' )
         assert not err
 
     def test_cdash_specification_data_flow(self):
@@ -342,9 +339,8 @@ class unit_tests( vtu.vvtestTestCase ):
                                ',site=redstorm' + \
                                ',name=smoke_tests' )
 
-        rtinfo = RuntimeInfo()
         testlist = TestList( TestCaseFactory() )
-        wr.postrun( testlist, rtinfo )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
         assert extract_build_stamp( xml ).startswith( '2017' )
@@ -357,11 +353,11 @@ class unit_tests( vtu.vvtestTestCase ):
         rdate  = 1512812080.2058824  # Sat Dec  9 02:34:40 2017 MDT
         tstart = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
-        wr = make_CDashWriter( 'file.xml', datestamp=rdate )
+        rtinfo = { 'startepoch':tstart, 'rundir':os.getcwd() }
+        wr = make_CDashWriter( 'file.xml', datestamp=rdate, rtinfo=rtinfo )
 
-        rtinfo = RuntimeInfo( startepoch=tstart )
         testlist = TestList( TestCaseFactory() )
-        wr.postrun( testlist, rtinfo )
+        wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )
         assert extract_build_stamp( xml ).startswith( '2017' )
@@ -443,7 +439,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
         lines = cdashwriter.list_directory_as_strings( '.' )
         for line in lines:
-            print3( line )
+            print( line )
         assert len( lines ) == 4
         out = '\n'.join( lines )
         assert len( util.greplines( 'alink*subdir', out ) ) == 1
@@ -491,7 +487,7 @@ class unit_tests( vtu.vvtestTestCase ):
         assert displ == 'sdir/atest.np=4'
 
         out = attrs['output']
-        print3( out )
+        print( out )
         yr = time.strftime( "%Y", time.localtime() )
         assert len( util.greplines( yr+'* execute.log', out ) ) == 1
         assert len( util.greplines( '$ cat*execute.log', out ) ) == 1
@@ -523,7 +519,7 @@ class unit_tests( vtu.vvtestTestCase ):
         displ,attrs = list(fmtr.tests.items())[0]
         assert displ == 'sdir/atest.np=4'
         out = attrs['output']
-        print3( out )
+        print( out )
         assert len( util.greplines( 'bunch of info', out ) ) == 1
 
     def test_output_file_size_is_limited(self):
@@ -548,7 +544,7 @@ class unit_tests( vtu.vvtestTestCase ):
         displ,attrs = list(fmtr.tests.items())[0]
 
         out = attrs['output']
-        print3( out )
+        print( out )
         assert 'middle of this file has been removed' in out
 
         fmtr = MockFormatter()
@@ -559,7 +555,7 @@ class unit_tests( vtu.vvtestTestCase ):
         displ,attrs = list(fmtr.tests.items())[0]
 
         out = attrs['output']
-        print3( out )
+        print( out )
         assert 'middle of this file has been removed' not in out
 
 
@@ -703,19 +699,22 @@ class integration_tests( vtu.vvtestTestCase ):
 
 
 def make_CDashWriter( destination, subclass_submitter=None,
-                      project=None, datestamp=None ):
+                      project=None, datestamp=None, rtinfo=None ):
     ""
     perms = PermissionSetter( os.getcwd(), None )
 
-    wr = cdashwriter.CDashWriter( os.getcwd(), perms )
-
-    wr.setFormatter( cdashutil.TestResultsFormatter() )
+    fmtr = cdashutil.TestResultsFormatter()
     if subclass_submitter:
-        wr.setSubmitter( subclass_submitter )
+        subm = subclass_submitter
     else:
-        wr.setSubmitter( cdashutil.FileSubmitter() )
+        subm = cdashutil.FileSubmitter()
 
-    wr.initialize( destination, project=project, datestamp=datestamp )
+    wr = cdashwriter.CDashWriter( perms, fmtr, subm )
+
+    if rtinfo is None:
+        rtinfo = { 'rundir':os.getcwd() }
+
+    wr.initialize( rtinfo, destination, project=project, datestamp=datestamp )
 
     return wr
 

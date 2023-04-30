@@ -62,6 +62,16 @@ class RuntimeConfig:
         for k,v in kwargs.items():
             self.setAttr( k, v )
 
+    def asDict(self):
+        """
+        Return json serializable dict of attributes.  Don't return all attributes
+        since many are not json serializable
+        """
+        data = {}
+        for key in self.attr_init:
+            data[key] = self.attrs[key]
+        return data
+
     def setAttr(self, name, value):
         """
         Set the value of an attribute name (which must be known).

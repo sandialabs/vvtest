@@ -228,8 +228,7 @@ class ExecutionHandler:
             self.write_xml_run_script( tcase, texec.getRunDirectory() )
 
         rundir = texec.getRunDirectory()
-        resourceobj = texec.getResourceObject()
-        self.write_script_utils( tcase, rundir, resourceobj )
+        self.write_script_utils( tcase, rundir )
 
         tm = texec.getTimeout()
         self.set_timeout_environ_variable( tm )
@@ -288,7 +287,7 @@ class ExecutionHandler:
 
             self.perms.apply( os.path.abspath( script_file ) )
 
-    def write_script_utils(self, tcase, rundir, resourceobj):
+    def write_script_utils(self, tcase, rundir):
         ""
         for lang in ['py','sh']:
 
@@ -297,7 +296,7 @@ class ExecutionHandler:
             if self.rtconfig.getAttr('preclean') or \
                not os.path.exists( script_file ):
 
-                ScriptWriter.writeScript( tcase, resourceobj,
+                ScriptWriter.writeScript( tcase,
                                           script_file,
                                           lang,
                                           self.rtconfig,

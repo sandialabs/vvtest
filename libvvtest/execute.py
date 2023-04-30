@@ -31,7 +31,7 @@ class TestListRunner:
         self.starttime = time.time()
         logger.info("Start time: {0}".format(time.ctime()))
 
-        rfile = self.tlist.initializeResultsFile( **(self.rtinfo.asDict()) )
+        rfile = self.tlist.initializeResultsFile( **(self.rtinfo) )
         self.perms.apply( os.path.abspath( rfile ) )
 
     def total_time_expired(self):
@@ -95,7 +95,7 @@ class BatchRunner( TestListRunner ):
 
                 uthook.check( self.batch.numInProgress(), self.batch.numPastQueue() )
 
-                self.results_writer.midrun( self.tlist, self.rtinfo )
+                self.results_writer.midrun( self.tlist )
 
                 self.info.printProgress( len(doneL) )
 
@@ -110,7 +110,10 @@ class BatchRunner( TestListRunner ):
 
         self.info.printBatchRemainders( NS, NF, nrL )
 
-        return encode_integer_warning( self.tlist )
+        rtn = encode_integer_warning( self.tlist )
+        self.rtinfo['returncode'] = rtn
+
+        return rtn
 
     def sleep_with_info_check(self):
         ""
@@ -165,7 +168,7 @@ class DirectRunner( TestListRunner ):
 
                 uthook.check( self.xlist.numRunning(), self.xlist.numDone() )
 
-                self.results_writer.midrun( self.tlist, self.rtinfo )
+                self.results_writer.midrun( self.tlist )
 
                 self.info.printProgress( len(doneL) )
 
@@ -179,7 +182,10 @@ class DirectRunner( TestListRunner ):
 
         self.info.printRemainders( nrL )
 
-        return encode_integer_warning( self.tlist )
+        rtn = encode_integer_warning( self.tlist )
+        self.rtinfo['returncode'] = rtn
+
+        return rtn
 
     def start_next(self, texec):
         ""

@@ -50,12 +50,9 @@ class JsonWriter:
         """
         data = {}
         top = dict( self.rtinfo )
-        for var in (
-            "platform",
-            "hostname",
-            "python",
-        ):
-            top.pop(var, None)
+        top["vvplatform"] = top.pop( "platform", None )
+        top.pop( "hostname", None )
+        top.pop( "python", None )
         top["command"] = " ".join(quote(_) for _ in top.pop("cmdline", []))
         top["starttime"] = top.pop("startepoch", -1)
         top["endtime"] = top.pop("finishepoch", -1)
@@ -213,6 +210,7 @@ json_output_schema = \
         "startdate": str,
         "command": str,
         "vvtestdir": str,
+        "vvplatform": str,  # the vvtest platform name
         "compiler": (None, str),  # None or a string
         "rundir": str,
         "starttime": (int,float),  # a number

@@ -1,5 +1,7 @@
-
 Improvements:
+
+    - Test results output can now be sent to a JSON formatted file,
+      with option --json <filename>.
 
     - The parameter generator feature has been enhanced to allow test
       dependencies to be specified for each test. The generator script

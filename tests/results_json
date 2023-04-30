@@ -18,6 +18,8 @@ import time
 import vvtestutils as vtu
 import testutils as util
 
+import libvvtest.jsonwriter as jsonwriter
+
 nonetype = type(None)
 
 
@@ -32,6 +34,7 @@ class json_output_format_tests(vtu.vvtestTestCase):
         vrun = vtu.runvvtest("-i --json=../results.json", chdir=vrun.resultsDir())
 
         data = util.read_json_file("results.json")
+        jsonwriter.assert_schema_conformance( data )
         self.assert_json_test_names(data)
         self.assert_output_for_diff_and_fail_tests(data)
 
@@ -47,6 +50,7 @@ class json_output_format_tests(vtu.vvtestTestCase):
             vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
 
             data = util.read_json_file("results.json")
+            jsonwriter.assert_schema_conformance( data )
             self.assert_json_test_names(data)
 
     def assert_json_test_names(self, data):
@@ -99,6 +103,7 @@ class json_output_format_tests(vtu.vvtestTestCase):
 
             assert os.path.exists("results.json")
             data = util.read_json_file("results.json")
+            jsonwriter.assert_schema_conformance( data )
             assert len(data["vvtest"]["tests"]["cases"]) == 0
 
     def test_execute_log_output_for_staged_tests(self):
@@ -119,6 +124,7 @@ class json_output_format_tests(vtu.vvtestTestCase):
         vrun.assertCounts(total=2, diff=2)
 
         data = util.read_json_file("results.json")
+        jsonwriter.assert_schema_conformance( data )
         flg = 0
         for case in data["vvtest"]["tests"]["cases"]:
             if "stage=1" in case["case"]:
@@ -131,6 +137,84 @@ class json_output_format_tests(vtu.vvtestTestCase):
                 flg += 100
         assert flg == 101
 
+    def test_the_case_when_a_test_is_notrun(self):
+        """"""
+        util.writefile(
+            "atest.vvt",
+            """
+            import sys
+            sys.exit(1)
+            """,
+        )
+        util.writefile(
+            "btest.vvt",
+            """
+            #VVT: depends on : atest
+            pass
+            """,
+        )
+
+        vrun = vtu.runvvtest("--json results.json")
+        vrun.assertCounts( total=2, fail=1, notrun=1 )
+
+        assert os.path.exists("results.json")
+        data = util.read_json_file("results.json")
+        jsonwriter.assert_schema_conformance( data )
+        assert len(data["vvtest"]["tests"]["cases"]) == 2
+
+    def test_output_schema_checking_mechanism(self):
+        ""
+        checker = jsonwriter._assert_schema
+
+        checker( int, 3 )
+        self.assertRaises( AssertionError, checker, int, 'foo' )
+        checker( str, 'foo' )
+        self.assertRaises( AssertionError, checker, str, 3 )
+        checker( float, 3.3 )
+        self.assertRaises( AssertionError, checker, float, 'foo' )
+
+        checker( [int,], [3,] )
+        self.assertRaises( AssertionError, checker, [int,], [3,'foo'] )
+        checker( [str,], ['foo',] )
+        self.assertRaises( AssertionError, checker, [str,], [3,'foo',] )
+
+        checker( (None,int), None )
+        checker( (None,int), 3 )
+        self.assertRaises( AssertionError, checker, (None,int), 'foo' )
+        checker( (None,[int,]), [3,] )
+        self.assertRaises( AssertionError, checker, (None,[int,]), ['foo',] )
+        checker( (None,[str,]), ['foo',] )
+        self.assertRaises( AssertionError, checker, (None,[str,]), [3,] )
+
+        # multiple possible types for a value
+        checker( (None,int,str), None )
+        checker( (None,int,str), 3 )
+        checker( (None,int,str), 'foo' )
+        checker( (int,str), 'foo' )
+        checker( (int,float), 3 )
+        checker( (int,float), 3.3 )
+        self.assertRaises( AssertionError, checker, (int,str), None )
+
+        checker( {'foo':str, 'ival':int}, {'foo':'bar','ival':3} )
+        # currently, more entries can appear in a dict section that the schema
+        checker( {'foo':str}, {'foo':'bar', 'baz':'whatever'} )
+        self.assertRaises( AssertionError, checker, {'foo':str, 'ival':int}, {'foo':'bar'} )
+        self.assertRaises( AssertionError, checker, {'foo':str}, {'foo':3} )
+
+        # nested dict
+        checker( {'foo':{'bar':int}}, {'foo':{'bar':3}} )
+        self.assertRaises( AssertionError, checker, {'foo':{'bar':int}}, {'foo':'bar'} )
+        self.assertRaises( AssertionError, checker, {'foo':{'bar':int}}, {'foo':{'bar':'baz'}} )
+
+        # nested list of a dict
+        checker( [{'foo':int}], [{'foo':3},{'foo':5}] )
+        checker( [{'foo':int}], [] )
+        checker( [{'foo':int}], [{'foo':3},{'foo':5,'baz':'hmm'}] )
+        # for a list in the schema, it can only be length one
+        self.assertRaises( AssertionError, checker, [{'foo':int},{'bar':int}], [{'foo':3},{'foo':5}] )
+        self.assertRaises( AssertionError, checker, [{'foo':int}], [{'foo':3},{'foo':'hmm'}] )
+        self.assertRaises( AssertionError, checker, [{'foo':int}], [{'foo':3},{'bar':5}] )
+
     def test_output_schema(self):
         """Test that guarantees the contracted output schema does not change"""
         write_three_test_files()
@@ -139,127 +223,9 @@ class json_output_format_tests(vtu.vvtestTestCase):
             vtu.remove_results()
             vrun = vtu.runvvtest("-N 4 --json results.json", batch=batch)
             vrun.assertCounts(total=5, npass=2, diff=2, fail=1)
+
             data = util.read_json_file("results.json")
-            validate_output(data)
-
-
-def validate_type(name, value, expected_type):
-    if expected_type in primitive_types:
-        if not isinstance(value, expected_type):
-            raise AssertionError(
-                "Expected {0}={1} to be of type {2}".format(name, value, expected_type)
-            )
-    else:
-        # will throw if not valid
-        try:
-            expected_type(value)
-        except AssertionError:
-            raise AssertionError(
-                "Cannot cast {0}={1} to {2}".format(name, value, expected_type)
-            )
-
-
-def validate_output(arg):
-    first_level_keys = list(arg.keys())
-    assert first_level_keys == ["vvtest"]
-    for parent_key in json_output_schema["vvtest"]:
-        assert parent_key in arg["vvtest"], 'parent_key '+repr(parent_key)+' not in vvtest schema'
-        if parent_key in ("machine", "tests", "python"):
-            for child, value2 in arg["vvtest"][parent_key].items():
-                expected_type = json_output_schema["vvtest"][parent_key][child]
-                validate_type(
-                    "{0}:{1}".format(parent_key, child), value2, expected_type
-                )
-        else:
-            value = arg["vvtest"][parent_key]
-            expected_type = json_output_schema["vvtest"][parent_key]
-            validate_type(parent_key, value, expected_type)
-
-
-class list_of_testcases:
-    def __init__(self, arg):
-        assert isinstance(arg, list)
-        for item in arg:
-            assert isinstance(item, dict)
-            assert isinstance(item.pop("name"), str)
-            assert isinstance(item.pop("case"), str)
-            assert isinstance(item.pop("id"), str)
-            assert isinstance(item.pop("root"), str)
-            assert isinstance(item.pop("path"), str)
-            keywords = item.pop("keywords")
-            assert isinstance(keywords, list)
-            for keyword in keywords:
-                assert isinstance(keyword, str)
-            assert isinstance(item.pop("parameters"), dict)
-            assert isinstance(item.pop("starttime"), float)
-            assert isinstance(item.pop("endtime"), float)
-            assert isinstance(item.pop("returncode"), int)
-            assert isinstance(item.pop("result"), str)
-            assert isinstance(item.pop("timeout"), int)
-            resources = item.pop("resources", None)
-            assert isinstance(resources, dict)
-            assert isinstance(resources.pop("processors"), (int, nonetype))
-            processor_ids = resources.pop("processor ids")
-            assert isinstance(processor_ids, (nonetype, list))
-            for processor_id in processor_ids or []:
-                assert isinstance(processor_id, int)
-            assert isinstance(resources.pop("total processors"), (int, nonetype))
-            assert isinstance(resources.pop("devices"), (int, nonetype))
-            device_ids = resources.pop("device ids")
-            assert isinstance(device_ids, (nonetype, list))
-            for device_id in device_ids or []:
-                assert isinstance(device_id, int)
-            assert isinstance(resources.pop("total devices"), (int, nonetype))
-            assert isinstance(item.pop("command"), str)
-            assert isinstance(item.pop("log"), str)
-            assert not item
-
-
-primitive_types = (str, float, list, dict, bool, int, (str, nonetype))
-
-
-json_output_schema = {
-    "vvtest": {
-        "curdir": str,
-        "startdate": str,
-        "command": str,
-        "vvtestdir": str,
-        "compiler": (str, nonetype),
-        "rundir": str,
-        "starttime": float,
-        "endtime": float,
-        "enddate": str,
-        "duration": float,
-        "returncode": int,
-        "onopts": str,
-        "offopts": str,
-        "testargs": str,
-        "machine": {
-            "platform": str,
-            "system": str,
-            "nodename": str,
-            "release": str,
-            "version": str,
-            "arch": str,
-        },
-        "python": {
-            "executable": str,
-            "version": str,
-            "version info": list,
-        },
-        "environment": dict,
-        "tests": {
-            "tests": int,
-            "pass": int,
-            "notdone": int,
-            "notrun": int,
-            "diff": int,
-            "fail": int,
-            "timeout": int,
-            "cases": list_of_testcases,
-        },
-    }
-}
+            jsonwriter.assert_schema_conformance( data )
 
 
 def write_three_test_files():

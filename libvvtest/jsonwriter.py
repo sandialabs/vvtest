@@ -150,12 +150,16 @@ class JsonWriter:
             test["parameter set"] = p
 
         resources = test.setdefault("resources", {})
-        resources["processors"] = len( stat.getAttr( 'processor ids' ) )
-        resources["processor ids"] = stat.getAttr( 'processor ids' )
-        resources["total processors"] = stat.getAttr( 'total processors' )
+        resources["processors"] = None
+        resources["processor ids"] = None
+        resources["total processors"] = None
         resources["devices"] = None
         resources["device ids"] = None
         resources["total devices"] = None
+        if stat.getAttr( 'processor ids', None ):
+            resources["processors"] = len( stat.getAttr( 'processor ids' ) )
+            resources["processor ids"] = stat.getAttr( 'processor ids' )
+            resources["total processors"] = stat.getAttr( 'total processors' )
         if stat.getAttr( 'device ids', None ):
             resources["device"] = len( stat.getAttr( 'device ids' ) )
             resources["device ids"] = stat.getAttr( 'device ids' )
@@ -200,3 +204,115 @@ class JsonWriter:
 def compress64(string):
     compressed = zlib.compress(string.encode("utf-8"))
     return base64.b64encode(compressed).decode("utf-8")
+
+
+json_output_schema = \
+{
+    "vvtest": {
+        "curdir": str,
+        "startdate": str,
+        "command": str,
+        "vvtestdir": str,
+        "compiler": (None, str),  # None or a string
+        "rundir": str,
+        "starttime": (int,float),  # a number
+        "endtime": (int,float),
+        "enddate": (None, str),
+        "duration": float,
+        "returncode": int,
+        "onopts": str,
+        "offopts": str,
+        "testargs": str,
+        "machine": {
+            "platform": str,
+            "system": str,
+            "nodename": str,
+            "release": str,
+            "version": str,
+            "arch": str,
+        },
+        "python": {
+            "executable": str,
+            "version": str,
+            "version info": list,
+        },
+        "environment": dict,
+        "tests": {
+            "tests": int,  # number of test cases
+            "pass": int,
+            "notdone": int,
+            "notrun": int,
+            "diff": int,
+            "fail": int,
+            "timeout": int,
+            "cases": [
+                {
+                    "name": str,
+                    "case": str,
+                    "id": str,
+                    "root": str,
+                    "path": str,
+                    "keywords": [str,],  # a list of strings
+                    "parameters": dict,  # must be { "name":value, ...}
+                    "starttime": (int,float),
+                    "endtime": (int,float),
+                    "returncode": (None,int),
+                    "result": str,
+                    "timeout": int,
+                    "resources": {
+                        "processors": (None, int),  # num processors
+                        "processor ids": (None, [int,]),  # a list of int
+                        "total processors": (None, int),
+                        "devices": (None, int),  # num devices
+                        "device ids": (None, [int,]),  # None or a list of int
+                        "total devices": (None, int),
+                    },
+                    "command": (None, str),
+                    "log": (None, str),  # None or a b64 encoded zlib compressed string
+                },
+            ],
+        },
+    }
+}
+
+
+def assert_schema_conformance( obj ):
+    """
+    Used in unit tests to check that the json output complies with the expected
+    schema. The schema is defined in a dict just above and uses a special (home
+    grown) format.
+    """
+    _assert_schema( json_output_schema, obj )
+
+
+def _assert_schema( schema, obj, info='' ):
+    ""
+    if isinstance(schema,dict):
+        assert type(obj) == dict, 'expected a dict, not '+str(obj)+info
+        for n,v in schema.items():
+            assert n in obj, 'missing name, '+repr(n)+', in object: '+str(obj)+info
+            _assert_schema( v, obj[n], ', parent dict entry '+repr(n) )
+    elif isinstance(schema,list):
+        assert type(obj) == list, 'expected a list, not: '+str(obj)+info
+        assert len(schema) == 1, "a schema list must have a single entry: "+str(schema)
+        for v in obj:
+            _assert_schema( schema[0], v, ', from parent list' )
+    elif isinstance(schema,tuple):
+        # schema indicates a set of possible types
+        if obj is None:
+            assert None in schema, "None value not allowed here; should be one of "+str(schema)+info
+        elif type(obj) not in schema:
+            subtype = _get_schema_subtype( obj, schema )
+            assert subtype is not None, "unexpected object type ("+str(type(obj)) + \
+                                        ") types="+str(schema)+info
+            _assert_schema( subtype, obj )
+    else:
+        assert type(obj) == schema, 'expected type '+str(schema)+' for object: '+str(obj)+info
+
+
+def _get_schema_subtype( obj, schema_types ):
+    ""
+    for st in schema_types:
+        if type(obj) == type(st):
+            return st
+    return None

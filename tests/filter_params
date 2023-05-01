@@ -14,23 +14,18 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 
 class filter_and_parameters( vtu.vvtestTestCase ):
 
     def test_filter_tests_by_parameter_names_and_values(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize np="1 3 6"/>
-              <execute>
-                set echo
-                touch execute_file.np=$np || exit 1
-                unset echo
-              </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1 3 6
+            import vvtest_util as vvt
+            with open( 'execute_file.np='+vvt.np, 'wt' ) as fp:
+                pass
+            """ )
 
         platname = vtu.core_platform_name()
 

@@ -581,7 +581,7 @@ example_include_2_version_33 = """\
 
 def create_TestCase():
     ""
-    tspec = testspec.TestSpec( 'atest', os.getcwd(), 'atest.xml' )
+    tspec = testspec.TestSpec( 'atest', os.getcwd(), 'atest.vvt' )
 
     tspec.setKeywordList( ['key1','key2'] )
 
@@ -611,7 +611,7 @@ def assert_TestCase_same_as_fake( tcase, rootdir=None ):
 
     assert tspec.getName() == 'atest'
     assert tspec.getRootpath() == rootdir
-    assert tspec.getFilename() == os.path.join( rootdir, 'atest.xml' )
+    assert tspec.getFilename() == os.path.join( rootdir, 'atest.vvt' )
 
     kL = tspec.getKeywords( include_implicit=False )
     kL.sort()

@@ -251,10 +251,9 @@ class test_timeouts( vtu.vvtestTestCase ):
             #VVT: timeout = 5
             pass
             """ )
-        util.writefile( 'btest.xml', """
-            <rtest name="btest">
-              <timeout value="3"/>
-            </rtest>""" )
+        util.writefile( 'btest.vvt', """
+            #VVT: timeout = 5:43:21
+            """ )
         util.writefile( 'ctest.vvt', """
             pass
             """ )
@@ -263,11 +262,10 @@ class test_timeouts( vtu.vvtestTestCase ):
             #VVT: timeout (platforms="""+platname+"""): 50
             pass
             """ )
-        util.writefile( 'etest.xml', '''
-            <rtest name="etest">
-              <timeout value="3"/>
-              <timeout platforms="'''+platname+'''" value="30"/>
-            </rtest>''' )
+        util.writefile( 'etest.vvt', """
+            #VVT: timeout = 2h 30m
+            pass
+            """ )
         util.writefile( 'ftest.vvt', """
             #VVT: timeout = 0
             pass
@@ -276,15 +274,13 @@ class test_timeouts( vtu.vvtestTestCase ):
             #VVT: timeout = 5h
             pass
             """ )
-        util.writefile( 'htest.xml', """
-            <rtest name="htest">
-              <timeout value="3:30"/>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( 'htest.vvt', """
+            #VVT: timeout = 3:30
+            """ )
 
         self.check_timeout( 'atest.vvt', 5 )
-        self.check_timeout( 'btest.xml', 3 )
-        self.check_timeout( 'ctest.vvt', 3600 )  # the default timeout
+        self.check_timeout( 'btest.vvt', 5*60*60+43*60+21 )
+        self.check_timeout( 'ctest.vvt', 60*60 )  # the default timeout
         self.check_timeout( 'atest.vvt', 30, cmdline_timeout=30 )
         self.check_timeout( 'atest.vvt', 15, timeout_multiplier=3 )
         self.check_timeout( 'atest.vvt', 40, cmdline_timeout=4,
@@ -296,53 +292,12 @@ class test_timeouts( vtu.vvtestTestCase ):
         self.check_timeout( 'atest.vvt', 0, cmdline_timeout=0 )
 
         self.check_timeout( 'dtest.vvt', 50 )
-        self.check_timeout( 'etest.xml', 30 )
         self.check_timeout( 'dtest.vvt', 5, platform_name='XBox' )
-        self.check_timeout( 'etest.xml', 3, platform_name='XBox' )
 
+        self.check_timeout( 'etest.vvt', 2*60*60+30*60 )
         self.check_timeout( 'ftest.vvt', 0 )
-
         self.check_timeout( 'gtest.vvt', 5*60*60 )
-        self.check_timeout( 'htest.xml', 3*60+30 )
-
-    def test_parsing_timeout_in_xml_specification_files(self):
-        ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <timeout value="5"/>
-            </rtest>""" )
-        util.writefile( 'btest.xml', """
-            <rtest name="btest">
-              <timeout value="5:30"/>
-            </rtest>""" )
-        util.writefile( 'ctest.xml', """
-            <rtest name="ctest">
-              <timeout value="2h 30m"/>
-            </rtest>""" )
-        util.writefile( 'dtest.xml', """
-            <rtest name="dtest">
-              <timeout value="2:62:04"/>
-            </rtest>""" )
-        util.writefile( 'etest.xml', """
-            <rtest name="etest">
-              <timeout value="-1"/>
-            </rtest>""" )
-        time.sleep(1)
-
-        tspec = vtu.parse_single_test_file( 'atest.xml' )
-        assert tspec.getTimeout() == 5
-
-        tspec = vtu.parse_single_test_file( 'btest.xml' )
-        assert tspec.getTimeout() == 5*60+30
-
-        tspec = vtu.parse_single_test_file( 'ctest.xml' )
-        assert tspec.getTimeout() == 2*60*60 + 30*60
-
-        self.assertRaises( testcreator.TestSpecError,
-                           vtu.parse_single_test_file, 'dtest.xml' )
-
-        tspec = vtu.parse_single_test_file( 'etest.xml' )
-        assert tspec.getTimeout() == 0
+        self.check_timeout( 'htest.vvt', 3*60+30 )
 
     def test_parsing_timeout_in_vvt_specification_files(self):
         ""
@@ -366,7 +321,6 @@ class test_timeouts( vtu.vvtestTestCase ):
             #VVT: timeout = -1
             pass
             """ )
-        time.sleep(1)
 
         tspec = vtu.parse_single_test_file( 'atest.vvt' )
         assert tspec.getTimeout() == 5
@@ -390,12 +344,6 @@ class test_timeouts( vtu.vvtestTestCase ):
             import time
             time.sleep(10)
             """ )
-        util.writefile( 'btest.xml', """
-            <rtest name="btest">
-              <timeout value="2"/>
-              <execute>sleep 10</execute>
-            </rtest>""" )
-        time.sleep(1)
 
         for batch in [False,True]:
 
@@ -403,7 +351,7 @@ class test_timeouts( vtu.vvtestTestCase ):
 
             t0 = time.time()
             vrun = vtu.runvvtest()
-            vrun.assertCounts( total=2, timeout=2 )
+            vrun.assertCounts( total=1, timeout=1 )
             t1 = time.time()
 
             assert t1-t0 < 9
@@ -415,7 +363,6 @@ class test_timeouts( vtu.vvtestTestCase ):
             import vvtest_util as vvt
             print ( 'atestTIMEOUT='+repr(vvt.TIMEOUT) )
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--timeout-multiplier 10' )
         vrun.assertCounts( total=1, npass=1 )
@@ -452,21 +399,13 @@ class test_timeouts( vtu.vvtestTestCase ):
             import os
             print ( 'atestTIMEOUT='+os.environ['VVTEST_TIMEOUT'] )
             """ )
-        util.writefile( 'btest.xml', """
-            <rtest name="btest">
-              <timeout value="7h"/>
-              <execute>echo "btestTIMEOUT=$VVTEST_TIMEOUT"</execute>
-            </rtest>""" )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, npass=2 )
+        vrun.assertCounts( total=1, npass=1 )
         aval = int( vrun.greplogs( 'atestTIMEOUT=' )[0].split('=',1)[1] )
-        bval = int( vrun.greplogs( 'btestTIMEOUT=' )[0].split('=',1)[1] )
 
         # a bump factor is added; however, doing so is now deprecated [Oct 2020]
         assert aval >= 5*60*60
-        assert bval >= 7*60*60
 
 
 class total_timeout( vtu.vvtestTestCase ):
@@ -481,7 +420,6 @@ class total_timeout( vtu.vvtestTestCase ):
             import time
             time.sleep(20)
             """ )
-        time.sleep(1)
 
         for batch in [False,True]:
 

@@ -15,7 +15,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.testspec import TestSpec
 import libvvtest.testcreator as testcreator
@@ -23,16 +22,6 @@ from libvvtest.filtering import TestFilter
 
 
 class exclude_tests( vtu.vvtestTestCase ):
-
-    def write_exclude_test(self, include_line=''):
-        ""
-        util.writefile( "exclude.xml", """
-            <rtest name="exclude">
-              """+include_line+"""
-              <execute>
-                echo "running test"
-              </execute>
-            </rtest>""" )
 
     def test_exclude_and_include_on_current_platform(self):
         ""
@@ -42,32 +31,35 @@ class exclude_tests( vtu.vvtestTestCase ):
 
             vtu.remove_results()
 
-            self.write_exclude_test()
-            time.sleep(1)
+            util.writefile( 'exclude.vvt', """
+                pass
+                """ )
             vtu.runvvtest( batch=batch ).assertCounts( total=1, npass=1 )
 
             vtu.remove_results()
 
-            self.write_exclude_test( '<include platforms="not '+platname+'"/>')
-            time.sleep(1)
+            util.writefile( 'exclude.vvt', """
+                #VVT: enable (platforms=not """+platname+""")
+                """ )
             vtu.runvvtest( batch=batch ).assertCounts( total=0 )
 
             # include the current platform
 
             vtu.remove_results()
 
-            self.write_exclude_test( '<include platforms="'+platname+'"/>')
-            time.sleep(1)
+            util.writefile( 'exclude.vvt', """
+                #VVT: enable (platforms="""+platname+""")
+                """ )
             vtu.runvvtest( batch=batch ).assertCounts( total=1, npass=1 )
 
             # add both an include and an exclude
 
             vtu.remove_results()
 
-            self.write_exclude_test(
-                    '<include platforms="'+platname+'"/> ' + \
-                    '<include platforms="not '+platname+'"/>)' )
-            time.sleep(1)
+            util.writefile( 'exclude.vvt', """
+                #VVT: enable (platforms="""+platname+""")
+                #VVT: enable (platforms=not """+platname+""")
+                """ )
             vtu.runvvtest( batch=batch ).assertCounts( total=0 )
 
             # add -A option to ignore the include/exclude tags
@@ -80,8 +72,9 @@ class exclude_tests( vtu.vvtestTestCase ):
 
             vtu.remove_results()
 
-            self.write_exclude_test( '<include platforms=""/>' )
-            time.sleep(1)
+            util.writefile( 'exclude.vvt', """
+                #VVT: enable (platforms=)
+                """ )
             vtu.runvvtest( batch=batch ).assertCounts( total=0 )
 
     def test_exclude_an_execute_block_by_platform_or_option(self):
@@ -119,15 +112,9 @@ class exclude_tests( vtu.vvtestTestCase ):
 
     def test_using_an_option_attribute_with_include(self):
         ""
-        util.writefile( "opt_exclude.xml", '''
-            <rtest name="opt_exclude">
-              <include options="2D and ( tridev or tri8 )"/>
-              <execute>
-                echo "findme line number one executed"
-                sleep 1
-              </execute>
-            </rtest>''' )
-        time.sleep(1)
+        util.writefile( "opt_exclude.vvt", '''
+            #VVT: enable (options="2D and (tridev or tri8)")
+            ''' )
 
         vtu.runvvtest().assertCounts( total=0 )
 
@@ -143,15 +130,9 @@ class exclude_tests( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '-w -o 3D -o tri8' )
         vrun.assertCounts( total=0 )
 
-        util.writefile( "opt_exclude.xml", '''
-            <rtest name="opt_exclude">
-              <include options="2D and ( tdev or t8 )"/>
-              <execute>
-                echo "findme line number one executed"
-                sleep 1
-              </execute>
-            </rtest>''' )
-        time.sleep(1)
+        util.writefile( "opt_exclude.vvt", '''
+            #VVT: enable (options="2D and ( tdev or t8 )")
+            ''' )
 
         vtu.runvvtest( '-w' ).assertCounts( total=0 )
 
@@ -159,21 +140,6 @@ class exclude_tests( vtu.vvtestTestCase ):
 
     def test_include_option_expression_corner_cases(self):
         ""
-        util.writefile( "atest.xml", """
-            <rtest name="atest">
-                <include options="foo or b^r"/>
-                <execute> echo "hello" </execute>
-            </rtest>""" )
-        util.writefile( "btest.xml", """
-            <rtest name="btest">
-                <include options="foo or b/r"/>
-                <execute> echo "hello" </execute>
-            </rtest>""" )
-        util.writefile( "xtest.xml", """
-            <rtest name="xtest">
-                <include options="foo or bar-*"/>
-                <execute> echo "hello" </execute>
-            </rtest>""" )
         util.writefile( 'ctest.vvt', """
             #VVT: enable (options="foo or b^r")
             """ )
@@ -183,24 +149,12 @@ class exclude_tests( vtu.vvtestTestCase ):
         util.writefile( 'ytest.vvt', """
             #VVT: enable (options="foo or bar-*")
             """ )
-        time.sleep(1)
-
-        tspec = vtu.parse_single_test_file( 'atest.xml' )
-        assert tspec.getOptionEnableExpression().evaluate( 'b^r' )
-
-        self.assertRaises( testcreator.TestSpecError,
-                           vtu.parse_single_test_file, 'btest.xml' )
 
         tspec = vtu.parse_single_test_file( 'ctest.vvt' )
         assert tspec.getOptionEnableExpression().evaluate( 'b^r' )
 
         self.assertRaises( testcreator.TestSpecError,
                            vtu.parse_single_test_file, 'dtest.vvt' )
-
-        tspec = vtu.parse_single_test_file( 'xtest.xml' )
-        wx = tspec.getOptionEnableExpression()
-        assert not wx.evaluate( 'bar' )
-        assert     wx.evaluate( 'bar-baz' )
 
         tspec = vtu.parse_single_test_file( 'ytest.vvt' )
         wx = tspec.getOptionEnableExpression()
@@ -214,11 +168,9 @@ class exclude_tests( vtu.vvtestTestCase ):
         assert platname != "Fake"
         fakeplatname = "Fake"
 
-        util.writefile( "plats.xml", '''
-            <rtest name="plats">
-            <include platforms="'''+fakeplatname+'''"/>
-            </rtest>''' )
-        time.sleep(1)
+        util.writefile( "plats.vvt", '''
+            #VVT: enable (platforms='''+fakeplatname+''')
+            ''' )
 
         vtu.runvvtest().assertCounts( total=0 )
 
@@ -226,10 +178,9 @@ class exclude_tests( vtu.vvtestTestCase ):
 
         vtu.remove_results()
 
-        util.writefile( "plats.xml", '''
-            <rtest name="plats">
-            <include platforms="'''+fakeplatname+''' or Dummy"/>
-            </rtest>''')
+        util.writefile( "plats.vvt", '''
+            #VVT: enable (platforms="'''+fakeplatname+''' or Dummy")
+            ''')
 
         vtu.runvvtest().assertCounts( total=0 )
 
@@ -244,9 +195,9 @@ class exclude_tests( vtu.vvtestTestCase ):
 
         vtu.remove_results()
 
-        util.writefile( "plats.xml", '''
-            <rtest name="plats">
-            </rtest>''' )
+        util.writefile( "plats.vvt", '''
+            pass
+            ''' )
 
         vtu.runvvtest().assertCounts( total=1, npass=1 )
 
@@ -272,28 +223,17 @@ class exclude_tests( vtu.vvtestTestCase ):
         util.writefile( 'ctest.vvt', """
             #VVT: enable (platforms=foo or PS*)
             """ )
-        util.writefile( 'dtest.xml', """
-            <rtest name="dtest">
-                <include platforms="foo or PS*"/>
-            </rtest>""" )
-        util.writefile( 'etest.vvt', """
-            #VVT: enable (platforms=xb*)
-            """ )
-        util.writefile( 'ftest.xml', """
-            <rtest name="ftest">
-                <include platforms="?ARWIN"/>
-            </rtest>""" )
         time.sleep(1)
 
         vtu.runvvtest( '--plat pooky' ).assertCounts( total=0 )
 
         vrun = vtu.runvvtest( '-w --plat pooky -x "XBox or Darwin"' )
-        vrun.assertCounts( total=3,  npass=3 )
-        assert vrun.getTestIds() == ['atest','etest','ftest']
+        vrun.assertCounts( total=1,  npass=1 )
+        assert vrun.getTestIds() == ['atest']
 
         vrun = vtu.runvvtest( '-w --plat pooky -x "XBox^1 or PS2"' )
-        vrun.assertCounts( total=4,  npass=4 )
-        assert vrun.getTestIds() == ['btest','ctest','dtest','etest']
+        vrun.assertCounts( total=2,  npass=2 )
+        assert vrun.getTestIds() == ['btest','ctest']
 
         vrun = vtu.runvvtest( '-w --plat pooky -x "XBox^1 or Da*rwin"',
                               raise_on_error=False )
@@ -307,13 +247,12 @@ class exclude_tests( vtu.vvtestTestCase ):
         assert platname != "Fake"
         fakeplatname = "Fake"
 
-        util.writefile( "multi.xml", '''
-            <rtest name="multi">
-              <rtest name="dual"/>
-              <include testname="multi" platforms="'''+fakeplatname+'''"/>
-              <include testname="dual" platforms="'''+platname+'''"/>
-              <execute> echo "hello world" </execute>
-            </rtest>''' )
+        util.writefile( "multi.vvt", '''
+            #VVT: testname = multi
+            #VVT: testname = dual
+            #VVT: enable (testname=multi, platforms='''+fakeplatname+''')
+            #VVT: enable (testname=dual, platforms='''+platname+''')
+            ''' )
 
         vtu.runvvtest().assertCounts( total=1, npass=1 )
         assert len( glob.glob( 'TestResults.*/dual/execute.log' ) ) == 1

@@ -475,7 +475,6 @@ class unit_tests( vtu.vvtestTestCase ):
     def test_output_from_failed_tests(self):
         ""
         testlist = self.make_fake_test_list_with_exec_directory()
-        time.sleep(1)
 
         fmtr = MockFormatter()
         dspecs,err = cdashwriter.construct_destination_specs( 'afile' )
@@ -500,7 +499,6 @@ class unit_tests( vtu.vvtestTestCase ):
     def test_output_from_passed_tests(self):
         ""
         testlist = self.make_fake_test_list_with_exec_directory( 'pass' )
-        time.sleep(1)
 
         fmtr = MockFormatter()
         dspecs,err = cdashwriter.construct_destination_specs( 'afile' )
@@ -525,7 +523,6 @@ class unit_tests( vtu.vvtestTestCase ):
     def test_output_file_size_is_limited(self):
         ""
         testlist = self.make_fake_test_list_with_exec_directory( extraout=True )
-        time.sleep(1)
 
         fmtr = MockFormatter()
         dspecs,err = cdashwriter.construct_destination_specs( 'afile' )
@@ -589,7 +586,6 @@ class integration_tests( vtu.vvtestTestCase ):
         util.writefile( 'ugly.vvt', """
             #VVT: keywords = notme
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '-K notme --cdash file.xml' )
         vrun.assertCounts( total=2, npass=1, diff=1 )
@@ -655,7 +651,6 @@ class integration_tests( vtu.vvtestTestCase ):
         util.writefile( 'atest.vvt', """
             pass
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--cdash http://a.cdash.server/foo837',
                               raise_on_error=False )

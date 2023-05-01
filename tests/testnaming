@@ -14,10 +14,8 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.errors import TestSpecError
-import libvvtest.parsexml as parsexml
 import libvvtest.parsevvt as parsevvt
 import libvvtest.parseutil as parseutil
 
@@ -26,17 +24,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
 
     def test_expanding_a_single_file_into_multiple_tests(self):
         ""
-        util.writefile( 'afile.xml', """
-            <rtest name="afile">
-              <execute> echo "hello world" </execute>
-            </rtest>
-            """ )
-        util.writefile( 'bfile.xml', """
-            <rtest name="bname">
-              <rtest name="cname"/>
-              <execute> echo "hello world" </execute>
-            </rtest>
-            """ )
         util.writefile( 'dfile.vvt', """
             pass
             """ )
@@ -47,15 +34,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
             #VVT: testname = hname
             #VVT: testname = iname
             """ )
-        time.sleep(1)
-
-        parser = parsexml.XMLTestParser( 'afile.xml' )
-        assert parser.parseTestNames() == ['afile']
-
-        parser = parsexml.XMLTestParser( 'bfile.xml' )
-        names = parser.parseTestNames()
-        names.sort()
-        assert names == ['bname','cname']
 
         parser = parsevvt.ScriptTestParser( 'dfile.vvt' )
         assert parser.parseTestNames() == ['dfile']
@@ -77,25 +55,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
         parser = parsevvt.ScriptTestParser( 'atest.vvt' )
         self.assertRaises( TestSpecError, parser.parseTestNames )
 
-    def test_that_multiple_tests_in_one_xml_file_works(self):
-        ""
-        util.writefile( "multi.xml", """
-            <rtest name="multi">
-                <rtest name="multi_2nd"/>
-                <keywords> common </keywords>
-                <keywords testname="multi"> justmulti </keywords>
-                <keywords testname="multi_2nd"> just2nd </keywords>
-                <execute> echo "test name ${NAME}XXX" </execute>
-            </rtest>""" )
-        time.sleep(1)
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, npass=2 )
-
-        assert len( util.findfiles( 'execute.log', 'TestResults*' ) ) == 2
-        assert vrun.countGrepLogs( 'test name multiXXX' ) == 1
-        assert vrun.countGrepLogs( 'test name multi_2ndXXX' ) == 1
-
     def test_using_testname_specifications_in_a_script_test(self):
         ""
         util.writefile( 'multi.vvt', """
@@ -105,7 +64,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
             import vvtest_util as vvt
             print ( "hello from the "+vvt.NAME+" test" )
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=3, npass=3 )
@@ -115,37 +73,8 @@ class parsing_testnames( vtu.vvtestTestCase ):
         assert vrun.countGrepLogs( 'hello from the testB test' ) == 1
         assert vrun.countGrepLogs( 'hello from the testC test' ) == 1
 
-    def test_xml_test_naming(self):
-        ""
-        util.writefile( 'bad1.xml', """
-            <rtest>
-                <keywords> junk1 junk2 </keywords>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'bad1.xml' )
-
-        util.writefile( 'bad2.xml', """
-            <rtest name="ate/st">
-              <keywords> junk1 junk2 </keywords>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, vtu.parse_single_test_file, 'bad2.xml' )
-
-        util.writefile( 'ok.xml', """
-            <rtest name="ok">
-              <keywords> junk1 junk2 </keywords>
-            </rtest>""" )
-
-        tspec = vtu.parse_single_test_file( 'ok.xml' )
-        assert tspec.getName() == 'ok'
-
     def test_for_valid_testname(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="foo bar">
-                <execute> echo "hello" </execute>
-            </rtest>""" )
         util.writefile( 'btest.vvt', """
             #VVT: testname = foo bar
             """ )
@@ -155,10 +84,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
         util.writefile( 'd test.vvt', """
             pass
             """ )
-        time.sleep(1)
-
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'atest.xml' )
 
         self.assertRaises( TestSpecError,
                            vtu.parse_single_test_file, 'btest.vvt' )
@@ -188,18 +113,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
 
     def test_parsing_testname_expressions(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-                <keywords testname="foo or b$ar"> foo </keywords>
-            </rtest>""" )
-        util.writefile( 'btest.xml', """
-            <rtest name="btest">
-                <execute testname="foo or b$ar"> echo "hello" </execute>
-            </rtest>""" )
-        util.writefile( 'ctest.xml', """
-            <rtest name="ctest">
-                <include testname="foo or b$ar" platforms="Linux"/>
-            </rtest>""" )
         util.writefile( 'dtest.vvt', """
             #VVT: keywords (testname=foo or b$ar) : foo
             """ )
@@ -209,14 +122,7 @@ class parsing_testnames( vtu.vvtestTestCase ):
         util.writefile( 'ftest.vvt', """
             #VVT: enable (testname=foo or b$ar, options=debug)
             """ )
-        time.sleep(1)
 
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'atest.xml' )
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'btest.xml' )
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'ctest.xml' )
         self.assertRaises( TestSpecError,
                            vtu.parse_single_test_file, 'dtest.vvt' )
         self.assertRaises( TestSpecError,
@@ -237,7 +143,6 @@ class parsing_testnames( vtu.vvtestTestCase ):
             #VVT: parameterize (testname=*-foo) : np = 1 4
             #VVT: parameterize (testname=*-bar) : ndevice = 2
             """ )
-        time.sleep(1)
 
         tL = vtu.create_tests_from_file( 'atest.vvt' )
         tidL = [ tc.getSpec().getDisplayString() for tc in tL ]

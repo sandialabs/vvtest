@@ -55,7 +55,6 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
                 </execute>
             </rtest>
             """ )
-        time.sleep(1)
 
         # as of June 2022, the default extension became only *.vvt files
 
@@ -76,7 +75,6 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         util.writefile( 'scr.vvt', """
             pass
             """ )
-        time.sleep(1)
 
         tlist,scan = construct_TestList_and_TestFileScanner()
         scan.scanPath( tlist, 'scr.vvt' )
@@ -108,7 +106,6 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
     def test_restrict_scan_to_one_extension(self):
         ""
         self.write_vvt_and_xml_test_files()
-        time.sleep(1)
 
         tlist,scan = construct_TestList_and_TestFileScanner( specform=['vvt'] )
         scan.scanPath( tlist, '.' )
@@ -129,7 +126,6 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
     def test_command_line_interface_to_scan_type_restriction(self):
         ""
         self.write_vvt_and_xml_test_files()
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, npass=2 )
@@ -177,7 +173,6 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
   <body>Don't forget me this weekend!</body>
 </note>
 """ )
-        time.sleep(1)
 
         tL,out = scan_path_with_warnings_output( 'A' )
         assert not out.strip()

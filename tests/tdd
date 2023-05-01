@@ -17,9 +17,6 @@ import shutil
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
-
-import libvvtest.xmlwrapper as xmlwrapper
 
 import results_util as ru
 
@@ -40,7 +37,6 @@ class tdd_tests( vtu.vvtestTestCase ):
             import time
             time.sleep(1)
             """ )
-        time.sleep(1)
 
         # by default, tests with TDD in keywords should not run
 
@@ -96,7 +92,6 @@ class tdd_tests( vtu.vvtestTestCase ):
         util.writefile( 'btest.vvt', """
             #VVT: keywords = foo TDD
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--include-tdd' )
         vrun.assertCounts( total=2, npass=2 )
@@ -135,16 +130,6 @@ class tdd_tests( vtu.vvtestTestCase ):
 
     def test_that_tests_marked_TDD_carry_the_mark_to_the_test_results_file(self):
         ""
-        util.writefile( "testone.xml", """
-            <rtest name="testone">
-                <keywords> junk TDD </keywords>
-                <execute> sleep 1 </execute>
-            </rtest>""" )
-        util.writefile( "testtwo.xml", """
-            <rtest name="testtwo">
-                <keywords> gold </keywords>
-                <execute> sleep 1 </execute>
-            </rtest>""" )
         util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
@@ -155,17 +140,13 @@ class tdd_tests( vtu.vvtestTestCase ):
             import time
             time.sleep(1)
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--include-tdd' )
-        vrun.assertCounts( total=4, npass=4 )
+        vrun.assertCounts( total=2, npass=2 )
         tdir = vrun.resultsDir()
 
         resultsfname = ru.create_runtimes_and_results_file( tdir )
 
-        assert len( util.grepfiles( "testone*TDD",    resultsfname ) ) == 1
-        assert len( util.grepfiles( "testtwo*pass",   resultsfname ) ) == 1
-        assert len( util.grepfiles( "testtwo*TDD",    resultsfname ) ) == 0
         assert len( util.grepfiles( "testthree*pass", resultsfname ) ) == 1
         assert len( util.grepfiles( "testthree*TDD",  resultsfname ) ) == 0
         assert len( util.grepfiles( "testfour*TDD",   resultsfname ) ) == 1
@@ -174,16 +155,6 @@ class tdd_tests( vtu.vvtestTestCase ):
         ""
         os.mkdir( 'config' )  # force the test to use default plat & cplr
 
-        util.writefile( "testone.xml", """
-            <rtest name="testone">
-                <keywords> junk TDD </keywords>
-                <execute> sleep 1 </execute>
-            </rtest>""" )
-        util.writefile( "testtwo.xml", """
-            <rtest name="testtwo">
-                <keywords> gold </keywords>
-                <execute> sleep 1 </execute>
-            </rtest>""" )
         util.write_py_script( 'testthree.vvt', """
             #VVT: keywords = pink
             import time
@@ -194,10 +165,9 @@ class tdd_tests( vtu.vvtestTestCase ):
             import time
             time.sleep(1)
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--include-tdd --config config' )
-        vrun.assertCounts( total=4, npass=4 )
+        vrun.assertCounts( total=2, npass=2 )
         tdir = vrun.resultsDir()
 
         rf1 = ru.create_runtimes_and_results_file( tdir )
@@ -208,7 +178,7 @@ class tdd_tests( vtu.vvtestTestCase ):
         x,out = util.runcmd( vtu.resultspy + ' report ' + rf1 + ' ' + rf2, verbose=2 )
 
         assert len( util.greplines( 'Fake.gcc', out ) ) == 1
-        assert len( util.greplines( 'pass=2 ', out ) ) == 2
+        assert len( util.greplines( 'pass=1 ', out ) ) == 2
         assert len( util.greplines( 'diff= ', out ) ) == 0
         assert len( util.greplines( 'fail= ', out ) ) == 0
 

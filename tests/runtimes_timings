@@ -24,25 +24,18 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
 
     def test_create_and_use_a_runtimes_file(self):
         ""
-        util.writefile( "tests/dir1/one.xml", """
-            <rtest name="one">
-              <execute>
-                sleep 1
-              </execute>
-            </rtest>""")
-        util.writefile( "tests/dir1/two.xml", """
-            <rtest name="two">
-              <execute>
-                sleep 2
-              </execute>
-            </rtest>""")
-        util.writefile( "tests/dir2/three.xml", """
-            <rtest name="three">
-              <execute>
-                sleep 3
-              </execute>
-            </rtest>""")
-        time.sleep(1)
+        util.writefile( "tests/dir1/one.vvt", """
+            import time
+            time.sleep(1)
+            """)
+        util.writefile( "tests/dir1/two.vvt", """
+            import time
+            time.sleep(2)
+            """)
+        util.writefile( "tests/dir2/three.vvt", """
+            import time
+            time.sleep(3)
+            """)
 
         platname = vtu.core_platform_name()
         tests = os.path.abspath( 'tests' )
@@ -54,7 +47,7 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
         ru.create_runtimes_and_results_file( tdir, 'tests' )
 
         # even though a rootrel directory could be determined, no runtime is available
-        tL = vtu.creator().fromFile( 'dir1/one.xml', tests )
+        tL = vtu.creator().fromFile( 'dir1/one.vvt', tests )
         tst = tL[0]
         cache = fmtresults.LookupCache( platname, 'cplr' )
         cache.load()
@@ -115,7 +108,6 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
             import os, sys, time
             time.sleep(10)
             """ )
-        time.sleep(1)
 
         tests = os.path.abspath( 'tests' )
 
@@ -147,7 +139,6 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
             import os, sys, time
             time.sleep(7)
             """ )
-        time.sleep(1)
 
         for batch in [False,True]:
 

@@ -113,27 +113,26 @@ class inlining_results_file_includes( vtu.vvtestTestCase ):
 
     def test_failed_batch_job_issues_warning_about_not_finishing(self):
         ""
-        util.writefile( "sleeper1.xml", """
-            <rtest name="sleeper1">
-                <timeout value="15"/>
-                <execute> sleep 5 </execute>
-            </rtest>""" )
-        util.writefile( "sleeper2.xml", """
-            <rtest name="sleeper2">
-                <timeout value="15"/>
-                <execute> sleep 5 </execute>
-            </rtest>""" )
-        util.writefile( "sleeper3.xml", """
-            <rtest name="sleeper3">
-                <timeout value="15"/>
-                <execute> sleep 5 </execute>
-            </rtest>""" )
-        util.writefile( "sleeper4.xml", """
-            <rtest name="sleeper4">
-                <timeout value="15"/>
-                <execute> sleep 5 </execute>
-            </rtest>""" )
-        time.sleep(1)
+        util.writefile( "sleeper1.vvt", """
+            #VVT: timeout = 15
+            import time
+            time.sleep(5)
+            """ )
+        util.writefile( "sleeper2.vvt", """
+            #VVT: timeout = 15
+            import time
+            time.sleep(5)
+            """ )
+        util.writefile( "sleeper3.vvt", """
+            #VVT: timeout = 15
+            import time
+            time.sleep(5)
+            """ )
+        util.writefile( "sleeper4.vvt", """
+            #VVT: timeout = 15
+            import time
+            time.sleep(5)
+            """ )
 
         # these four tests are run in two batch
         # batch zero will be ok, while batch one will crash

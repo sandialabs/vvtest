@@ -271,6 +271,9 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '-g', dest='dash_g', action='store_true',
         help='Scan for tests and populate the test results tree, '
              'but do not run any tests.' )
+    grp.add_argument( '-G', '--partition', metavar='NUMBATCHES', dest='partition',
+        action='append', help='Scan for tests, partition into batches, and '
+             'write a test list file for each batch.' )
 
     grp.add_argument( '--extract', metavar='DESTDIR',
         help='Extract test files from their source to the DESTDIR '

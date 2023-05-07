@@ -286,6 +286,70 @@ class Batcher:
             pathutil.fault_tolerant_remove( d )
 
 
+def compute_queue_time( grp, maxqtime, no_timeout_value ):
+    ""
+    qtime = grp.getTime()
+
+    if qtime == 0:
+        qtime = no_timeout_value
+    else:
+        qtime = apply_queue_timeout_bump_factor( qtime )
+
+    if maxqtime:
+        qtime = min( qtime, float(maxqtime) )
+
+    return qtime
+
+
+def compute_job_size( tlist, nodesize ):
+    ""
+    ppn,dpn = nodesize
+
+    mxnp = 1
+    mxnd = 0
+    for tcase in tlist.getTests():
+        np,nd = tcase.getSize()
+        mxnp = max( np, mxnp )
+        mxnd = max( nd, mxnd )
+
+    nn = 1
+
+    if ppn:
+        assert type(ppn) == type(2) and ppn > 0
+        numnd = int( mxnp/ppn )
+        if mxnp%ppn != 0:
+            numnd += 1
+        nn = max( nn, numnd )
+
+    if dpn and mxnd > 0:
+        assert type(dpn) == type(2) and dpn > 0
+        numnd = int( mxnd/dpn )
+        if mxnd%dpn != 0:
+            numnd += 1
+        nn = max( nn, numnd )
+
+    return nn,mxnp,mxnd
+
+
+def apply_queue_timeout_bump_factor( qtime ):
+    ""
+    # allow more time in the queue than calculated. This overhead time
+    # monotonically increases with increasing qtime and plateaus at
+    # about 16 minutes of overhead, but force it to never be more than
+    # exactly 15 minutes.
+
+    if qtime < 60:
+        qtime += 60
+    elif qtime < 10*60:
+        qtime += qtime
+    elif qtime < 30*60:
+        qtime += min( 15*60, 10*60 + int( float(qtime-10*60) * 0.3 ) )
+    else:
+        qtime += min( 15*60, 10*60 + int( float(30*60-10*60) * 0.3 ) )
+
+    return qtime
+
+
 class BatchTestGrouper:
 
     def __init__(self, tlist, batch_length):
@@ -376,21 +440,6 @@ class BatchTestGrouper:
         return grp
 
 
-def compute_queue_time( grp, maxqtime, no_timeout_value ):
-    ""
-    qtime = grp.getTime()
-
-    if qtime == 0:
-        qtime = no_timeout_value
-    else:
-        qtime = apply_queue_timeout_bump_factor( qtime )
-
-    if maxqtime:
-        qtime = min( qtime, float(maxqtime) )
-
-    return qtime
-
-
 class BatchGroup:
 
     def __init__(self, testlist, groupid):
@@ -435,55 +484,6 @@ class BatchGroup:
     def makeSortableKey(self):
         ""
         return ( self.tsum, self.size, self.groupid )
-
-
-def compute_job_size( tlist, nodesize ):
-    ""
-    ppn,dpn = nodesize
-
-    mxnp = 1
-    mxnd = 0
-    for tcase in tlist.getTests():
-        np,nd = tcase.getSize()
-        mxnp = max( np, mxnp )
-        mxnd = max( nd, mxnd )
-
-    nn = 1
-
-    if ppn:
-        assert type(ppn) == type(2) and ppn > 0
-        numnd = int( mxnp/ppn )
-        if mxnp%ppn != 0:
-            numnd += 1
-        nn = max( nn, numnd )
-
-    if dpn and mxnd > 0:
-        assert type(dpn) == type(2) and dpn > 0
-        numnd = int( mxnd/dpn )
-        if mxnd%dpn != 0:
-            numnd += 1
-        nn = max( nn, numnd )
-
-    return nn,mxnp,mxnd
-
-
-def apply_queue_timeout_bump_factor( qtime ):
-    ""
-    # allow more time in the queue than calculated. This overhead time
-    # monotonically increases with increasing qtime and plateaus at
-    # about 16 minutes of overhead, but force it to never be more than
-    # exactly 15 minutes.
-
-    if qtime < 60:
-        qtime += 60
-    elif qtime < 10*60:
-        qtime += qtime
-    elif qtime < 30*60:
-        qtime += min( 15*60, 10*60 + int( float(qtime-10*60) * 0.3 ) )
-    else:
-        qtime += min( 15*60, 10*60 + int( float(30*60-10*60) * 0.3 ) )
-
-    return qtime
 
 
 class ResultsHandler:

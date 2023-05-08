@@ -10,6 +10,7 @@ from os.path import join as pjoin
 from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
 from .pathutil import change_directory
+from . import TestList
 
 
 class TestFileScanner:
@@ -47,8 +48,15 @@ class TestFileScanner:
         Recursively scans for test XML or VVT files starting at 'path'.
         """
         if os.path.isfile( path ):
-            basedir,fname = os.path.split( path )
-            self.readTestFile( testlist, basedir, fname )
+            _,ext = os.path.splitext( path )
+            if ext in self.extensions:
+                basedir,fname = os.path.split( path )
+                self.readTestFile( testlist, basedir, fname )
+            else:
+                tl = TestList.TestList( self.fact, path )
+                tl.readTestList()
+                for tcase in tl.getTests():
+                    testlist.addTest( tcase )
 
         else:
             for root,dirs,files in os.walk( path ):

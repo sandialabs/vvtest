@@ -715,20 +715,16 @@ def generate_test_list( opts, optD, rtdata ):
     tlist.connectDependencies()
 
     if opts.partition:
-        import libvvtest.batchutils as batchutils
+        import libvvtest.grouper as grouper
 
         # right now, the grouper runs on timeouts
         rtdata.timehandler.setTimeouts( tlist.getTests() )
 
-        grpr = batchutils.BatchTestGrouper( tlist, None )
-        grpr.createGroups()
-        grp = grpr.getGroups()[0]
-        print('magic: group id',grp.groupid)
-        print('magic: part tlist name',grp.getTestList().getFilename())
-        t0 = grp.getTestList()
-        t0.setFilename( 'testlist.1' )
-        fn = t0.stringFileWrite( **(rtdata.rtinfo) )
-        rtdata.perms.apply( fn )
+        tlists = grouper.partition_tests( tlist, int(opts.partition[0]) )
+        for i,tl in enumerate( tlists ):
+            tl.setFilename( 'testlist.'+str(i) )
+            fn = tl.stringFileWrite( **(rtdata.rtinfo) )
+            rtdata.perms.apply( fn )
     else:
         rtdata.loc.createTestingDirectory( rtdata.perms )
         rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )

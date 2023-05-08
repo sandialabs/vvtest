@@ -144,3 +144,17 @@ class BatchGroup:
     def makeSortableKey(self):
         ""
         return ( self.tsum, self.size, self.groupid )
+
+
+def partition_tests( tlist, numparts ):
+    ""
+    grpr = BatchTestGrouper( tlist, None )
+    grpr.createGroups()
+
+    tL = []
+    for grp in grpr.getGroups():
+        # print('magic: group id',grp.groupid)
+        # print('magic: part tlist name',grp.getTestList().getFilename())
+        tL.append( grp.getTestList() )
+
+    return tL

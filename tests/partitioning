@@ -19,16 +19,19 @@ import testutils as util
 
 class suite( vtu.vvtestTestCase ):
 
-    def test_magic(self):
+    def test_creating_a_simple_partition(self):
         ""
         util.writefile( "atest.vvt", """
             pass
             """ )
+        util.writefile( "btest.vvt", """
+            pass
+            """ )
 
-        vtu.runvvtest( '-G 1' )
+        vtu.runvvtest( '-G 2' )
 
-        assert os.path.isfile( 'testlist.1' )
-        assert len( glob.glob('testlist*') ) == 1
+        assert os.path.isfile( 'testlist.0' ) and os.path.isfile( 'testlist.1' )
+        assert len( glob.glob('testlist*') ) == 2
         assert len( glob.glob('TestResults*') ) == 0
 
 

@@ -16,8 +16,24 @@ import glob
 import vvtestutils as vtu
 import testutils as util
 
+import libvvtest.grouper as grouper
+
 
 class suite( vtu.vvtestTestCase ):
+
+    def test_create_a_test_group_from_a_test_list(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            pass
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.connectDependencies()
+
+        parts = grouper.partition_tests( tlist, 1 )
+        assert len(parts) == 1
+        tcaseL = list( parts[0].getTests() )
+        assert len(tcaseL) == 1
+        assert tcaseL[0].getSpec().getExecuteDirectory() == 'atest'
 
     def test_creating_a_simple_partition(self):
         ""

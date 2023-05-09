@@ -148,13 +148,16 @@ class BatchGroup:
 
 def partition_tests( tlist, numparts ):
     ""
-    grpr = BatchTestGrouper( tlist, None )
-    grpr.createGroups()
+    assert numparts > 0
 
-    tL = []
-    for grp in grpr.getGroups():
-        # print('magic: group id',grp.groupid)
-        # print('magic: part tlist name',grp.getTestList().getFilename())
-        tL.append( grp.getTestList() )
+    # randomize the tests
+    # while more tests:
+    #   pop a test
+    #   get all tests in the dependency cluster (all dependents & all dependencies)
+    #   add cluster to the test group with fewest tests
 
-    return tL
+    tlistL = [ TestList( tlist.getTestCaseFactory() ) for _ in range(numparts) ]
+    for i,tcase in enumerate( tlist.getTests() ):
+        tlistL[ i%numparts ].addTest( tcase )
+
+    return tlistL

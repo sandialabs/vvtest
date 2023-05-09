@@ -717,9 +717,6 @@ def generate_test_list( opts, optD, rtdata ):
     if opts.partition:
         import libvvtest.grouper as grouper
 
-        # right now, the grouper runs on timeouts
-        rtdata.timehandler.setTimeouts( tlist.getTests() )
-
         tlists = grouper.partition_tests( tlist, int(opts.partition[0]) )
         for i,tl in enumerate( tlists ):
             tl.setFilename( 'testlist.'+str(i) )

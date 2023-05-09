@@ -20,7 +20,7 @@ except Exception:
 import vvtestutils as vtu
 import testutils as util
 
-import libvvtest.TestList as TestList
+import libvvtest.testlist as testlist
 from libvvtest.RuntimeConfig import RuntimeConfig
 from libvvtest.scanner import TestFileScanner
 from libvvtest.tcfactory import TestCaseFactory
@@ -226,7 +226,7 @@ def construct_TestList_and_TestFileScanner( specform=None, ostream=None ):
     ""
     loc = Locator( os.getcwd() )
     creator = vtu.creator()
-    tlist = TestList.TestList( TestCaseFactory() )
+    tlist = testlist.TestList( TestCaseFactory() )
 
     if ostream:
         scan = TestFileScanner( loc, creator, TestCaseFactory(),

@@ -7,7 +7,7 @@
 import sys
 import os
 
-from . import TestList
+from .testlist import TestList
 
 
 class BatchTestGrouper:
@@ -94,7 +94,7 @@ class BatchTestGrouper:
 
     def _make_new_group(self):
         ""
-        grplist = TestList.TestList( self.tlist.getTestCaseFactory() )
+        grplist = TestList( self.tlist.getTestCaseFactory() )
         grp = BatchGroup( grplist, self.num_groups )
         self.num_groups += 1
         return grp

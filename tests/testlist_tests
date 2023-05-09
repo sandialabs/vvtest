@@ -20,7 +20,7 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.testlistio as tio
-import libvvtest.TestList as TestList
+import libvvtest.testlist as testlist
 import libvvtest.testspec as testspec
 from libvvtest.testcase import TestCase
 import libvvtest.paramset as ParameterSet
@@ -278,7 +278,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
 
     def test_set_filename_separately(self):
         ""
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tl.setResultsDate()
         f1 = basename( tl.getResultsFilename() )
 
@@ -292,7 +292,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
 
     def test_arbitrary_attributes_can_be_written(self):
         ""
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tcase = create_TestCase()
         tl.addTest( tcase )
         tl.stringFileWrite( anything=['A',1] )
@@ -332,7 +332,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
         sfx = tl.getResultsDate()
         time.sleep(2)
 
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tl.readTestList()
         assert tl.getResultsDate() == sfx
         rfile = write_TestList_fake_results( tl )
@@ -354,8 +354,8 @@ class TestList_results_file( vtu.vvtestTestCase ):
 
         # write include test list file containing suffix attribute
         tcase = list( tl.getTests() )[0]
-        fn = os.path.join( 'subdir/'+TestList.default_filename )
-        tlincl = TestList.TestList( TestCaseFactory(), filename=fn )
+        fn = os.path.join( 'subdir/'+testlist.default_filename )
+        tlincl = testlist.TestList( TestCaseFactory(), filename=fn )
         tlincl.setResultsDate( sfx )
         tlincl.addTest( tcase )
         tlincl.stringFileWrite( extended=True )
@@ -367,7 +367,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
         time.sleep(1)
 
         # create the sublist test results
-        tlsub = TestList.TestList( TestCaseFactory(), filename=fn )
+        tlsub = testlist.TestList( TestCaseFactory(), filename=fn )
         tlsub.readTestList()
         write_TestList_fake_results( tlsub )
         time.sleep(1)
@@ -382,7 +382,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
         ""
         tcase = create_TestCase()
 
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tl.addTest( tcase )
         tl.stringFileWrite()
         tl.setResultsDate()
@@ -391,7 +391,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
 
         time.sleep(1)
 
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tl.readTestResults()
 
         tm = tl.getDateStamp()
@@ -406,7 +406,7 @@ class scan_finish_mark( vtu.vvtestTestCase ):
 
     def test_scan_an_unfinished_test_list_file(self):
         ""
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tl.setResultsDate()
         rfile = tl.initializeResultsFile()
         tcase = create_TestCase()
@@ -420,7 +420,7 @@ class scan_finish_mark( vtu.vvtestTestCase ):
 
     def test_function_to_test_for_finished_date(self):
         ""
-        tl = TestList.TestList( TestCaseFactory() )
+        tl = testlist.TestList( TestCaseFactory() )
         tl.setResultsDate()
         rfile = tl.initializeResultsFile()
         tcase = create_TestCase()
@@ -712,7 +712,7 @@ def write_test_sequence_to_file( filename, tcase ):
 
 def write_TestList_with_fake_test( addrundate=False, **kwargs ):
     ""
-    tl = TestList.TestList( TestCaseFactory() )
+    tl = testlist.TestList( TestCaseFactory() )
 
     if addrundate:
         tl.setResultsDate()
@@ -742,7 +742,7 @@ def write_TestList_fake_results( testlistobj ):
 
 def read_TestList_and_check_fake_test():
     ""
-    tl = TestList.TestList( TestCaseFactory() )
+    tl = testlist.TestList( TestCaseFactory() )
     tl.readTestList()
     tl.readTestResults()
     tL = list( tl.getTests() )

@@ -21,7 +21,7 @@ import testutils as util
 import libvvtest.cdashwriter as cdashwriter
 import cdashutil
 
-from libvvtest.TestList import TestList
+from libvvtest.testlist import TestList
 from libvvtest.permsetter import PermissionSetter
 from libvvtest.tcfactory import TestCaseFactory
 

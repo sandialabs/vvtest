@@ -12,7 +12,6 @@ import itertools
 from os.path import dirname
 
 from . import logger
-from . import TestList
 from .testlistio import TestListReader, file_is_marked_finished
 from . import pathutil
 from .teststatus import copy_test_results

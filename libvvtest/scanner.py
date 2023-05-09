@@ -10,7 +10,7 @@ from os.path import join as pjoin
 from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
 from .pathutil import change_directory
-from . import TestList
+from .testlist import TestList
 
 
 class TestFileScanner:
@@ -53,7 +53,7 @@ class TestFileScanner:
                 basedir,fname = os.path.split( path )
                 self.readTestFile( testlist, basedir, fname )
             else:
-                tl = TestList.TestList( self.fact, path )
+                tl = TestList( self.fact, path )
                 tl.readTestList()
                 for tcase in tl.getTests():
                     testlist.addTest( tcase )

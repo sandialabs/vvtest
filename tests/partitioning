@@ -37,7 +37,9 @@ class suite( vtu.vvtestTestCase ):
     def test_running_a_simple_partition(self):
         ""
         util.writefile( "atest.vvt", """
-            pass
+            import os
+            with open('afile.txt','wt') as fp:
+                fp.write("hello"+os.linesep)
             """ )
 
         vtu.runvvtest( '-G 1' )
@@ -45,6 +47,7 @@ class suite( vtu.vvtestTestCase ):
 
         vrun.assertCounts( total=1, npass=1 )
         self.assertEqual( vrun.getTestIds(), ['atest'] )
+        assert len( glob.glob('TestResults*/atest/afile.txt') ) == 1
 
 
 ########################################################################

@@ -47,7 +47,7 @@ import libvvtest.teststatus as teststatus
 from libvvtest.RuntimeConfig import RuntimeConfig
 from libvvtest.userplugin import UserPluginBridge, import_user_plugin
 import libvvtest.paramset as paramset
-from libvvtest.TestList import TestList
+from libvvtest.testlist import TestList
 from libvvtest.execlist import TestExecList
 import libvvtest.testcreator as testcreator
 from libvvtest.scanner import TestFileScanner

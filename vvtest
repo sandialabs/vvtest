@@ -26,7 +26,7 @@ import libvvtest.pathutil as pathutil
 from libvvtest.errors import FatalError
 import libvvtest.location as location
 import libvvtest.execute as execute
-import libvvtest.TestList as TestList
+import libvvtest.testlist as testlist
 import libvvtest.logger as logger
 
 
@@ -664,7 +664,7 @@ class TestListManager:
         ""
         fn = self.namer.getFilePath( batchid )
 
-        self.tlist = TestList.TestList( self.tcasefactory, fn )
+        self.tlist = testlist.TestList( self.tcasefactory, fn )
 
         return self.tlist
 
@@ -675,7 +675,7 @@ class TestListManager:
     def readAndMergePreviouslyRunTests(self):
         ""
         fn = self.namer.getFilePath()
-        prev_tlist = TestList.TestList( self.tcasefactory, fn )
+        prev_tlist = testlist.TestList( self.tcasefactory, fn )
 
         attrs = prev_tlist.readTestResults()
 

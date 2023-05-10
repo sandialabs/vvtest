@@ -51,7 +51,7 @@ class TestList:
 
     def setResultsDate(self, epochtime=None):
         ""
-        if epochtime != None:
+        if epochtime is not None:
             self.rundate = int( float( epochtime ) + 0.5 )
         else:
             self.rundate = int( float( time.time() ) + 0.5 )
@@ -262,7 +262,7 @@ class TestList:
                         subL.append( t.getDisplayString() )
                     elif c == 't':
                         tm = tcase.getStat().getRuntime( None )
-                        if tm == None: tm = 0
+                        if tm is None: tm = 0
                         subL.append( tm )
                     elif c == 'd':
                         subL.append( tcase.getStat().getStartDate( 0 ) )
@@ -286,7 +286,7 @@ class TestList:
 
     def createAnalyzeGroupMap(self):
         ""
-        if self.groups == None:
+        if self.groups is None:
             self.groups = ParameterizeAnalyzeGroups()
             self.groups.rebuild( self.tcasemap )
 

@@ -21,26 +21,46 @@ import libvvtest.grouper as grouper
 
 class suite( vtu.vvtestTestCase ):
 
-    def test_create_a_test_group_from_a_test_list(self):
+    def test_create_a_partition_from_a_test_list(self):
         ""
         util.writefile( 'atest.vvt', """
             pass
             """ )
         tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.createAnalyzeGroupMap()
         tlist.connectDependencies()
 
         parts = grouper.partition_tests( tlist, 1 )
+
         assert len(parts) == 1
         tcaseL = list( parts[0].getTests() )
         assert len(tcaseL) == 1
         assert tcaseL[0].getSpec().getExecuteDirectory() == 'atest'
 
-    def test_creating_a_simple_partition(self):
+    def test_dependency_clusters_must_be_in_the_same_partition(self):
         ""
         util.writefile( "atest.vvt", """
+            #VVT: parameterize : foo = bar baz
+            #VVT: analyze : --analyze
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+        assert len( list( tlist.getTests() ) ) == 3
+
+        parts = grouper.partition_tests( tlist, 2 )
+
+        assert len(parts) == 2
+        tl0 = list(parts[0].getTests())
+        tl1 = list(parts[1].getTests())
+        assert (len(tl0)==3 or len(tl1)==3) and len(tl0)+len(tl1) == 3
+
+    def test_creating_a_simple_partition(self):
+        ""
+        util.writefile( "dir/atest.vvt", """
             pass
             """ )
-        util.writefile( "btest.vvt", """
+        util.writefile( "dir/btest.vvt", """
             pass
             """ )
 
@@ -48,6 +68,14 @@ class suite( vtu.vvtestTestCase ):
 
         assert os.path.isfile( 'testlist.0' ) and os.path.isfile( 'testlist.1' )
         assert len( glob.glob('testlist*') ) == 2
+        assert len( glob.glob('TestResults*') ) == 0
+
+        os.remove( 'testlist.0' )
+        os.remove( 'testlist.1' )
+        vtu.runvvtest( '-G 1' )
+
+        assert os.path.isfile( 'testlist.0' )
+        assert len( glob.glob('testlist*') ) == 1
         assert len( glob.glob('TestResults*') ) == 0
 
     def test_running_a_simple_partition(self):

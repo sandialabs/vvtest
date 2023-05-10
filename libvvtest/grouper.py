@@ -150,14 +150,74 @@ def partition_tests( tlist, numparts ):
     ""
     assert numparts > 0
 
-    # randomize the tests
-    # while more tests:
-    #   pop a test
-    #   get all tests in the dependency cluster (all dependents & all dependencies)
-    #   add cluster to the test group with fewest tests
-
     tlistL = [ TestList( tlist.getTestCaseFactory() ) for _ in range(numparts) ]
-    for i,tcase in enumerate( tlist.getTests() ):
-        tlistL[ i%numparts ].addTest( tcase )
+
+    tmap = tlist.getTestMap()
+    ids = set( tmap.keys() )
+
+    rmap = create_reverse_dependency_map( tmap )
+
+    while len(ids) > 0:
+
+        cluster_ids = pop_testid_cluster( ids, tmap, rmap )
+
+        i = get_index_with_fewest_tests( tlistL )
+
+        for ctid in cluster_ids:
+            tcase = tmap[ctid]
+            tlistL[i].addTest( tcase )
 
     return tlistL
+
+
+def pop_testid_cluster( ids, tmap, rmap ):
+    ""
+    seed_tid = ids.pop()
+
+    cluster = set( [seed_tid] )
+    collect_reverse_dependency_ids( seed_tid, rmap, cluster )
+
+    for tid in list(cluster):
+        collect_dependency_ids( tid, tmap, cluster )
+
+    for tid in cluster:
+        if tid != seed_tid:
+            ids.remove( tid )
+
+    return cluster
+
+
+def create_reverse_dependency_map( tmap ):
+    ""
+    rmap = {}
+
+    for tid,tcase in tmap.items():
+        for dep in tmap[tid].getDependencies():
+            depid = dep.getTestID()
+            if depid is not None:
+                rmap.setdefault( depid, set() ).add( tid )
+
+    return rmap
+
+
+def collect_dependency_ids( tid, tmap, cluster ):
+    ""
+    for dep in tmap[tid].getDependencies():
+        depid = dep.getTestID()
+        if depid is not None and depid not in cluster:
+            cluster.add( depid )
+            collect_dependency_ids( depid, tmap, cluster )
+
+
+def collect_reverse_dependency_ids( tid, rmap, cluster ):
+    ""
+    for rdepid in rmap.get( tid, [] ):
+        if rdepid not in cluster:
+            cluster.add( rdepid )
+            collect_reverse_dependency_ids( rdepid, rmap, cluster )
+
+
+def get_index_with_fewest_tests( tlistL ):
+    ""
+    L = sorted( [ (len(tl.getTestMap()), i) for i,tl in enumerate(tlistL) ] )
+    return L[0][1]

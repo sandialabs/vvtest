@@ -173,16 +173,19 @@ def partition_tests( tlist, numparts ):
 def pop_testid_cluster( ids, tmap, rmap ):
     ""
     seed_tid = ids.pop()
-
+    tcase = tmap[seed_tid]
     cluster = set( [seed_tid] )
-    collect_reverse_dependency_ids( seed_tid, rmap, cluster )
 
-    for tid in list(cluster):
-        collect_dependency_ids( tid, tmap, cluster )
+    if tcase.hasDependent() or tcase.numDependencies() > 0:
 
-    for tid in cluster:
-        if tid != seed_tid:
-            ids.remove( tid )
+        collect_reverse_dependency_ids( seed_tid, rmap, cluster )
+
+        for tid in list(cluster):
+            collect_dependency_ids( tid, tmap, cluster )
+
+        for tid in cluster:
+            if tid != seed_tid:
+                ids.remove( tid )
 
     return cluster
 

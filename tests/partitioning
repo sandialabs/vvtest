@@ -55,7 +55,67 @@ class suite( vtu.vvtestTestCase ):
         tl1 = list(parts[1].getTests())
         assert (len(tl0)==3 or len(tl1)==3) and len(tl0)+len(tl1) == 3
 
-    def test_creating_a_simple_partition(self):
+    def test_partitioning_load_balance(self):
+        ""
+        util.writefile( "atest.vvt", """
+            #VVT: parameterize : foo = 1 2 3 4 5 6 7 8 9 10
+            #VVT::                     11 12 13 14 15 16 17 18 19 20
+            #VVT::                     21 22 23 24
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+
+        parts = grouper.partition_tests( tlist, 1 )
+        assert len(parts) == 1 and len(list(parts[0].getTests())) == 24
+
+        parts = grouper.partition_tests( tlist, 2 )
+        assert len(parts) == 2
+        assert len(list(parts[0].getTests())) == 12
+        assert len(list(parts[1].getTests())) == 12
+
+        parts = grouper.partition_tests( tlist, 3 )
+        assert len(parts) == 3
+        assert len(list(parts[0].getTests())) == 8
+        assert len(list(parts[1].getTests())) == 8
+        assert len(list(parts[2].getTests())) == 8
+
+        parts = grouper.partition_tests( tlist, 4 )
+        assert len(parts) == 4
+        assert len(list(parts[0].getTests())) == 6
+        assert len(list(parts[1].getTests())) == 6
+        assert len(list(parts[2].getTests())) == 6
+        assert len(list(parts[2].getTests())) == 6
+
+    def test_mixed_partitioning_case(self):
+        ""
+        util.writefile( "a.vvt", """
+            pass
+            """ )
+        util.writefile( "b.vvt", """
+            pass
+            """ )
+        util.writefile( "c.vvt", """
+            #VVT: depends on = a
+            """ )
+        util.writefile( "d.vvt", """
+            #VVT: parameterize : foo = 1 2
+            #VVT: analyze : --analyze
+            """ )
+
+        tlist = vtu.create_testlist_from_test_files( 'a.vvt', 'b.vvt', 'c.vvt', 'd.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+
+        parts = grouper.partition_tests( tlist, 3 )
+        assert len(parts) == 3
+        chkL = []
+        for tl in parts:
+            chkL.append( sorted( [ t.getSpec().getDisplayString() for t in tl.getTests() ] ) )
+        chkL.sort()
+        self.assertEqual( chkL, [['a', 'c'], ['b'], ['d', 'd.foo=1', 'd.foo=2']] )
+
+    def test_generating_partition_files(self):
         ""
         util.writefile( "dir/atest.vvt", """
             pass

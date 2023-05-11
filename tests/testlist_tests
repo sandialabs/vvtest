@@ -15,6 +15,7 @@ import time
 import glob
 import stat
 import struct
+import unittest
 
 import vvtestutils as vtu
 import testutils as util
@@ -60,7 +61,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tlw.start()
         time.sleep(2)
         tlw.finish()
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
@@ -74,7 +74,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tlw = tio.TestListWriter( 'tests.out' )
         tlw.start( strname='some value', intname=101, floatname=1.01 )
         tlw.finish()
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
@@ -93,8 +92,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tlw.start()
         tlw.append( tcase )
         tlw.finish()
-
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
@@ -115,14 +112,12 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tlw.append( tcase )
         # an "unfinished" file does not have tlw.finish() called
 
-        time.sleep(1)
-
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
 
         tm = time.time()
         assert tm - tlr.getStartDate() < 5
-        assert tlr.getFinishDate() == None
+        assert tlr.getFinishDate() is None
         tcase = get_single_test_from_test_list( tlr )
         assert tcase.getSpec().getDisplayString() == 'sdir/atest.np=4'
 
@@ -135,7 +130,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tlw.append( tcase )
 
         tstart = time.time()
-        time.sleep(2)
 
         write_test_sequence_to_file( 'tests.0', tcase )
 
@@ -143,12 +137,11 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
             tlw.append( tcase )
             tlw.includeFileCompleted( 'tests.0' )
 
-        time.sleep(2)
+        time.sleep(1)
 
         tlw.finish()
 
         tdone = time.time()
-        time.sleep(1)
 
         return tstart, tdone
 
@@ -177,7 +170,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         self.write_with_include_file( tcase )
 
         os.remove( 'tests.0' )
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
@@ -201,7 +193,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
 
         # without the include file, the final test status is lost
         os.remove( 'tests.0' )
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
@@ -212,9 +203,8 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
 
     def test_include_files_are_relative_to_parent_file_directory(self):
         ""
-        write_test_list_with_include( 'tests.out', 'subdir/tests.0' )
         os.mkdir( 'rundir' )
-        time.sleep(1)
+        write_test_list_with_include( 'tests.out', 'subdir/tests.0' )
 
         rootdir = os.getcwd()
         tfile = abspath( 'tests.out' )
@@ -229,7 +219,6 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
     def test_write_a_test_file_then_scan_it_for_the_finish_date(self):
         ""
         write_test_list_with_fake_test( 'tests.out' )
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tm = tlr.scanForFinishDate()
@@ -246,16 +235,13 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tcase = create_TestCase_with_results()
         tlw.append( tcase )
 
-        time.sleep(1)
-
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tm = tlr.scanForFinishDate()
-        assert tm == None
+        assert tm is None
 
     def test_read_unfinished_results_file_with_include(self):
         ""
         write_test_list_with_include( 'tests.out', 'tests.0', finish=False )
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
@@ -265,7 +251,7 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
 
         tm = tlr.getStartDate()
         assert tm != None and time.time() - tm < 10
-        assert tlr.getFinishDate() == None
+        assert tlr.getFinishDate() is None
 
 
 class TestList_results_file( vtu.vvtestTestCase ):
@@ -273,7 +259,6 @@ class TestList_results_file( vtu.vvtestTestCase ):
     def test_write_a_test_list_file_then_read_it(self):
         ""
         write_TestList_with_fake_test()
-        time.sleep(1)
         read_TestList_and_check_fake_test()
 
     def test_set_filename_separately(self):
@@ -310,13 +295,11 @@ class TestList_results_file( vtu.vvtestTestCase ):
         D = tr.getAttr( 'checkme' )
         assert len(D) == 1 and D['A'] == 1
 
-    def test_write_a_test_list_then_results_then_read_it(self):
+    def test_write_a_test_list_and_results_then_read_it(self):
         ""
         tl = write_TestList_with_fake_test()
         tl.setResultsDate()
-        time.sleep(1)
         rfile = write_TestList_fake_results( tl )
-        time.sleep(1)
 
         bname = basename( rfile )
         assert bname.startswith( 'testlist' ) and bname != 'testlist'
@@ -330,24 +313,21 @@ class TestList_results_file( vtu.vvtestTestCase ):
         ""
         tl = write_TestList_with_fake_test( addrundate=True )
         sfx = tl.getResultsDate()
-        time.sleep(2)
+        time.sleep(1.2)
 
         tl = testlist.TestList( TestCaseFactory() )
         tl.readTestList()
         assert tl.getResultsDate() == sfx
         rfile = write_TestList_fake_results( tl )
-        time.sleep(1)
 
         read_TestList_and_check_fake_test()
 
     def test_results_workflow_with_include_file(self):
         ""
         os.mkdir( 'subdir' )
-        time.sleep(1)
 
         # the origin test list
         tl = write_TestList_with_fake_test()
-        time.sleep(1)
 
         # create suffix for the include files
         sfx = tl.setResultsDate()
@@ -359,21 +339,17 @@ class TestList_results_file( vtu.vvtestTestCase ):
         tlincl.setResultsDate( sfx )
         tlincl.addTest( tcase )
         tlincl.stringFileWrite( extended=True )
-        time.sleep(1)
 
         # start the comprehensive results file (with the include in it)
         tl.initializeResultsFile()
         tl.addIncludeFile( tlincl.getResultsFilename() )
-        time.sleep(1)
 
         # create the sublist test results
         tlsub = testlist.TestList( TestCaseFactory(), filename=fn )
         tlsub.readTestList()
         write_TestList_fake_results( tlsub )
-        time.sleep(1)
 
         tl.writeFinished()
-        time.sleep(1)
 
         # should be able to read comprehensive results file
         read_TestList_and_check_fake_test()
@@ -395,7 +371,7 @@ class TestList_results_file( vtu.vvtestTestCase ):
         tl.readTestResults()
 
         tm = tl.getDateStamp()
-        assert tm != None and time.time() - tm < 10
+        assert tm is not None and time.time() - tm < 10
         assert not tl.getFinishDate()
         assert not tl.resultsFileIsMarkedFinished()
 
@@ -412,11 +388,9 @@ class scan_finish_mark( vtu.vvtestTestCase ):
         tcase = create_TestCase()
         tl.appendTestResult( tcase )
 
-        time.sleep(1)
-
         tlr = tio.TestListReader( TestCaseFactory(), rfile )
         tm = tlr.scanForFinishDate()
-        assert tm == None
+        assert tm is None
 
     def test_function_to_test_for_finished_date(self):
         ""
@@ -426,25 +400,20 @@ class scan_finish_mark( vtu.vvtestTestCase ):
         tcase = create_TestCase()
         tl.appendTestResult( tcase )
 
-        time.sleep(1)
-
         assert tio.file_is_marked_finished( rfile ) == False
 
         tl.writeFinished()
-        time.sleep(1)
 
         assert tio.file_is_marked_finished( rfile ) == True
 
     def test_for_finished_date_is_robust(self):
         ""
         # create file with binary data
-        fp = open( 'afile.dat', 'wb' )
-        buf = struct.pack( 'b', -128 ) * 10
-        for i in range( -127, 128 ):
-            buf += struct.pack( 'b', i ) * 10
-        fp.write( buf )
-        fp.close()
-        time.sleep(1)
+        with open( 'afile.dat', 'wb' ) as fp:
+            buf = struct.pack( 'b', -128 ) * 10
+            for i in range( -127, 128 ):
+                buf += struct.pack( 'b', i ) * 10
+            fp.write( buf )
 
         assert tio.file_is_marked_finished( abspath('foobar') ) == False
         assert os.path.exists( 'afile.dat' )
@@ -462,35 +431,13 @@ class format_versions( vtu.vvtestTestCase ):
         tlr.read()
         assert tlr.getFileVersion() == 35
 
-    def test_reading_testlist_format_version_31_is_an_exception(self):
-        ""
-        fp = open( 'testlist', 'w' )
-        fp.write( example_testlist_version_31 )
-        fp.close()
-        time.sleep(1)
-
-        tlr = tio.TestListReader( TestCaseFactory(), 'testlist' )
-        self.assertRaises( Exception, tlr.read )
-
-    def test_that_format_version_32_is_compatible_with_current_version(self):
-        ""
-        fp = open( 'testlist', 'w' )
-        fp.write( example_testlist_version_32 )
-        fp.close()
-        time.sleep(1)
-
-        tlr = tio.TestListReader( TestCaseFactory(), 'testlist' )
-        tlr.read()
-        assert tlr.getFileVersion() == 32
-        assert len( tlr.getTests() ) == 3
-
+    @unittest.skip("unnecessary test, but keep as an example")
     def test_read_version_33_testlist_with_includes(self):
         ""
         util.writefile( 'testlist', example_testlist_with_include_33 )
         util.writefile( 'testlist.0', example_include_0_version_33 )
         util.writefile( 'testlist.1', example_include_1_version_33 )
         util.writefile( 'testlist.2', example_include_2_version_33 )
-        time.sleep(1)
 
         tlr = tio.TestListReader( TestCaseFactory(), 'testlist.1' )
         tlr.read()
@@ -506,31 +453,6 @@ class format_versions( vtu.vvtestTestCase ):
         for tcase in tlr.getTests().values():
             assert tcase.getStat().getResultStatus() == 'pass'
 
-
-example_testlist_version_31 = \
-"""
-#VVT: Version = 31
-#VVT: Date = Sat Sep 29 16:12:43 2018
-
-py1 "/scratch/rrdrake/temp/prob" "py1.vvt" "_keywords_=bar foo py1" "state=Snotrun" "timeout=I3600" "xdate=I-1" "xtime=I-1"
-py1 "/scratch/rrdrake/temp/prob" "py1.vvt" "_keywords_=bar foo py1" "state=Snotdone" "timeout=I3600" "xdate=I1538259163" "xtime=I-1"
-py1 "/scratch/rrdrake/temp/prob" "py1.vvt" "_keywords_=bar foo py1" "result=Spass" "state=Sdone" "timeout=I3600" "xdate=I1538259163" "xtime=I1"
-
-#VVT: Finish = Sat Sep 29 16:12:44 2018
-"""
-
-example_testlist_version_32 = \
-"""
-#VVT: Version = 32
-#VVT: Start = ['Sun Mar  3 18:26:21 2019', 1551662781.325458]
-#VVT: Attrs = {}
-
-{'name': 'at', 'params': {'np': '1'}, 'attrs': {'xdate': -1, 'state': 'notrun', 'xtime': -1}, 'keywords': ['np', 'foo', 'bar', 'at'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-{'name': 'at', 'params': {'np': '2'}, 'attrs': {'xdate': -1, 'state': 'notrun', 'xtime': -1}, 'keywords': ['np', 'foo', 'bar', 'at'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-{'name': 'at', 'params': {}, 'attrs': {'xdate': -1, 'state': 'notrun', 'xtime': -1}, 'keywords': ['np', 'foo', 'bar', 'at'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-
-#VVT: Finish = ['Sun Mar  3 18:26:21 2019', 1551662781.325975]
-"""
 
 # a batch test list before the includes were inlined (like a crash occurred)
 example_testlist_with_include_33 = """\

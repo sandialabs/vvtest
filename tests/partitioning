@@ -18,6 +18,11 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.grouper as grouper
+from libvvtest.testcreator import TestCreator
+from libvvtest.tcfactory import TestCaseFactory
+from libvvtest.scanner import TestFileScanner
+from libvvtest.location import Locator
+from libvvtest.testlist import TestList
 
 
 class suite( vtu.vvtestTestCase ):
@@ -116,6 +121,34 @@ class suite( vtu.vvtestTestCase ):
         chkL.sort()
         self.assertEqual( chkL, [['a', 'c'], ['b'], ['d', 'd.foo=1', 'd.foo=2']] )
 
+    def test_load_from_partition_file_still_checks_for_duplicate_xdir(self):
+        ""
+        util.writefile( 'sub1/atest.vvt', '' )
+        util.writefile( 'sub2/atest.vvt', '' )
+
+        vtu.runvvtest( '-G 1 sub2' )
+
+        scnr,tlist = make_scanner_and_testlist()
+        scnr.scanPath( tlist, 'sub1' )
+        _,out,err1 = util.call_capture_output( scnr.scanPath, tlist, 'testlist.0' )
+        assert not out.strip()
+
+        tL = list( tlist.getTests() )
+        assert len(tL) == 1 and tL[0].getSpec().getFilename() == 'sub1/atest.vvt'
+
+        # reverse the order
+        scnr,tlist = make_scanner_and_testlist()
+        scnr.scanPath( tlist, 'testlist.0' )
+        _,out,err2 = util.call_capture_output( scnr.scanPath, tlist, 'sub1' )
+        assert not out.strip()
+
+        tL = list( tlist.getTests() )
+        assert len(tL) == 1 and tL[0].getSpec().getFilename() == 'sub2/atest.vvt'
+
+        # print ( 'err1:', repr(err1) )
+        assert util.greplines( 'Warning*ignoring test with duplicate', err1 )
+        assert util.greplines( 'Warning*ignoring test with duplicate', err2 )
+
     def test_generate_then_run_partition_files(self):
         ""
         os.mkdir( 'rdir' )
@@ -161,6 +194,16 @@ class suite( vtu.vvtestTestCase ):
                               ['atest', 'btest', 'ctest'] )
             self.assertEqual( set([dirname(tid) for tid in tids]),
                               set(['TR1','TR2']) )
+
+
+def make_scanner_and_testlist():
+    ""
+    tfac = TestCaseFactory()
+    tc = TestCreator( {}, 'Xbox', [] )
+    scnr = TestFileScanner( Locator(os.getcwd()), tc, tfac )
+    tlist = TestList( tfac )
+
+    return scnr,tlist
 
 
 ########################################################################

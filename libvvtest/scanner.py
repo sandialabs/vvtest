@@ -11,14 +11,12 @@ from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
 from .pathutil import change_directory
 from .testlist import TestList
+from . import logger
 
 
 class TestFileScanner:
 
-    def __init__(self, loc, creator, tcasefactory,
-                       path_list=[],
-                       specform=None,
-                       warning_output_stream=sys.stdout):
+    def __init__(self, loc, creator, tcasefactory, path_list=[], specform=None ):
         """
         The 'loc' is a Locator object.
         If 'specform' is not None, it must be a list of strings, such as
@@ -29,7 +27,6 @@ class TestFileScanner:
         self.creator = creator
         self.fact = tcasefactory
         self.path_list = path_list
-        self.warnout = warning_output_stream
 
         self.extensions = creator.getValidFileExtensions( specform )
 
@@ -53,12 +50,7 @@ class TestFileScanner:
                 basedir,fname = os.path.split( path )
                 self.readTestFile( testlist, basedir, fname )
             else:
-                tl = TestList( self.fact, path )
-                tl.readTestList( root_path_prefix=dirname(path) )
-                # magic: need to check for duplicates
-                for tcase in tl.getTests():
-                    testlist.addTest( tcase )
-
+                self._read_from_testlist_file( testlist, path )
         else:
             for root,dirs,files in os.walk( path ):
                 self._scan_recurse( testlist, path, root, dirs, files )
@@ -132,9 +124,8 @@ class TestFileScanner:
         try:
             testL = self.creator.fromFile( relfile, basepath )
         except TestSpecError:
-            print_warning( self.warnout,
-                           "skipping file", os.path.join( basepath, relfile ),
-                           "because", str( sys.exc_info()[1] ) )
+            logger.warn( "skipping file", os.path.join( basepath, relfile ),
+                         "because", str( sys.exc_info()[1] ) )
             testL = []
 
         for tspec in testL:
@@ -166,11 +157,25 @@ class TestFileScanner:
             if ddir != xdir:
                 warn.append( '       test id : ' + ddir )
 
-            print_warning( self.warnout, '\n'.join( warn ) )
+            logger.warn( '\n'.join( warn ) )
 
             return True
 
         return False
+
+    def _read_from_testlist_file(self, testlist, path):
+        ""
+        tl = TestList( self.fact, path )
+
+        # for testlist files, the root path for tests are relative to the testfile
+        # location; so need to prefix them with the path to the testlist file
+        tl.readTestList( root_path_prefix=dirname(path) )
+
+        for tcase in tl.getTests():
+            tspec = tcase.getSpec()
+            if not self._is_duplicate_execute_directory( tspec ):
+                testlist.addTest( tcase )
+                self.xdirmap[ tspec.getExecuteDirectory() ] = tcase
 
 
 def is_vvtest_cache_directory( cdir ):
@@ -190,10 +195,3 @@ def is_vvtest_cache_directory( cdir ):
             return True
 
     return False
-
-
-def print_warning( stream, *args ):
-    ""
-    stream.write( '*** warning: ' )
-    stream.write( ' '.join( [ str(arg) for arg in args ] ) + '\n' )
-    stream.flush()

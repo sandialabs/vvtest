@@ -12,11 +12,6 @@ sys.excepthook = sys.__excepthook__
 import os
 import time
 
-try:
-    from StringIO import StringIO
-except Exception:
-    from io import StringIO
-
 import vvtestutils as vtu
 import testutils as util
 
@@ -179,7 +174,7 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         assert len( tL ) == 1
 
         tL,out = scan_path_with_warnings_output( 'B' )
-        assert util.greplines( 'warning*skipping file*B/atest.xml', out )
+        assert util.greplines( 'Warning*skipping file*B/atest.xml', out )
         assert len( tL ) == 0
 
         tL,out = scan_path_with_warnings_output( 'C' )
@@ -214,27 +209,20 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
 
 def scan_path_with_warnings_output( path, specform=['vvt','xml'] ):
     ""
-    sio = StringIO()
-    tlist,scan = construct_TestList_and_TestFileScanner( specform=specform, ostream=sio )
-    scan.scanPath( tlist, path )
-    val = sio.getvalue()
+    tlist,scan = construct_TestList_and_TestFileScanner( specform=specform )
+    rtn,out,err = util.call_capture_output( scan.scanPath, tlist, path )
+    assert not out.strip()
 
-    return tlist.getTests(), val.strip()
+    return tlist.getTests(), err.strip()
 
 
-def construct_TestList_and_TestFileScanner( specform=None, ostream=None ):
+def construct_TestList_and_TestFileScanner( specform=None ):
     ""
     loc = Locator( os.getcwd() )
     creator = vtu.creator()
     tlist = testlist.TestList( TestCaseFactory() )
 
-    if ostream:
-        scan = TestFileScanner( loc, creator, TestCaseFactory(),
-                                specform=specform,
-                                warning_output_stream=ostream )
-    else:
-        scan = TestFileScanner( loc, creator, TestCaseFactory(),
-                                specform=specform )
+    scan = TestFileScanner( loc, creator, TestCaseFactory(), specform=specform )
 
     return tlist,scan
 

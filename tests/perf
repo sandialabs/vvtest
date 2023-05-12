@@ -28,7 +28,7 @@ import vvtestutils as vtu
 import testutils as util
 from testutils import print3
 
-import libvvtest.TestList as TestList
+import libvvtest.testlist as TestList
 import libvvtest.parseutil as parseutil
 
 class performance_cases( vtu.vvtestTestCase ):
@@ -67,7 +67,7 @@ def alegra01():
     """
     a manual test that scans the alegra/emphasis test tree
     """
-    tl = TestList.TestList()
+    tl = testlist.TestList()
     t0 = time.time()
     #tl.scanDirectory( '/home/rrdrake/Alegra/Benchmarks' )
     tl.scanDirectory( '/scratch/rrdrake/ta/Benchmarks' )

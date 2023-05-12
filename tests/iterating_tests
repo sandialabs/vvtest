@@ -19,7 +19,6 @@ print3 = util.print3
 import libvvtest.testcase as testcase
 from libvvtest.backlog import TestBacklog
 from libvvtest.execlist import TestExecList
-from libvvtest.TestList import TestList
 from libvvtest.testexec import TestExec
 
 

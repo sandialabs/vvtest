@@ -271,6 +271,9 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '-g', dest='dash_g', action='store_true',
         help='Scan for tests and populate the test results tree, '
              'but do not run any tests.' )
+    grp.add_argument( '--partition', metavar='NUMBATCHES', dest='partition',
+        action='append', help='Used with -g, scan for tests, partition into '
+             'batches, and write a test list file for each batch.' )
 
     grp.add_argument( '--extract', metavar='DESTDIR',
         help='Extract test files from their source to the DESTDIR '
@@ -356,6 +359,10 @@ def adjust_options_and_create_derived_options( opts ):
         errtype = 'platopt'
         platD = create_platform_options( opts.platopt )
         derived_opts['platopt_dict'] = platD
+
+        errtype = 'partition'
+        partD = create_partition_options( opts.partition )
+        derived_opts['partition_dict'] = partD
 
         errtype = 'batch-limit'
         if opts.batch_limit is not None and opts.batch_limit < 0:
@@ -496,6 +503,41 @@ def create_platform_options( platopt ):
                 pD[n] = L[1].strip()
 
     return pD
+
+
+def create_partition_options( partition_list ):
+    ""
+    pD = {}
+
+    if partition_list:
+        for op in partition_list:
+            if '=' not in op:
+                pD['n'] = make_int_value( op )
+            else:
+                L = op.split('=',1)
+                if len(L) != 2 or not L[0] or not L[1]:
+                    raise Exception( "invalid specification: "+repr(op) )
+                name,val = L
+                name = name.lower()
+                if name == 'n':
+                    ival = make_int_value( val )
+                    if ival < 1:
+                        raise Exception( "num partitions must be positive, not "+repr(val) )
+                    pD[name] = ival
+                else:
+                    raise Exception( "unknown partition option: "+repr(name) )
+
+    return pD
+
+
+def make_int_value( sval ):
+    ""
+    try:
+        ival = int(sval)
+    except Exception:
+        raise Exception( "expected an integer, but got "+repr(sval) )
+
+    return ival
 
 
 def clean_on_off_options( on_options, off_options ):

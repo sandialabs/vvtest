@@ -16,7 +16,8 @@ import time
 import vvtestutils as vtu
 import testutils as util
 
-from libvvtest.batchutils import BatchTestGrouper, compute_queue_time
+from libvvtest.batchutils import compute_queue_time
+from libvvtest.grouper import BatchTestGrouper
 
 
 class unit_tests( vtu.vvtestTestCase ):

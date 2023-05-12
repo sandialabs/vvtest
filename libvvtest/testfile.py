@@ -338,3 +338,9 @@ class TestFile:
         returns None if construction is not completed, otherwise 'xml' or 'script'
         """
         return self.specform
+
+    def setRootpath(self, path):
+        ""
+        self.rootpath = path
+
+

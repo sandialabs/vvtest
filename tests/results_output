@@ -20,7 +20,7 @@ import testutils as util
 
 import libvvtest.outpututils as outpututils
 import libvvtest.listwriter as listwriter
-from libvvtest.TestList import TestList
+from libvvtest.testlist import TestList
 import libvvtest.fmtresults as fmtresults
 from libvvtest.location import Locator
 

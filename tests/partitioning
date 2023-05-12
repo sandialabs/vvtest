@@ -1,0 +1,230 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST: vvtest
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+from os.path import basename, dirname
+import time
+import glob
+
+import vvtestutils as vtu
+import testutils as util
+
+import libvvtest.cmdline as cmdline
+import libvvtest.grouper as grouper
+from libvvtest.testcreator import TestCreator
+from libvvtest.tcfactory import TestCaseFactory
+from libvvtest.scanner import TestFileScanner
+from libvvtest.location import Locator
+from libvvtest.testlist import TestList
+
+
+class suite( vtu.vvtestTestCase ):
+
+    def test_partition_command_line_options(self):
+        ""
+        D = cmdline.create_partition_options( [] )
+        self.assertEqual( D, {} )
+
+        D = cmdline.create_partition_options( ['3'] )
+        self.assertEqual( D, {'n':3} )
+
+        D = cmdline.create_partition_options( ['n=3'] )
+        self.assertEqual( D, {'n':3} )
+
+        D = cmdline.create_partition_options( ['N=3'] )
+        self.assertEqual( D, {'n':3} )
+
+        self.assertRaises( Exception, cmdline.create_partition_options, ['3.3'] )
+        self.assertRaises( Exception, cmdline.create_partition_options, ['foo=3'] )
+        self.assertRaises( Exception, cmdline.create_partition_options, ['N=0'] )
+
+    def test_create_a_partition_from_a_test_list(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            pass
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+
+        parts = grouper.partition_tests( tlist, 1 )
+
+        assert len(parts) == 1
+        tcaseL = list( parts[0].getTests() )
+        assert len(tcaseL) == 1
+        assert tcaseL[0].getSpec().getExecuteDirectory() == 'atest'
+
+    def test_dependency_clusters_must_be_in_the_same_partition(self):
+        ""
+        util.writefile( "atest.vvt", """
+            #VVT: parameterize : foo = bar baz
+            #VVT: analyze : --analyze
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+        assert len( list( tlist.getTests() ) ) == 3
+
+        parts = grouper.partition_tests( tlist, 2 )
+
+        assert len(parts) == 2
+        tl0 = list(parts[0].getTests())
+        tl1 = list(parts[1].getTests())
+        assert (len(tl0)==3 or len(tl1)==3) and len(tl0)+len(tl1) == 3
+
+    def test_partitioning_load_balance(self):
+        ""
+        util.writefile( "atest.vvt", """
+            #VVT: parameterize : foo = 1 2 3 4 5 6 7 8 9 10
+            #VVT::                     11 12 13 14 15 16 17 18 19 20
+            #VVT::                     21 22 23 24
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+
+        parts = grouper.partition_tests( tlist, 1 )
+        assert len(parts) == 1 and len(list(parts[0].getTests())) == 24
+
+        parts = grouper.partition_tests( tlist, 2 )
+        assert len(parts) == 2
+        assert len(list(parts[0].getTests())) == 12
+        assert len(list(parts[1].getTests())) == 12
+
+        parts = grouper.partition_tests( tlist, 3 )
+        assert len(parts) == 3
+        assert len(list(parts[0].getTests())) == 8
+        assert len(list(parts[1].getTests())) == 8
+        assert len(list(parts[2].getTests())) == 8
+
+        parts = grouper.partition_tests( tlist, 4 )
+        assert len(parts) == 4
+        assert len(list(parts[0].getTests())) == 6
+        assert len(list(parts[1].getTests())) == 6
+        assert len(list(parts[2].getTests())) == 6
+        assert len(list(parts[2].getTests())) == 6
+
+    def test_mixed_partitioning_case(self):
+        ""
+        util.writefile( "a.vvt", """
+            pass
+            """ )
+        util.writefile( "b.vvt", """
+            pass
+            """ )
+        util.writefile( "c.vvt", """
+            #VVT: depends on = a
+            """ )
+        util.writefile( "d.vvt", """
+            #VVT: parameterize : foo = 1 2
+            #VVT: analyze : --analyze
+            """ )
+
+        tlist = vtu.create_testlist_from_test_files( 'a.vvt', 'b.vvt', 'c.vvt', 'd.vvt' )
+        tlist.createAnalyzeGroupMap()
+        tlist.connectDependencies()
+
+        parts = grouper.partition_tests( tlist, 3 )
+        assert len(parts) == 3
+        chkL = []
+        for tl in parts:
+            chkL.append( sorted( [ t.getSpec().getDisplayString() for t in tl.getTests() ] ) )
+        chkL.sort()
+        self.assertEqual( chkL, [['a', 'c'], ['b'], ['d', 'd.foo=1', 'd.foo=2']] )
+
+    def test_load_from_partition_file_still_checks_for_duplicate_xdir(self):
+        ""
+        util.writefile( 'sub1/atest.vvt', '' )
+        util.writefile( 'sub2/atest.vvt', '' )
+
+        vtu.runvvtest( '-g --partition 1 sub2' )
+
+        scnr,tlist = make_scanner_and_testlist()
+        scnr.scanPath( tlist, 'sub1' )
+        _,out,err1 = util.call_capture_output( scnr.scanPath, tlist, 'vvtestlist.0' )
+        assert not out.strip()
+
+        tL = list( tlist.getTests() )
+        assert len(tL) == 1 and tL[0].getSpec().getFilename() == 'sub1/atest.vvt'
+
+        # reverse the order
+        scnr,tlist = make_scanner_and_testlist()
+        scnr.scanPath( tlist, 'vvtestlist.0' )
+        _,out,err2 = util.call_capture_output( scnr.scanPath, tlist, 'sub1' )
+        assert not out.strip()
+
+        tL = list( tlist.getTests() )
+        assert len(tL) == 1 and tL[0].getSpec().getFilename() == 'sub2/atest.vvt'
+
+        # print ( 'err1:', repr(err1) )
+        assert util.greplines( 'Warning*ignoring test with duplicate', err1 )
+        assert util.greplines( 'Warning*ignoring test with duplicate', err2 )
+
+    def test_generate_then_run_partition_files(self):
+        ""
+        os.mkdir( 'rdir' )
+
+        util.writefile( "dir/atest.vvt", """
+            with open( 'afile.txt', 'wt' ):
+                pass
+            """ )
+        util.writefile( "dir/btest.vvt", """
+            pass
+            """ )
+        util.writefile( "dir/ctest.vvt", """
+            #VVT: depends on = atest
+            import os
+            import vvtest_util as vvt
+            os.path.isfile( vvt.DEPDIRS[0]+'/afile.txt' )
+            """ )
+
+        vtu.runvvtest( '-g --partition 1 dir' )
+        assert os.path.isfile( 'vvtestlist.0' )
+        assert len( glob.glob('vvtestlist*') ) == 1
+        assert len( glob.glob('TestResults*') ) == 0
+
+        os.remove( 'vvtestlist.0' )
+        vtu.runvvtest( '-g --partition 2 dir' )
+
+        assert os.path.isfile( 'vvtestlist.0' ) and os.path.isfile( 'vvtestlist.1' )
+        assert len( glob.glob('vvtestlist*') ) == 2
+
+        with util.change_directory( 'rdir' ):
+
+            vrun = vtu.runvvtest( '--run-dir=TR1 ../vvtestlist.0' )
+            tids = vrun.getTestIds()
+            cnt = vrun.countTestLines( 'pass' )
+
+            vtu.remove_results()
+            vrun = vtu.runvvtest( '--run-dir=TR2 ../vvtestlist.1' )
+            tids.extend( vrun.getTestIds() )
+            cnt += vrun.countTestLines( 'pass' )
+
+            self.assertEqual( cnt, 3 )
+            self.assertEqual( sorted([basename(tid) for tid in tids]),
+                              ['atest', 'btest', 'ctest'] )
+            self.assertEqual( set([dirname(tid) for tid in tids]),
+                              set(['TR1','TR2']) )
+
+
+def make_scanner_and_testlist():
+    ""
+    tfac = TestCaseFactory()
+    tc = TestCreator( {}, 'Xbox', [] )
+    scnr = TestFileScanner( Locator(os.getcwd()), tc, tfac )
+    tlist = TestList( tfac )
+
+    return scnr,tlist
+
+
+########################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

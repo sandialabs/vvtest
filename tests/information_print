@@ -30,7 +30,7 @@ import libvvtest.batchutils as batchutils
 import batch.batching as batching
 from batch.namer import BatchFileNamer
 from libvvtest.execlist import TestExecList
-from libvvtest.TestList import TestList
+from libvvtest.testlist import TestList
 import libvvtest.consolewriter as consolewriter
 from libvvtest.tcfactory import TestCaseFactory
 

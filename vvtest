@@ -26,7 +26,7 @@ import libvvtest.pathutil as pathutil
 from libvvtest.errors import FatalError
 import libvvtest.location as location
 import libvvtest.execute as execute
-import libvvtest.TestList as TestList
+import libvvtest.testlist as testlist
 import libvvtest.logger as logger
 
 
@@ -118,7 +118,7 @@ def run_vvtest( rtdata, opts, optD ):
         else:
             exitstat = information_output( opts, optD, rtdata )
 
-    elif opts.dash_g:
+    elif opts.dash_g or opts.partition:
         generate_test_list( opts, optD, rtdata )
 
     elif opts.rebase or opts.rebase_all:
@@ -664,7 +664,7 @@ class TestListManager:
         ""
         fn = self.namer.getFilePath( batchid )
 
-        self.tlist = TestList.TestList( self.tcasefactory, fn )
+        self.tlist = testlist.TestList( self.tcasefactory, fn )
 
         return self.tlist
 
@@ -675,7 +675,7 @@ class TestListManager:
     def readAndMergePreviouslyRunTests(self):
         ""
         fn = self.namer.getFilePath()
-        prev_tlist = TestList.TestList( self.tcasefactory, fn )
+        prev_tlist = testlist.TestList( self.tcasefactory, fn )
 
         attrs = prev_tlist.readTestResults()
 
@@ -709,28 +709,41 @@ def generate_test_list( opts, optD, rtdata ):
     ""
     tlist = rtdata.tlm.makeTestList()
 
-    rtdata.loc.createTestingDirectory( rtdata.perms )
-    rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )
     rtdata.scanner.scanPaths( tlist )
     rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
     rtdata.selector.applyPermanentFilters( tlist )
     tlist.connectDependencies()
-    rtdata.tlm.writeTestList()
 
-    rtdata.results_writer.prerun( tlist, verbosity=1 )
-    logger.info()
+    if opts.partition:
+        import libvvtest.grouper as grouper
 
-    handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
-                                rtdata.plat, rtdata.plugin,
-                                rtdata.loc,
-                                symlinks_supported=not windows_platform,
-                                fork_supported=not windows_platform,
-                                shbang_supported=not windows_platform )
+        pops = optD['partition_dict']
+        tlists = grouper.partition_tests( tlist, pops['n'] )
+        for i,tl in enumerate( tlists ):
+            tl.setFilename( 'vvtestlist.'+str(i) )
+            fn = tl.stringFileWrite( **(rtdata.rtinfo) )
+            rtdata.perms.apply( fn )
 
-    xlist = TestExecList( tlist, handler )
-    xlist.createExecutionDirectories()
+    else:
+        rtdata.loc.createTestingDirectory( rtdata.perms )
+        rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )
 
-    logger.info( "\nTest directory:", basename( rtdata.testdir ) )
+        rtdata.tlm.writeTestList()
+
+        rtdata.results_writer.prerun( tlist, verbosity=1 )
+        logger.info()
+
+        handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
+                                    rtdata.plat, rtdata.plugin,
+                                    rtdata.loc,
+                                    symlinks_supported=not windows_platform,
+                                    fork_supported=not windows_platform,
+                                    shbang_supported=not windows_platform )
+
+        xlist = TestExecList( tlist, handler )
+        xlist.createExecutionDirectories()
+
+        logger.info( "\nTest directory:", basename( rtdata.testdir ) )
 
 
 def extract_test_files( param_dict, target_dir, rtdata ):
@@ -753,7 +766,7 @@ def extract_test_files( param_dict, target_dir, rtdata ):
 
 def run_tests( opts, optD, rtdata ):
     ""
-    rtdata.plugin.callPrologue( rtdata.cmdargv )
+    rtdata.plugin.callPrologue( rtdata.cmdargv )  # magic: should prologue be called?
 
     tlist = rtdata.tlm.makeTestList()
 
@@ -762,14 +775,22 @@ def run_tests( opts, optD, rtdata ):
     rtdata.loc.createTestingDirectory( rtdata.perms )
     rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )
 
+    # magic: instead of scanning, read the test list file
     rtdata.scanner.scanPaths( tlist )
+
+    # magic: manual read of a testlist file seems to work
+    # tlist.setFilename( 'tlist' )
+    # tlist.readTestList()
+    # for t in tlist.getActiveTests():
+    #     print( 'magic: active test '+t.getSpec().getName()+' '+str(t.getSpec().getID()) )
+
     rtdata.tlm.readAndMergePreviouslyRunTests()
     rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
     rtdata.selector.applyPermanentFilters( tlist )
     rtdata.tlm.writeTestList()
-    rtdata.selector.applyRuntimeFilters( tlist )
+    rtdata.selector.applyRuntimeFilters( tlist )  # magic: will this be an issue?
     rtdata.scanner.completeTestParsing( tlist )
-    rtdata.timehandler.setTimeouts( tlist.getTests() )
+    rtdata.timehandler.setTimeouts( tlist.getTests() )  # magic: will this overwrite the timeouts
 
     tlist.setResultsDate()
 

@@ -7,7 +7,7 @@
 import os, sys
 import time
 import glob
-from os.path import abspath, normpath
+from os.path import abspath, normpath, dirname, isabs
 from os.path import join as pjoin
 
 from . import testlistio
@@ -117,14 +117,24 @@ class TestList:
         """
         self.tlistwriter.finish()
 
-    def readTestList(self):
-        ""
+    def readTestList(self, root_path_prefix=None):
+        """
+        If 'root_path_prefix' is given, each (relative) test root path in the
+        file will be prefixed with the given path.
+        """
         assert self.filename
 
         if os.path.exists( self.filename ):
 
             tlr = testlistio.TestListReader( self.fact, self.filename )
             tlr.read()
+
+            if root_path_prefix is not None:
+                for tcase in tlr.getTests().values():
+                    rp = tcase.getSpec().getRootpath()
+                    if not isabs(rp):
+                        rp = normpath( pjoin( root_path_prefix, rp ) )
+                        tcase.getSpec().setRootpath( rp )
 
             rd = tlr.getAttr( 'rundate', None )
             if rd is not None:

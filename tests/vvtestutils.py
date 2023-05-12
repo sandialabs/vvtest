@@ -766,6 +766,14 @@ def create_testlist_from_test_files( *filenames ):
     return tlist
 
 
+def make_test_case( filepath, content ):
+    ""
+    util.writefile( filepath, content )
+    tL = create_tests_from_file( filepath )
+    assert len(tL) == 1
+    return tL[0]
+
+
 def make_fake_TestSpec( name='atest', keywords=['key1','key2'], idflags=None ):
     ""
     if idflags is not None:

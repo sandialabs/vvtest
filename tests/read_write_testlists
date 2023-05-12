@@ -261,6 +261,26 @@ class TestList_results_file( vtu.vvtestTestCase ):
         write_TestList_with_fake_test()
         read_TestList_and_check_fake_test()
 
+    def test_handling_of_relative_root_paths(self):
+        ""
+        os.mkdir( 'sub1' )
+        os.mkdir( 'sub2' )
+
+        with util.change_directory( 'sub1' ):
+            tl = testlist.TestList( TestCaseFactory(), 'test.list' )
+            tl.addTest( vtu.make_test_case( 'tsrc/at.vvt', '' ) )
+            tl.stringFileWrite()
+
+        with util.change_directory( 'sub2' ):
+            tl = testlist.TestList( TestCaseFactory(), '../sub1/test.list' )
+            tl.readTestList( root_path_prefix='../sub1' )
+
+            tL = list( tl.getTests() )
+            self.assertEqual( len(tL), 1 )
+            ts = tL[0].getSpec()
+            assert not os.path.isabs( ts.getFilename() )
+            assert os.path.samefile( ts.getFilename(), '../sub1/tsrc/at.vvt' )
+
     def test_set_filename_separately(self):
         ""
         tl = testlist.TestList( TestCaseFactory() )

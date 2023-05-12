@@ -5,7 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
-from os.path import join as pjoin
+from os.path import join as pjoin, dirname
 
 from .errors import FatalError, TestSpecError
 from .staging import tests_are_related_by_staging
@@ -54,7 +54,8 @@ class TestFileScanner:
                 self.readTestFile( testlist, basedir, fname )
             else:
                 tl = TestList( self.fact, path )
-                tl.readTestList()
+                tl.readTestList( root_path_prefix=dirname(path) )
+                # magic: need to check for duplicates
                 for tcase in tl.getTests():
                     testlist.addTest( tcase )
 
@@ -121,7 +122,6 @@ class TestFileScanner:
         skipped if they don't appear to be a test file.  Attributes from
         existing tests will be absorbed.
         """
-        # assert basepath and os.path.isabs( basepath )
         assert relfile and not os.path.isabs( relfile )
 
         basepath = os.path.normpath( basepath or '.' )

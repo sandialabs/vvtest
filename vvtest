@@ -717,11 +717,13 @@ def generate_test_list( opts, optD, rtdata ):
     if opts.partition:
         import libvvtest.grouper as grouper
 
-        tlists = grouper.partition_tests( tlist, int(opts.partition[0]) )
+        pops = optD['partition_dict']
+        tlists = grouper.partition_tests( tlist, pops['n'] )
         for i,tl in enumerate( tlists ):
-            tl.setFilename( 'testlist.'+str(i) )
+            tl.setFilename( 'vvtestlist.'+str(i) )
             fn = tl.stringFileWrite( **(rtdata.rtinfo) )
             rtdata.perms.apply( fn )
+
     else:
         rtdata.loc.createTestingDirectory( rtdata.perms )
         rtdata.cash.writeCache( rtdata.loc, rtdata.rtconfig, rtdata.perms )

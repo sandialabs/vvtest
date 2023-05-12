@@ -17,6 +17,7 @@ import glob
 import vvtestutils as vtu
 import testutils as util
 
+import libvvtest.cmdline as cmdline
 import libvvtest.grouper as grouper
 from libvvtest.testcreator import TestCreator
 from libvvtest.tcfactory import TestCaseFactory
@@ -26,6 +27,24 @@ from libvvtest.testlist import TestList
 
 
 class suite( vtu.vvtestTestCase ):
+
+    def test_partition_command_line_options(self):
+        ""
+        D = cmdline.create_partition_options( [] )
+        self.assertEqual( D, {} )
+
+        D = cmdline.create_partition_options( ['3'] )
+        self.assertEqual( D, {'n':3} )
+
+        D = cmdline.create_partition_options( ['n=3'] )
+        self.assertEqual( D, {'n':3} )
+
+        D = cmdline.create_partition_options( ['N=3'] )
+        self.assertEqual( D, {'n':3} )
+
+        self.assertRaises( Exception, cmdline.create_partition_options, ['3.3'] )
+        self.assertRaises( Exception, cmdline.create_partition_options, ['foo=3'] )
+        self.assertRaises( Exception, cmdline.create_partition_options, ['N=0'] )
 
     def test_create_a_partition_from_a_test_list(self):
         ""
@@ -126,11 +145,11 @@ class suite( vtu.vvtestTestCase ):
         util.writefile( 'sub1/atest.vvt', '' )
         util.writefile( 'sub2/atest.vvt', '' )
 
-        vtu.runvvtest( '-G 1 sub2' )
+        vtu.runvvtest( '-g --partition 1 sub2' )
 
         scnr,tlist = make_scanner_and_testlist()
         scnr.scanPath( tlist, 'sub1' )
-        _,out,err1 = util.call_capture_output( scnr.scanPath, tlist, 'testlist.0' )
+        _,out,err1 = util.call_capture_output( scnr.scanPath, tlist, 'vvtestlist.0' )
         assert not out.strip()
 
         tL = list( tlist.getTests() )
@@ -138,7 +157,7 @@ class suite( vtu.vvtestTestCase ):
 
         # reverse the order
         scnr,tlist = make_scanner_and_testlist()
-        scnr.scanPath( tlist, 'testlist.0' )
+        scnr.scanPath( tlist, 'vvtestlist.0' )
         _,out,err2 = util.call_capture_output( scnr.scanPath, tlist, 'sub1' )
         assert not out.strip()
 
@@ -167,25 +186,25 @@ class suite( vtu.vvtestTestCase ):
             os.path.isfile( vvt.DEPDIRS[0]+'/afile.txt' )
             """ )
 
-        vtu.runvvtest( '-G 1 dir' )
-        assert os.path.isfile( 'testlist.0' )
-        assert len( glob.glob('testlist*') ) == 1
+        vtu.runvvtest( '-g --partition 1 dir' )
+        assert os.path.isfile( 'vvtestlist.0' )
+        assert len( glob.glob('vvtestlist*') ) == 1
         assert len( glob.glob('TestResults*') ) == 0
 
-        os.remove( 'testlist.0' )
-        vtu.runvvtest( '-G 2 dir' )
+        os.remove( 'vvtestlist.0' )
+        vtu.runvvtest( '-g --partition 2 dir' )
 
-        assert os.path.isfile( 'testlist.0' ) and os.path.isfile( 'testlist.1' )
-        assert len( glob.glob('testlist*') ) == 2
+        assert os.path.isfile( 'vvtestlist.0' ) and os.path.isfile( 'vvtestlist.1' )
+        assert len( glob.glob('vvtestlist*') ) == 2
 
         with util.change_directory( 'rdir' ):
 
-            vrun = vtu.runvvtest( '--run-dir=TR1 ../testlist.0' )
+            vrun = vtu.runvvtest( '--run-dir=TR1 ../vvtestlist.0' )
             tids = vrun.getTestIds()
             cnt = vrun.countTestLines( 'pass' )
 
             vtu.remove_results()
-            vrun = vtu.runvvtest( '--run-dir=TR2 ../testlist.1' )
+            vrun = vtu.runvvtest( '--run-dir=TR2 ../vvtestlist.1' )
             tids.extend( vrun.getTestIds() )
             cnt += vrun.countTestLines( 'pass' )
 

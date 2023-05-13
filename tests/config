@@ -375,10 +375,10 @@ class config_tests( vtu.vvtestTestCase ):
         # TODO: using platform() and compiler() is deprecated Feb 2022, and
         #       when removed, this test can be deleted
         os.mkdir( 'config' )
-        util.writefile( "tst.xml", """
-            <rtest name="tst">
-              <execute> echo "the COMPILER is $COMPILER" </execute>
-            </rtest>""" )
+        util.writefile( "tst.vvt", """
+            import vvtest_util as vvt
+            print ( "the COMPILER is "+str(vvt.COMPILER) )
+            """ )
 
         # first grab the default compiler and platform name
         vrun = vtu.runvvtest( '--config config', addplatform=False )

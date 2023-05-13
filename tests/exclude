@@ -77,39 +77,6 @@ class exclude_tests( vtu.vvtestTestCase ):
                 """ )
             vtu.runvvtest( batch=batch ).assertCounts( total=0 )
 
-    def test_exclude_an_execute_block_by_platform_or_option(self):
-        ""
-        platname = vtu.core_platform_name()
-
-        util.writefile( "exe_exclude.xml", '''
-            <rtest name="exe_exclude">
-              <execute platforms="not '''+platname+'''">
-                echo "platform_block"
-              </execute>
-              <execute options="foo or bar">
-                echo "option_block"
-              </execute>
-              <execute>
-                echo "empty_block"
-              </execute>
-            </rtest>''' )
-        time.sleep(1)
-
-        vtu.runvvtest().assertCounts( total=1, npass=1 )
-
-        fn = 'TestResults*/*/execute.log'
-        assert len( util.grepfiles( 'platform_block', fn ) ) == 0
-        assert len( util.grepfiles( 'option_block', fn ) ) == 0
-        assert len( util.grepfiles( 'empty_block', fn ) ) == 1
-
-        vtu.remove_results()
-        vrun = vtu.runvvtest( '-w --plat XBox -o bar' )
-        vrun.assertCounts( total=1, npass=1 )
-
-        assert len( util.grepfiles( 'platform_block', fn ) ) == 1
-        assert len( util.grepfiles( 'option_block', fn ) ) == 1
-        assert len( util.grepfiles( 'empty_block', fn ) ) == 1
-
     def test_using_an_option_attribute_with_include(self):
         ""
         util.writefile( "opt_exclude.vvt", '''

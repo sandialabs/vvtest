@@ -20,550 +20,13 @@ from testutils import print3
 from libvvtest.errors import TestSpecError
 
 from libvvtest.parseutil import evaluate_platform_expr
-from libvvtest.platexpr import PlatformExpression
 from libvvtest.RuntimeConfig import RuntimeConfig
 from libvvtest.testcase import TestCase
 import libvvtest.testlistio as tio
 from libvvtest.tcfactory import TestCaseFactory
 
 
-class XML_ElementTree_tests( vtu.vvtestTestCase ):
-
-    def test_basic_use_of_ElementTree(self):
-        ""
-        import xml.etree.ElementTree as xtree
-
-        util.writefile( 'foo.xml', """
-            <big>
-                foo
-                <bad color="brown">
-                    home
-                </bad>
-                bar
-                <wolf color="grey">
-                    den
-                </wolf>
-                baz
-            </big>
-            """ )
-
-        tree = xtree.parse( 'foo.xml' )
-
-        root = tree.getroot()
-        print3( 'root', repr(root.tag), repr(root.text),
-                        repr(root.tail), repr(root.attrib) )
-        assert root.tag == 'big'
-        assert root.text.strip() == 'foo'
-        assert root.tail == None
-
-        subL = list(root)
-        print3( 'root children', subL )
-        assert len(subL) == 2
-
-        bad = subL[0]
-        assert bad.tag == 'bad'
-        assert len(bad.attrib) == 1 and bad.attrib['color'] == 'brown'
-        assert bad.text.strip() == 'home'
-        assert bad.tail.strip() == 'bar'
-
-        wolf = subL[1]
-        assert wolf.tag == 'wolf'
-        assert len(wolf.attrib) == 1 and wolf.attrib['color'] == 'grey'
-        assert wolf.text.strip() == 'den'
-        assert wolf.tail.strip() == 'baz'
-
-    def test_an_xml_error_should_raise_an_exception(self):
-        ""
-        import xml.etree.ElementTree as xtree
-
-        util.writefile( 'foo.xml', """
-            <big>
-                foo
-                <bad color="brown">
-                    home
-                baz
-            </big>
-            """ )
-
-        # determine what exception class is being used
-        try:
-            tree = xtree.parse( 'foo.xml' )
-        except:
-            ElementTreeException = sys.exc_info()[0]
-        else:
-            raise Exception( 'expected an exception' )
-
-        # catch that exception class
-        try:
-            tree = xtree.parse( 'foo.xml' )
-        except ElementTreeException:
-            print3( sys.exc_info()[1] )
-        else:
-            raise Exception( 'expected an exception' )
-
-    def test_using_xmlwrapper_to_read_an_xml_file(self):
-        ""
-        util.writefile( 'foo.xml', """
-            <big>
-                foo
-                <bad color="brown">
-                    home
-                </bad>
-                baz
-            </big>
-            """ )
-
-        import libvvtest.xmlwrapper as xmlwrapper
-        rdr = xmlwrapper.XmlDocReader()
-        doc = rdr.readDoc( 'foo.xml' )
-        print3( 'doc line', doc.line_no )
-
-
-class XML_test_specifications( vtu.vvtestTestCase ):
-
-    def test_parameterize_analyze_at_top_level(self):
-        ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <keywords> junk1 junk2 </keywords>
-              <keywords> junk3 </keywords>
-              <parameterize np="1 4"/>
-              <parameterize Nnodes="10 100 1000"/>
-              <include platforms="not SunOS and not Linux"/>
-              <timeout platforms="SunOS" value="240"/>
-              <timeout platforms="not IRIX64" value="1200"/>
-              <mirror_files> file1.inp file1.exo </mirror_files>
-              <copy_files linkname="f.inp f2.exo"> file2.inp file2.exo
-              </copy_files>
-              <execute name="alegra"> -o 2D </execute>
-              <execute platforms="not SunOS"> # comment </execute>
-              <baseline parameters="np=1" file="atest.exo"
-                                          destination="atest.base_exo"/>
-              <baseline parameters="np=4"> # script here </baseline>
-            </rtest>""" )
-
-        tL = create_tests( 'atest.xml' )
-        for ti in tL:
-            print3( ti )
-        assert len(tL) == 6
-
-    def test_specifying_parameters(self):
-        ""
-        util.writefile( 'bad4.xml', """
-            <rtest name="atest">
-              <parameterize/>
-            </rtest>""" )
-
-        create_tests( 'bad4.xml' )
-
-        util.writefile( 'bad5.xml', """
-            <rtest name="atest">
-              <parameterize h=r="2"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad5.xml' )
-
-        util.writefile( 'bad6.xml', """
-            <rtest name="atest">
-              <parameterize p=" "/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad6.xml' )
-
-        util.writefile( 'bad6b.xml', """
-            <rtest name="atest">
-              <parameterize foo.bar="baz"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad6b.xml' )
-
-        util.writefile( 'bad7.xml', """
-            <rtest name="atest">
-              <parameterize p="val1 val/2"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad7.xml' )
-
-        util.writefile( 'ok3.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tL = create_tests( 'ok3.xml' )
-        assert len(tL) == 1
-
-        util.writefile( 'ok3a.xml', """
-            <rtest name="atest">
-              <parameterize pname="val1 val2 val^9"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok3a.xml' )
-        assert len(tL) == 3
-        assert len( set( [ t.getID() for t in tL ] ) ) == 3  # IDs are unique
-        pL = [ list(t.getParameters().items())[0] for t in tL ]
-        pL.sort()
-        print3( "param list", pL )
-        assert pL == [('pname','val1'), ('pname','val2'), ('pname','val^9')]
-
-        util.writefile( 'ok4.xml', """
-            <rtest name="atest">
-              <parameterize pname="val1 "/>
-              <parameterize parm="valA"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok4.xml' )
-        assert len(tL) == 1
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'parm=valA.pname=val1'
-
-        util.writefile( 'ok5.xml', """
-            <rtest name="atest">
-              <parameterize pname="val1 val2"/>
-              <parameterize parm="valA valB valC"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok5.xml' )
-        assert len(tL) == 6
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'parm=valA.pname=val1' and pL[1] == 'parm=valA.pname=val2'
-        assert pL[2] == 'parm=valB.pname=val1' and pL[3] == 'parm=valB.pname=val2'
-        assert pL[4] == 'parm=valC.pname=val1' and pL[5] == 'parm=valC.pname=val2'
-
-        util.writefile( 'ok6.xml', """
-            <rtest name="atest">
-              <parameterize pname="val1 val2"/>
-              <parameterize parm="valA"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6.xml' )
-        assert len(tL) == 2
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'parm=valA.pname=val1' and pL[1] == 'parm=valA.pname=val2'
-
-        util.writefile( 'ok6b.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1 A2" paramB="B1 B2"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6b.xml' )
-        assert len(tL) == 2
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'paramA=A1.paramB=B1' and pL[1] == 'paramA=A2.paramB=B2'
-
-        util.writefile( 'ok6c.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1" paramB="B1 "/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6c.xml' )
-        assert len(tL) == 1
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'paramA=A1.paramB=B1'
-
-        util.writefile( 'ok6d.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1 A2" paramB="B1 B2"/>
-              <parameterize paramC="C1 C2"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6d.xml' )
-        assert len(tL) == 4
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'paramA=A1.paramB=B1.paramC=C1'
-        assert pL[1] == 'paramA=A1.paramB=B1.paramC=C2'
-        assert pL[2] == 'paramA=A2.paramB=B2.paramC=C1'
-        assert pL[3] == 'paramA=A2.paramB=B2.paramC=C2'
-
-        util.writefile( 'ok6e.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1" paramB="B1"/>
-              <parameterize paramC="C1 C2"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6e.xml' )
-        assert len(tL) == 2
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'paramA=A1.paramB=B1.paramC=C1'
-        assert pL[1] == 'paramA=A1.paramB=B1.paramC=C2'
-
-        util.writefile( 'bad7b.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1 A2" paramB="B1 "/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad7b.xml' )
-
-        util.writefile( 'bad7c.xml', """
-            <rtest name="atest">
-              <parameterize paramA="" paramB=" "/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad7c.xml' )
-
-        util.writefile( 'ok6f.xml', """
-            <rtest name="atest">
-              <keywords> fast medium </keywords>
-              <parameterize keywords="fast" paramA="A1" paramB="B1"/>
-              <parameterize not_keywords="fast" paramA="A1 A2" paramB="B1 B2"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'ok6f.xml' )
-
-        # duplicate parameterize blocks
-        util.writefile( 'ok6h.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1" paramB="B1"/>
-              <parameterize paramA="A1 A2" paramB="B1 B2"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6h.xml' )
-        assert len(tL) == 2
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'paramA=A1.paramB=B1'
-        assert pL[1] == 'paramA=A2.paramB=B2'
-
-        util.writefile( 'ok6i.xml', """
-            <rtest name="atest">
-              <parameterize paramA="A1 A2" paramB="B1 B2"/>
-              <parameterize paramA="A1" paramB="B1"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok6i.xml' )
-        assert len(tL) == 1
-        pL = paramGather(tL)
-        print3( "param list", pL )
-        assert pL[0] == 'paramA=A1.paramB=B1'
-
-    def expr(self, string_expr):
-        ""
-        expr = PlatformExpression( string_expr )
-        return expr
-
-    def test_platform_specifications(self):
-        ""
-        util.writefile( 'green.xml', """
-            <rtest name="atest">
-              <include platforms="some/value"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'green.xml', 'Dummy', False )
-        create_test_and_eval_platform_expr( 'green.xml', 'some', True )
-        create_test_and_eval_platform_expr( 'green.xml', 'value', True )
-
-        util.writefile( 'bad11.xml', """
-            <rtest name="atest">
-              <include platforms="" parameters="some value"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad11.xml' )
-
-        util.writefile( 'bad12.xml', """
-            <rtest name="atest">
-              <parameterize some="value"/>
-              <include platforms="" parameters="some=value =value"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad12.xml' )
-
-        util.writefile( 'ok7.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tL = create_tests( 'ok7.xml' )
-        assert len(tL) == 1
-
-        util.writefile( 'ok8.xml', """
-            <rtest name="atest">
-              <include platform=""/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok8.xml', 'Dummy', False )
-
-        util.writefile( 'ok8a.xml', """
-            <rtest name="atest">
-              <include platforms=""/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok8a.xml', 'Dummy', False )
-
-        util.writefile( 'ok8b.xml', """
-            <rtest name="atest">
-              <include platform=""/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok8b.xml', 'Dummy', False )
-
-        util.writefile( 'ok9.xml', """
-            <rtest name="atest">
-              <include platform="something"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok9.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok9.xml', 'somethingelse', False )
-
-        util.writefile( 'ok9a.xml', """
-            <rtest name="atest">
-              <include platforms="something"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok9a.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok9a.xml', 'somethingelse', False )
-        create_test_and_eval_platform_expr( 'ok9a.xml', 'something', False,
-                        platform_expr=self.expr('not something') )
-
-        util.writefile( 'ok10.xml', """
-            <rtest name="atest">
-              <include platform="something or IRIX"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok10.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok10.xml', 'IRIX', True )
-        create_test_and_eval_platform_expr( 'ok10.xml', 'somethingelse', False )
-        create_test_and_eval_platform_expr( 'ok10.xml', 'Linux', True,
-                        platform_expr=self.expr('IRIX and not SunOS') )
-
-        util.writefile( 'ok10a.xml', """
-            <rtest name="atest">
-              <include platforms="something or IRIX"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok10a.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok10a.xml', 'IRIX', True )
-        create_test_and_eval_platform_expr( 'ok10a.xml', 'somethingelse', False )
-
-        util.writefile( 'ok11.xml', """
-            <rtest name="atest">
-              <include platforms="not ( something or IRIX )"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok11.xml', 'something', False )
-        create_test_and_eval_platform_expr( 'ok11.xml', 'IRIX', False )
-        create_test_and_eval_platform_expr( 'ok11.xml', 'somethingelse', True )
-        create_test_and_eval_platform_expr( 'ok11.xml', 'Linux', True,
-                            platform_expr=self.expr('Linux and not IRIX') )
-
-        util.writefile( 'ok11a.xml', """
-            <rtest name="atest">
-              <include platforms="not something and not IRIX"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok11a.xml', 'something', False )
-        create_test_and_eval_platform_expr( 'ok11a.xml', 'IRIX', False )
-        create_test_and_eval_platform_expr( 'ok11a.xml', 'somethingelse', True )
-        create_test_and_eval_platform_expr( 'ok11a.xml', 'Linux', True,
-                            platform_expr=self.expr('SunOS and not IRIX') )
-
-        util.writefile( 'ok12.xml', """
-            <rtest name="atest">
-              <include platforms="not dummy"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok12.xml', 'anything', True )
-
-        util.writefile( 'ok13.xml', """
-            <rtest name="atest">
-              <include platforms="something or IRIX"/>
-              <include platforms="not theother"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok13.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok13.xml', 'IRIX', True )
-        create_test_and_eval_platform_expr( 'ok13.xml', 'theother', False )
-
-        util.writefile( 'ok13a.xml', """
-            <rtest name="atest">
-              <include platforms="something or IRIX"/>
-              <include platforms="not theother"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok13a.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok13a.xml', 'IRIX', True )
-        create_test_and_eval_platform_expr( 'ok13a.xml', 'theother', False )
-
-        util.writefile( 'ok14.xml', """
-            <rtest name="atest">
-              <include platforms="something or IRIX"/>
-              <include platforms="not IRIX"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok14.xml', 'IRIX', False )
-        create_test_and_eval_platform_expr( 'ok14.xml', 'theother', False )
-
-        util.writefile( 'ok14a.xml', """
-            <rtest name="atest">
-              <include platforms="something or IRIX"/>
-              <include platforms="not IRIX"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14a.xml', 'something', True )
-        create_test_and_eval_platform_expr( 'ok14a.xml', 'IRIX', False )
-        create_test_and_eval_platform_expr( 'ok14a.xml', 'theother', False )
-
-        util.writefile( 'ok14b.xml', """
-            <rtest name="atest">
-              <include options=""/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14b.xml', 'something', True,
-                                            option_list=[] )
-        create_test_and_eval_platform_expr( 'ok14b.xml', 'something', True,
-                                            option_list=['opt'] )
-
-        util.writefile( 'ok14c.xml', """
-            <rtest name="atest">
-              <include options="opt"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14c.xml', 'something', False,
-                                            option_list=[] )
-        create_test_and_eval_platform_expr( 'ok14c.xml', 'something', True,
-                                            option_list=['opt'] )
-
-        util.writefile( 'ok14d.xml', """
-            <rtest name="atest">
-              <include option="opt or pop"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14d.xml', 'something', False,
-                                            option_list=[] )
-        create_test_and_eval_platform_expr( 'ok14d.xml', 'something', True,
-                                            option_list=['opt'] )
-        create_test_and_eval_platform_expr( 'ok14d.xml', 'something', True,
-                                            option_list=['pop'] )
-        create_test_and_eval_platform_expr( 'ok14d.xml', 'something', True,
-                                            option_list=['opt','pop'] )
-
-        util.writefile( 'ok14e.xml', """
-            <rtest name="atest">
-              <include platforms="PLAT" options=""/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14e.xml', 'something', False,
-                                            option_list=[] )
-        create_test_and_eval_platform_expr( 'ok14e.xml', 'PLAT', True,
-                                            option_list=[] )
-        create_test_and_eval_platform_expr( 'ok14e.xml', 'PLAT', True,
-                                            option_list=['opt'] )
-
-        util.writefile( 'ok14f.xml', """
-            <rtest name="atest">
-              <include platforms="PLAT" options="opt"/>
-            </rtest>""" )
-
-        create_test_and_eval_platform_expr( 'ok14f.xml', 'something', False,
-                                            option_list=[] )
-        create_test_and_eval_platform_expr( 'ok14f.xml', 'something', False,
-                                            option_list=['opt'] )
-        create_test_and_eval_platform_expr( 'ok14f.xml', 'PLAT', True,
-                                            option_list=['opt'] )
+class suite( vtu.vvtestTestCase ):
 
     def test_evaluate_platform_expr_utility(self):
         ""
@@ -577,522 +40,14 @@ class XML_test_specifications( vtu.vvtestTestCase ):
         assert evaluate_platform_expr( 'foo-bar', 'foo-*' )
         assert not evaluate_platform_expr( 'foobar', 'foo-*' )
 
-    def test_parameterize_with_platform_filtering(self):
-        ""
-        util.writefile( 'ok15.xml', """
-            <rtest name="atest">
-              <parameterize platforms="not IRIX" np="1 4"/>
-              <parameterize platforms="IRIX" np="1"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok15.xml', 'IRIX' )
-        assert len(tL) == 1
-        assert tL[0].getParameterValue('np') == '1'
-        tL = create_tests( 'ok15.xml', 'something' )
-        assert len(tL) == 2
-        assert ( tL[0].getParameterValue('np') == '1' and \
-                 tL[1].getParameterValue('np') == '4' ) or \
-               ( tL[1].getParameterValue('np') == '1' and \
-                 tL[0].getParameterValue('np') == '4' )
-
-        util.writefile( 'ok16.xml', """
-            <rtest name="atest">
-              <parameterize platforms="not IRIX" np="1 4"/>
-              <parameterize platforms="IRIX" np="1"/>
-              <parameterize hsize="1.0 2.0"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok16.xml', 'IRIX' )
-        assert len(tL) == 2
-        tL = create_tests( 'ok16.xml', 'something' )
-        assert len(tL) == 4
-
-        util.writefile( 'ok17.xml', """
-            <rtest name="atest">
-              <parameterize platforms="not IRIX" np="1 4"/>
-              <parameterize platforms="IRIX"     np="1"/>
-              <parameterize platforms="not IRIX" hsize="1.0 2.0"/>
-              <parameterize platforms="IRIX"     hsize="1.0"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok17.xml', 'IRIX' )
-        assert len(tL) == 1
-        assert tL[0].getParameterValue('np') == '1' and \
-               tL[0].getParameterValue('hsize') == '1.0'
-        tL = create_tests( 'ok17.xml', 'something' )
-        assert len(tL) == 4
-
-        util.writefile( 'ok18.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <parameterize platforms="not IRIX" hsize="1.0 2.0"/>
-              <parameterize platforms="IRIX"     hsize="1.0"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok18.xml', 'IRIX' )
-        assert len(tL) == 2
-        tL = create_tests( 'ok18.xml', 'something' )
-        assert len(tL) == 4
-
-    def test_that_platform_expressions_are_case_insensitive(self):
-        ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize platforms="poo*" np="2"/>
-              <timeout platform="*OKY" value="51"/>
-            </rtest>""" )
-        util.writefile( 'btest.vvt', """
-            #VVT: parameterize (platforms=poo*) : np = 4
-            #VVT: timeout (platform=*OKY) : 54
-            """ )
-
-        tL = vtu.create_tests_from_file( 'atest.xml', platname='Pooky' )
-        assert len(tL) == 1
-        assert tL[0].getSpec().getDisplayString() == 'atest.np=2'
-        assert tL[0].getSpec().getTimeout() == 51
-
-        tL = vtu.create_tests_from_file( 'btest.vvt', platname='Pooky' )
-        assert len(tL) == 1
-        assert tL[0].getSpec().getDisplayString() == 'btest.np=4'
-        assert tL[0].getSpec().getTimeout() == 54
-
-    def test_timeout_specifications(self):
-        ""
-        util.writefile( 'bad16.xml', """
-            <rtest name="atest">
-              <timeout value=""/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad16.xml' )
-
-        util.writefile( 'bad17.xml', """
-            <rtest name="atest">
-              <timeout value="xyz"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad17.xml' )
-
-        util.writefile( 'ok20.xml', """
-            <rtest name="atest">
-              <timeout value="240"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok20.xml' )
-        assert len(tL) == 1
-        assert tL[0].getTimeout() == 240
-
-        util.writefile( 'ok23.xml', """
-            <rtest name="atest">
-              <timeout value="240"/>
-              <timeout platforms="SunOS" value="300"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok23.xml', 'anything' )
-        assert len(tL) == 1
-        assert tL[0].getTimeout() == 240
-        tL = create_tests( 'ok23.xml', 'SunOS' )
-        assert len(tL) == 1
-        assert tL[0].getTimeout() == 300
-
-    def test_execution_fragments(self):
-        ""
-        util.writefile( 'bad22.xml', """
-            <rtest name="atest">
-              <execute name="ab/c"> # frag </execute>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad22.xml' )
-
-        util.writefile( 'ok25.xml', """
-            <rtest name="atest">
-              <execute> set dummy = 10 </execute>
-              <execute name="unixdiff"> filename1 filename2 </execute>
-              <execute expect="anyexit"> echo "dummy = $dummy" </execute>
-              <execute ifdef="_NAME"> # frag </execute>
-            </rtest>""" )
-
-        tL = create_tests( 'ok25.xml' )
-        assert len(tL) == 1
-        xL = tL[0].getExecutionList()
-        assert len(xL) == 3
-        assert xL[0][0] == None
-        assert xL[0][1] == "set dummy = 10"
-        assert xL[0][2] == None
-        assert xL[1][0] == "unixdiff"
-        assert xL[1][1] == "filename1 filename2"
-        assert xL[1][2] == None
-        assert xL[2][0] == None
-        assert xL[2][1] == 'echo "dummy = $dummy"'
-        assert xL[2][2] == 'anyexit'
-
-        util.writefile( 'bad22b.xml', """
-            <rtest name="atest">
-              <execute ifdef="3NAME"> # frag </execute>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad22b.xml' )
-
-        util.writefile( 'bad22c.xml', """
-            <rtest name="atest">
-              <execute ifdef="NAME."> # frag </execute>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad22c.xml' )
-
-        util.writefile( 'ok25a.xml', """
-            <rtest name="atest">
-              <execute ifdef="VNAME"> # frag </execute>
-            </rtest>""" )
-
-        tL = create_tests( 'ok25a.xml' )
-        assert len(tL) == 1
-        t = tL[0]
-        assert len( t.getExecutionList() ) == 0, \
-               "VNAME should have to be in the environment"
-        os.environ[ 'VNAME' ] = "somevalue"
-        tL = create_tests( 'ok25a.xml' )
-        assert len(tL) == 1
-        t = tL[0]
-        assert len( t.getExecutionList() ) == 1, \
-               "VNAME defined in the environment should trigger the execute fragment"
-
-    def test_copy_and_link_files_specifications(self):
-        ""
-        util.writefile( 'bad23.xml', """
-            <rtest name="atest">
-              <copy_files>   </copy_files>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad23.xml' )
-
-        util.writefile( 'bad24.xml', """
-            <rtest name="atest">
-              <link_files linkname="file1"> file1 file2 </link_files>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad24.xml' )
-
-        util.writefile( 'bad24b.xml', """
-            <rtest name="atest">
-              <link_files> /path/file1 </link_files>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad24b.xml' )
-
-        util.writefile( 'bad24c.xml', """
-            <rtest name="atest">
-              <link_files linkname="/path/file1"> file1 </link_files>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad24c.xml' )
-
-        util.writefile( 'bad24d.xml', """
-            <rtest name="atest">
-              <link_files linkname="/path/file1"> /apath/file1 </link_files>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad24d.xml' )
-
-        # this section tests using test_name attribute for backward compatibility
-        util.writefile( 'ok26b.xml', """
-            <rtest name="atest">
-              <copy_files> file1 file2 </copy_files>
-              <link_files test_name="file3.in"> file3 </link_files>
-            </rtest>""" )
-
-        tL = create_tests( 'ok26b.xml' )
-        assert len(tL) == 1
-        cpL = tL[0].getCopyFiles()
-        cpL.sort()
-        print3( "copy files", cpL )
-        assert len(cpL) == 2
-        assert cpL[0] == ("file1", None)
-        assert cpL[1] == ("file2", None)
-        lnL = tL[0].getLinkFiles()
-        lnL.sort()
-        print3( "link files", lnL )
-        assert len(lnL) == 2
-        assert lnL[0] == ("file3", "file3.in")
-        assert lnL[1] == ("ok26b.xml", None)
-
-        util.writefile( 'ok26.xml', """
-            <rtest name="atest">
-              <copy_files> file1 file2 </copy_files>
-              <link_files linkname="file3.in"> file3 </link_files>
-            </rtest>""" )
-
-        tL = create_tests( 'ok26.xml' )
-        assert len(tL) == 1
-        cpL = tL[0].getCopyFiles()
-        cpL.sort()
-        print3( "copy files", cpL )
-        assert len(cpL) == 2
-        assert cpL[0] == ("file1", None)
-        assert cpL[1] == ("file2", None)
-        lnL = tL[0].getLinkFiles()
-        lnL.sort()
-        print3( "link files", lnL )
-        assert len(lnL) == 2
-        assert lnL[0] == ("file3", "file3.in")
-        assert lnL[1] == ("ok26.xml", None)
-
-        util.writefile( 'ok27.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <link_files parameters="np=1" linkname="file"> file.1 </link_files>
-              <link_files parameters="np=4" linkname="file"> file.4 </link_files>
-            </rtest>""" )
-
-        tL = create_tests( 'ok27.xml' )
-        assert len(tL) == 2
-        for t in tL:
-          if t.getParameterValue('np') == '1':
-            assert len( t.getCopyFiles() ) == 0
-            lnL = t.getLinkFiles()
-            print3( "np=1 linked files", lnL )
-            assert len(lnL) == 2
-            lnL.sort()
-            assert lnL[0] == ("file.1", "file")
-            assert lnL[1] == ("ok27.xml", None)
-          else:
-            assert t.getParameterValue('np') == '4'
-            assert len( t.getCopyFiles() ) == 0
-            lnL = t.getLinkFiles()
-            print3( "np=2 linked files", lnL )
-            assert len(lnL) == 2
-            lnL.sort()
-            assert lnL[0] == ("file.4", "file")
-            assert lnL[1] == ("ok27.xml", None)
-
-        util.writefile( 'ok28.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <copy_files parameters="np=1" linkname="file"> file.1 </copy_files>
-              <copy_files parameters="np=4" linkname="file"> file.4 </copy_files>
-            </rtest>""" )
-
-        tL = create_tests( 'ok28.xml' )
-        assert len(tL) == 2
-        for t in tL:
-          if t.getParameterValue('np') == '1':
-            assert len( t.getLinkFiles() ) == 1
-            cpL = t.getCopyFiles()
-            print3( "np=1 copied files", cpL )
-            assert len(cpL) == 1
-            assert cpL[0] == ("file.1", "file")
-          else:
-            assert t.getParameterValue('np') == '4'
-            assert len( t.getLinkFiles() ) == 1
-            cpL = t.getCopyFiles()
-            print3( "np=2 copied files", cpL )
-            assert len(cpL) == 1
-            assert cpL[0] == ("file.4", "file")
-
-    def test_baseline_specifications(self):
-        ""
-        util.writefile( 'bad25.xml', """
-            <rtest name="atest">
-              <baseline destination="file1" file="file1 file2"/>
-            </rtest>""" )
-
-        self.assertRaises( TestSpecError, create_tests, 'bad25.xml' )
-
-        util.writefile( 'ok29.xml', """
-            <rtest name="atest">
-              <baseline file="afile.exo"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok29.xml' )
-        assert len(tL) == 1
-        bL = tL[0].getBaselineFiles()
-        assert len(bL) == 1
-        assert bL[0] == ('afile.exo', 'afile.exo')
-
-        util.writefile( 'ok30.xml', """
-            <rtest name="atest">
-              <baseline file="afile.exo" destination="bfile.exo"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok30.xml' )
-        assert len(tL) == 1
-        bL = tL[0].getBaselineFiles()
-        assert len(bL) == 1
-        assert bL[0] == ('afile.exo', 'bfile.exo')
-
-        util.writefile( 'ok31.xml', """
-            <rtest name="atest">
-              <baseline file="afile.exo" destination="bfile.exo"/>
-              <baseline> set dummy = 10 </baseline>
-            </rtest>""" )
-
-        tL = create_tests( 'ok31.xml' )
-        assert len(tL) == 1
-        bL = tL[0].getBaselineFiles()
-        assert len(bL) == 1
-        assert bL[0] == ('afile.exo', 'bfile.exo')
-        bscr = tL[0].getBaselineScript()
-        assert bscr != None and bscr.strip() and 'set dummy = 10' in bscr
-
-        util.writefile( 'ok32.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <baseline parameters="np=1" file="file.exo" destination="file.base_exo"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok32.xml' )
-        assert len(tL) == 2
-        for t in tL:
-          bL = t.getBaselineFiles()
-          assert not t.getBaselineScript()
-          if t.getParameterValue('np') == '1':
-            assert len(bL) == 1
-            assert bL[0] == ('file.exo', 'file.base_exo')
-          else:
-            assert t.getParameterValue('np') == '4'
-            assert len(bL) == 0
-
-        util.writefile( 'ok33.xml', """
-            <rtest name="atest">
-              <baseline platforms="SunOS" file="file.exo" destination="file.SunOS_exo"/>
-              <baseline platforms="not SunOS" file="file.exo" destination="file.base_exo"/>
-            </rtest>""" )
-
-        tL = create_tests( 'ok33.xml', 'SunOS' )
-        assert len(tL) == 1
-        assert not tL[0].getBaselineScript()
-        bL = tL[0].getBaselineFiles()
-        assert len(bL) == 1
-        assert bL[0] == ('file.exo', 'file.SunOS_exo')
-        tL = create_tests( 'ok33.xml', 'Linux' )
-        assert len(tL) == 1
-        assert not tL[0].getBaselineScript()
-        bL = tL[0].getBaselineFiles()
-        assert len(bL) == 1
-        assert bL[0] == ('file.exo', 'file.base_exo')
-
-    def test_refreshing_a_TestSpec_object(self):
-        ""
-        util.writefile( 'bad26.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tL = create_tests( 'bad26.xml' )
-        assert len(tL) == 1
-        util.writefile( 'bad26.xml', """
-            <rtest name="atest">
-              <parameterize np="1"/>
-            </rtest>""" )
-
-        reparse_test( tL[0] )
-
-        util.writefile( 'bad27.xml', """
-            <rtest name="atest">
-              <parameterize np="1"/>
-            </rtest>""" )
-
-        tL = create_tests( 'bad27.xml' )
-        assert len(tL) == 1
-        util.writefile( 'bad27.xml', """
-            <rtest name="atest">
-              <parameterize np="4"/>
-            </rtest>""" )
-
-        reparse_test( tL[0] )
-
-        util.writefile( 'bad28.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-            </rtest>""" )
-
-        tL = create_tests( 'bad28.xml' )
-        assert len(tL) == 2
-        util.writefile( 'bad28.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <parameterize N="1 4"/>
-            </rtest>""" )
-
-        for t in tL:
-          reparse_test( t )
-
-        util.writefile( 'bad29.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-            </rtest>""" )
-
-        tL = create_tests( 'bad29.xml' )
-        assert len(tL) == 2
-        util.writefile( 'bad29.xml', """
-            <rtest name="atest2">
-              <parameterize np="1 4"/>
-            </rtest>""" )
-
-        for t in tL:
-          reparse_test( t )
-
-        util.writefile( 'bad30.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-            </rtest>""" )
-
-        tL = create_tests( 'bad30.xml' )
-        assert len(tL) == 2
-        util.writefile( 'bad30.xml', """
-            <rtest>
-              <parameterize np="1 4"/>
-            </rtest>""" )
-
-        for t in tL:
-            self.assertRaises( TestSpecError, reparse_test, t )
-
-        util.writefile( 'ok34.xml', """
-            <rtest name="atest">
-              <keywords> key1 key2 </keywords>
-              <parameterize np="1 4"/>
-              <include platforms="Linux"/>
-              <timeout value="120"/>
-              <execute name="alegra"> content </execute>
-              <copy_files> file1.C file2.F </copy_files>
-              <link_files linkname="file"> lnfile </link_files>
-            </rtest>""" )
-
-        tL = create_tests( 'ok34.xml', 'Linux' )
-        assert len(tL) == 2
-        for t in tL:
-          print3( t )
-          kL = t.getKeywords()
-          kL.sort()
-          assert kL == [ "alegra", "atest", "key1", "key2", "np", "ok34" ]
-          assert t.getTimeout() == 120
-          xL = t.getExecutionList()
-          assert len(xL) == 1
-          assert xL[0][0] == "alegra"
-          assert xL[0][1] == "content"
-          cpL = t.getCopyFiles()
-          assert len(cpL) == 2
-          cpL.sort()
-          assert cpL[0] == ("file1.C",None)
-          assert cpL[1] == ("file2.F",None)
-          lnL = t.getLinkFiles()
-          assert len(lnL) == 2
-          lnL.sort()
-          assert lnL[0] == ("lnfile","file")
-          assert lnL[1] == ("ok34.xml",None)
+        assert evaluate_platform_expr( 'Foo', 'foo' )
+        assert evaluate_platform_expr( 'Foo', 'fo*' )
+        assert evaluate_platform_expr( 'foo', 'Foo' )
+        assert evaluate_platform_expr( 'foo', 'Fo*' )
+        assert evaluate_platform_expr( 'Pooky', '*OKY' )
 
     def test_build_option_specifications(self):
         ""
-        util.writefile( 'ok35.xml', """
-            <rtest name="atest">
-                <include options="2D and ( tridev or tri8 )"/>
-            </rtest>""" )
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-                <execute options="foo or b/r"> echo "hello" </execute>
-            </rtest>""" )
-        util.writefile( 'xtest.xml', """
-            <rtest name="xtest">
-                <timeout options="foo or bar-*" value="1234"/>
-            </rtest>""" )
         util.writefile( 'btest.vvt', """
             #VVT: link (options="foo or b^r") : file.txt
             """ )
@@ -1104,21 +59,12 @@ class XML_test_specifications( vtu.vvtestTestCase ):
             """ )
         time.sleep(1)
 
-        create_and_eval_option_expr( 'ok35.xml', [], False )
-        create_and_eval_option_expr( 'ok35.xml', ['2D','tridev'], True )
-        create_and_eval_option_expr( 'ok35.xml', ['2D','tri8'], True )
-        create_and_eval_option_expr( 'ok35.xml', ['3D','tri8'], False )
-        create_and_eval_option_expr( 'ok35.xml', ['tri8','2D','tridev'], True )
-
-        self.assertRaises( TestSpecError,
-                           vtu.parse_single_test_file, 'atest.xml' )
-
-        tspec = vtu.parse_single_test_file( 'xtest.xml', optionlist=['baz'] )
-        assert tspec.getTimeout() is None
-        tspec = vtu.parse_single_test_file( 'xtest.xml', optionlist=['bar-baz'] )
-        assert tspec.getTimeout() == 1234
-
-        vtu.parse_single_test_file( 'btest.vvt' )
+        self.assertEqual( get_link_files_from_test( 'btest.vvt', [] ), [] )
+        self.assertEqual( get_link_files_from_test( 'btest.vvt', ['foo'] ),
+                          [('file.txt',None)] )
+        self.assertEqual( get_link_files_from_test( 'btest.vvt', ['bar'] ), [] )
+        self.assertEqual( get_link_files_from_test( 'btest.vvt', ['spot','b^r'] ),
+                          [('file.txt',None)] )
 
         self.assertRaises( TestSpecError,
                            vtu.parse_single_test_file, 'ctest.vvt' )
@@ -1130,129 +76,164 @@ class XML_test_specifications( vtu.vvtestTestCase ):
 
     def test_parameterize_analyze_combinations(self):
         ""
-        util.writefile( 'ok38.xml', """
-            <rtest name="atest">
-              <analyze>echo "hello from analyze"</analyze>
-            </rtest>""" )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: analyze : --analyze
+            """ )
 
-        self.assertRaises( Exception, create_tests, 'ok38.xml' )
-
-        util.writefile( 'ok39.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <analyze>echo "hello from analyze"</analyze>
-            </rtest>""" )
-
-        tL = create_tests( 'ok39.xml' )
+        tL = create_tests( 'atest.vvt' )
         assert len(tL) == 3
-        print3( "with parameterize/analyze 4:", tL )
         assert tL[0].isAnalyze()
         assert tL[0].getAnalyzeScript()
         assert not tL[1].isAnalyze()
         assert not tL[2].isAnalyze()
 
-        util.writefile( 'ok43.xml', """
-            <rtest name="atest">
-              <parameterize platforms="SunOS" np="1 2"/>
-              <parameterize platforms="Linux or tbird" np="1 2 4"/>
-            </rtest>""" )
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (platforms="SunOS") : np = 1 2
+            #VVT: parameterize (platforms="Linux or tbird") : np = 1 2 4
+            """ )
 
-        tL = create_tests( 'ok43.xml', 'SunOS' )
+        tL = create_tests( 'atest.vvt', 'SunOS' )
         assert len(tL) == 2
-        tL = create_tests( 'ok43.xml', 'Linux' )
+        tL = create_tests( 'atest.vvt', 'Linux' )
         assert len(tL) == 3
-        tL = create_tests( 'ok43.xml', 'tbird' )
+        tL = create_tests( 'atest.vvt', 'tbird' )
         assert len(tL) == 3
 
     def test_file_globbing_and_source_file_specification(self):
         ""
-        util.writefile( 'globfile1.txt', """
-            a file""" )
+        util.writefile( 'globfile1.txt', "a file" )
+        util.writefile( 'globfile2.txt', "a second file" )
+        util.writefile( 'link_glob.txt', "a file for linking" )
+        util.writefile( 'link2_glob.txt', "another file for linking" )
+        util.writefile( 'conditional_glob.txt', "a file for linking" )
+        util.writefile( 'notme_glob.txt', "some other file" )
 
-        util.writefile( 'globfile2.txt', """
-            a second file""" )
-
-        util.writefile( 'link_glob.txt', """
-            a file for linking""" )
-
-        util.writefile( 'link2_glob.txt', """
-            another file for linking""" )
-
-        util.writefile( 'conditional_glob.txt', """
-            a file for linking""" )
-
-        util.writefile( 'notme_glob.txt', """
-            some other file""" )
-
-        util.writefile( 'ok51.xml', """
-            <rtest name="glob">
-              <parameterize np="1"/>
-              <copy_files> glob*.txt </copy_files>
-              <link_files> link*_${NAME}.txt </link_files>
-              <link_files parameters="np=1"> conditional*_glob.txt </link_files>
-              <link_files parameters="np=4"> notme*_glob.txt </link_files>
+        util.writefile( 'ok51.vvt', """
+            #VVT: parameterize : np = 1
+            #VVT: copy : glob*.txt
+            #VVT: link : link*_${NAME}.txt
+            #VVT: link (parameters="np=1") : conditional*_glob.txt
+            #VVT: link (parameters="np=4") : notme*_glob.txt
             </rtest>""" )
 
-        tL = create_tests( 'ok51.xml' )
+        tL = create_tests( 'ok51.vvt' )
         assert len(tL) == 1
-        L = tL[0].getCopyFiles() ; L.sort()
-        assert L == [('glob*.txt',None)]
-        L = tL[0].getLinkFiles() ; L.sort()
-        assert L == [ ('conditional*_glob.txt',None),
-                      ('link*_glob.txt',None),
-                      ('ok51.xml',None) ]
+        self.assertEqual( sorted( tL[0].getCopyFiles() ), [('glob*.txt',None)] )
+        self.assertEqual( sorted( tL[0].getLinkFiles() ),
+            [ ('conditional*_glob.txt',None), ('link*_ok51.txt',None), ('ok51.vvt',None) ] )
 
-        util.writefile( 'baseline_glob.txt', """
-            some other file""" )
+        util.writefile( 'baseline_glob.txt', "some other file" )
 
-        util.writefile( 'ok52.xml', """
-            <rtest name="srcfiles">
-              <parameterize np="1"/>
-              <copy_files> glob*.txt </copy_files>
-              <copy_files> link_glob.txt </copy_files>
-              <link_files> globfile2.txt </link_files>
-              <baseline file="baseline_glob.txt" destination="baseline_glob.base_txt"/>
-              <source_files> notme*_glob.txt cond*_glob.txt </source_files>
+        util.writefile( 'srcfiles.vvt', """
+            #VVT: parameterize : np = 1
+            #VVT: copy : glob*.txt
+            #VVT: copy : link_glob.txt
+            #VVT: link : globfile2.txt
+            #VVT: baseline : baseline_glob.txt, baseline_glob.base_txt
+            #VVT: sources : notme*_glob.txt cond*_glob.txt
             </rtest>""" )
 
-        tL = create_tests( 'ok52.xml' )
+        tL = create_tests( 'srcfiles.vvt' )
         assert len(tL) == 1
-        L = tL[0].getSourceFiles() ; L.sort()
-        assert L == ['baseline_glob.base_txt', 'cond*_glob.txt',
-                     'glob*.txt', 'globfile2.txt', 'link_glob.txt',
-                     'notme*_glob.txt', 'ok52.xml']
+        self.assertEqual( sorted(tL[0].getSourceFiles()),
+                ['baseline_glob.base_txt', 'cond*_glob.txt',
+                 'glob*.txt', 'globfile2.txt', 'link_glob.txt',
+                 'notme*_glob.txt', 'srcfiles.vvt'] )
 
-        util.writefile( 'bad31.xml', """
-            <rtest name="badglob">
-              <parameterize np="1"/>
-              <source_files parameters="np=1"> glob*.txt </source_files>
-            </rtest>""" )
+        # sources does not take a parameters attribute
+        util.writefile( 'bad31.vvt', """
+            #VVT: parameterize : np = 1
+            #VVT: sources (parameters="np=1") : glob*.txt
+            """ )
+        self.assertRaises( TestSpecError, create_tests, 'bad31.vvt' )
 
-        self.assertRaises( TestSpecError, create_tests, 'bad31.xml' )
 
+class reparsing( vtu.vvtestTestCase ):
 
-class test_file_reparse( vtu.vvtestTestCase ):
+    def test_refreshing_a_TestSpec_object(self):
+        ""
+        # parameter changes in a reparse are not processed
+
+        util.writefile( 'atest.vvt', """
+            pass
+            """ )
+        tL = create_tests( 'atest.vvt' )
+        assert len(tL) == 1
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1
+            """ )
+
+        newspec = reparse_test( tL[0] )
+        self.assertEqual( newspec.getParameters(), {} )
+
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1
+            """ )
+
+        tL = create_tests( 'atest.vvt' )
+        assert len(tL) == 1
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 4
+            """ )
+
+        newspec = reparse_test( tL[0] )
+        self.assertEqual( newspec.getParameters(), {'np':'1'} )
+
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1 4
+            """ )
+
+        tL = create_tests( 'atest.vvt' )
+        assert len(tL) == 2
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: parameterize : N = 1 4
+            """ )
+
+        for t in tL:
+            newspec = reparse_test( t )
+            assert 'np' in newspec.getParameters()
+            assert 'N' not in newspec.getParameters()
+
+        # test name changes in a reparse are not processed
+
+        util.writefile( 'atest.vvt', """
+            #VVT: testname = atest
+            #VVT: parameterize : np = 1 4
+            """ )
+
+        tL = create_tests( 'atest.vvt' )
+        assert len(tL) == 2
+        util.writefile( 'atest.vvt', """
+            #VVT: testname = atest2
+            #VVVT: parameterize : np = 1 4
+            """ )
+
+        for t in tL:
+            reparse_test( t )
+            self.assertEqual( t.getName(), 'atest' )
+
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1 4
+            """ )
+
+        tL = create_tests( 'atest.vvt' )
+        assert len(tL) == 2
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: keywords (mistake) : foo bar
+            """ )
+
+        for t in tL:
+            self.assertRaises( TestSpecError, reparse_test, t )
 
     def test_reparsing_an_analyze_test(self):
         ""
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-              <parameterize np="1 4"/>
-              <analyze> echo foobar </analyze>
-            </rtest>""" )
         util.writefile( 'btest.vvt', """
             #VVT: parameterize : size = tiny big
             #VVT: analyze : -a
             """ )
-        time.sleep(1)
-
-        tcase = parse_create_analyze_test( 'atest.xml' )
-        sid = tio.test_to_string( tcase )
-        tcase2 = reparse_test_string( sid )
-        assert tcase2.getSpec().isAnalyze()
-        pset = tcase2.getSpec().getParameterSet().getParameters()
-        assert len( pset ) == 1
-        assert pset[ ('np',) ] == [ ['1'], ['4'] ]
 
         tcase = parse_create_analyze_test( 'btest.vvt' )
         sid = tio.test_to_string( tcase )
@@ -1343,28 +324,14 @@ def reparse_test( testobj ):
     tests = list( tr.getTests().values() )
     assert len( tests ) == 1
 
-    testobj = tests[0].getSpec()
+    newobj = tests[0].getSpec()
 
-    vtu.creator().reparse( testobj )
+    vtu.creator().reparse( newobj )
 
-
-def paramGather(testL):
-    """
-    Gathers a list of parameter values for a list of TestSpec objects.
-    """
-    pL = []
-    for t in testL:
-        tmp = []
-        parms = t.getParameters()
-        for (n,v) in parms.items():
-            tmp.append( n+'='+v )
-        tmp.sort()
-        pL.append( '.'.join(tmp) )
-    pL.sort()
-    return pL
+    return newobj
 
 
-def create_and_eval_option_expr( filename, options, boolean_result ):
+def get_link_files_from_test( filename, options ):
     ""
     rtcfg = RuntimeConfig()
 
@@ -1372,35 +339,8 @@ def create_and_eval_option_expr( filename, options, boolean_result ):
         rtcfg.setOptionList( options )
     tL = create_tests( filename, optlist=options )
     assert len(tL) == 1
-    expr = tL[0].getOptionEnableExpression()
-    assert expr is not None
-    assert rtcfg.evaluate_option_expr( expr ) == boolean_result
-
-
-def create_test_and_eval_platform_expr( filename, platname, boolean_result,
-                                        platform_expr=None,
-                                        option_list=None ):
-    ""
-    rtcfg = RuntimeConfig()
-
-    if option_list:
-        rtcfg.setOptionList( option_list )
-    rtcfg.setPlatformName( platname )
-    rtcfg.setPlatformExpression( platform_expr, platname )
-
-    tL = create_tests( filename, platname, option_list )
-
-    expr = tL[0].getPlatformEnableExpression()
-    pval = rtcfg.evaluate_platform_include( expr )
-
-    if option_list != None:
-        expr = tL[0].getOptionEnableExpression()
-        oval = rtcfg.evaluate_option_expr( expr )
-
-        assert ( pval and oval ) == boolean_result
-
-    else:
-        assert pval == boolean_result
+    lnL = tL[0].getLinkFileList()
+    return sorted(lnL)
 
 
 #####################################################################

@@ -14,7 +14,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 
 class bindir_tests( vtu.vvtestTestCase ):

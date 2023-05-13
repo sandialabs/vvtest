@@ -146,7 +146,8 @@ class parsing_testnames( vtu.vvtestTestCase ):
 
         tL = vtu.create_tests_from_file( 'atest.vvt' )
         tidL = [ tc.getSpec().getDisplayString() for tc in tL ]
-        assert tidL == ['atest-foo.np=1','atest-foo.np=4','atest-bar.ndevice=2']
+        self.assertEqual( tidL,
+            ['atest-bar.ndevice=2','atest-foo.np=1','atest-foo.np=4'] )
 
 
 ############################################################################

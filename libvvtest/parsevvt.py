@@ -360,6 +360,7 @@ class ScriptTestParser:
 
         fL = []
         for spec in self.itr_specs( testname, 'sources' ):
+            check_allowed_attrs( spec.attrs, spec.lineno, 'testname' )
             if self.attr_filter( spec.attrs, testname, params, spec.lineno ):
                 if spec.value:
                     L = spec.value.split()

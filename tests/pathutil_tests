@@ -16,7 +16,6 @@ from os.path import join as pjoin
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.pathutil as pathutil
 
@@ -29,14 +28,14 @@ class is_subdir_tests( vtu.vvtestTestCase ):
     def test_parent_and_subdir_are_the_same(self):
         ""
         val = pathutil.is_subdir( os.getcwd(), os.getcwd() )
-        print3( val )
+        print ( val )
         assert val == None
 
     def test_parent_is_the_subdir(self):
         ""
         cwd = os.getcwd()
         val = pathutil.is_subdir( cwd, dirname(cwd) )
-        print3( val )
+        print ( val )
         assert val == None
 
     def test_subdir_is_one_directory_below_parent(self):
@@ -44,7 +43,7 @@ class is_subdir_tests( vtu.vvtestTestCase ):
         sub = os.getcwd()
         par = dirname( sub )
         val = pathutil.is_subdir( par, sub )
-        print3( val )
+        print ( val )
         assert val == basename( sub )
 
     def test_subdir_is_two_directories_below_parent(self):
@@ -52,7 +51,7 @@ class is_subdir_tests( vtu.vvtestTestCase ):
         sub = abspath( 'subdir' )
         par = dirname( dirname( sub ) )
         val = pathutil.is_subdir( par, sub )
-        print3( val )
+        print ( val )
         d,b1 = os.path.split( sub )
         b2 = basename( d )
         assert val == pjoin( b2, b1 )
@@ -75,7 +74,7 @@ class relative_execute_directory_tests( vtu.vvtestTestCase ):
         ""
         cwd = os.getcwd()
         val = pathutil.relative_execute_directory( 'sub', cwd, cwd )
-        print3( val )
+        print ( val )
         assert val == 'sub'
 
     def test_when_CWD_is_the_test_execution_dir(self):
@@ -83,7 +82,7 @@ class relative_execute_directory_tests( vtu.vvtestTestCase ):
         cwd = abspath( 'sub' )
         tdir = os.getcwd()
         val = pathutil.relative_execute_directory( 'sub', tdir, cwd )
-        print3( val )
+        print ( val )
         assert val == 'sub'
 
     def test_when_CWD_is_one_above_the_test_execution_dir(self):
@@ -91,7 +90,7 @@ class relative_execute_directory_tests( vtu.vvtestTestCase ):
         cwd = abspath( 'sub1' )
         tdir = os.getcwd()
         val = pathutil.relative_execute_directory( 'sub1/sub2', tdir, cwd )
-        print3( val )
+        print ( val )
         assert val == 'sub2'
 
     def test_when_CWD_is_one_above_the_test_results_dir(self):
@@ -99,7 +98,7 @@ class relative_execute_directory_tests( vtu.vvtestTestCase ):
         cwd = dirname( os.getcwd() )
         tdir = os.getcwd()
         val = pathutil.relative_execute_directory( 'sub', tdir, cwd )
-        print3( val )
+        print ( val )
         assert val == pjoin( basename( os.getcwd() ), 'sub' )
 
 
@@ -112,7 +111,7 @@ class compute_relative_path_tests( vtu.vvtestTestCase ):
         ""
         cwd = os.getcwd()
         val = pathutil.compute_relative_path( cwd, cwd )
-        print3( val )
+        print ( val )
         assert val == '.'
 
     def test_one_directory_different(self):
@@ -121,11 +120,11 @@ class compute_relative_path_tests( vtu.vvtestTestCase ):
         d2 = dirname( d1 )
 
         val = pathutil.compute_relative_path( d1, d2 )
-        print3( val )
+        print ( val )
         assert val == '..'
 
         val = pathutil.compute_relative_path( d2, d1 )
-        print3( val )
+        print ( val )
         assert val == basename(d1)
 
 

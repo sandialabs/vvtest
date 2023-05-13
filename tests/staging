@@ -15,7 +15,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.errors import TestSpecError
 import libvvtest.paramset as paramset

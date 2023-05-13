@@ -15,7 +15,6 @@ import re
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.argutil import ArgumentParser
 import libvvtest.argutil as argutil
@@ -96,15 +95,15 @@ class basic_option_handling( vtu.vvtestTestCase ):
         psr.add_argument( '-o', action='append' )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert not args.o  # has value None in python 2.6
 
         args = psr.parse_args( ['-o','on'] )
-        print3( args )
+        print ( args )
         assert args.o == ['on']
 
         args = psr.parse_args( ['-o','on','-o','dbg'] )
-        print3( args )
+        print ( args )
         assert args.o == [ 'on', 'dbg' ]
 
     def test_repeatable_int_option(self):
@@ -113,15 +112,15 @@ class basic_option_handling( vtu.vvtestTestCase ):
         psr.add_argument( '-i', action='append', type=int )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert not args.i  # has value None in python 2.6
 
         args = psr.parse_args( ['-i','89'] )
-        print3( args )
+        print ( args )
         assert args.i == [89]
 
         args = psr.parse_args( ['-i','89','-i','21'] )
-        print3( args )
+        print ( args )
         assert args.i == [ 89, 21 ]
 
     def test_error_when_a_required_option_is_not_given(self):
@@ -142,23 +141,23 @@ class basic_option_handling( vtu.vvtestTestCase ):
         psr.add_argument( 'other', nargs='*' )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert args.other == []
 
         args = psr.parse_args( ['--prefix','/home/cinderella'] )
-        print3( args )
+        print ( args )
         assert args.other == []
 
         args = psr.parse_args( ['--prefix','/home/cinderella', 'foo', 'bar'] )
-        print3( args )
+        print ( args )
         assert args.other == ['foo', 'bar']
 
         args = psr.parse_args( ['foo', 'bar'] )
-        print3( args )
+        print ( args )
         assert args.other == ['foo', 'bar']
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
-        print3( out )
+        print ( out )
 
     def test_destination_variable_name_for_option_values(self):
         ""
@@ -166,11 +165,11 @@ class basic_option_handling( vtu.vvtestTestCase ):
         psr.add_argument( '-f', dest='filename', help='the file name' )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert not args.filename
 
         args = psr.parse_args( ['-f', '/file/name'] )
-        print3( args )
+        print ( args )
         assert args.filename == '/file/name'
 
     def test_specifying_dest_and_metavar_for_an_option(self):
@@ -180,15 +179,15 @@ class basic_option_handling( vtu.vvtestTestCase ):
                           help='the file name' )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert not args.filename
 
         args = psr.parse_args( ['-f', '/file/name'] )
-        print3( args )
+        print ( args )
         assert args.filename == '/file/name'
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
-        print3( out )
+        print ( out )
         assert len( util.greplines( '-f *PATH *the file name', out ) ) == 1
 
     def test_adding_a_hidden_option(self):
@@ -198,15 +197,15 @@ class basic_option_handling( vtu.vvtestTestCase ):
         psr.add_argument( '-F', help=argutil.SUPPRESS )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert not args.F
 
         args = psr.parse_args( ['-F','val'] )
-        print3( args )
+        print ( args )
         assert args.F == 'val'
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
-        print3( out )
+        print ( out )
         assert len( util.greplines( '-f PATH*file name', out ) ) == 1
         assert len( util.greplines( '-F', out ) ) == 0
 
@@ -226,7 +225,7 @@ class argument_group_tests( vtu.vvtestTestCase ):
         grp.add_argument( '--advanced', help='advanced opt group' )
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
-        print3( out )
+        print ( out )
 
         # the --default option should come just after the --help option
         pat = '--help[^\n]+\n+[^\n]*--default'
@@ -252,13 +251,13 @@ class argument_group_tests( vtu.vvtestTestCase ):
         grp.add_argument( '--advanced', help='advanced opt group' )
 
         args = psr.parse_args( [] )
-        print3( args )
+        print ( args )
         assert not args.default
         assert not args.config
         assert not args.advanced
 
         args = psr.parse_args( ['--default','1', '--config','2','--advanced','3'] )
-        print3( args )
+        print ( args )
         assert args.default == '1'
         assert args.config == '2'
         assert args.advanced == '3'
@@ -274,7 +273,7 @@ class terminal_size_tests( vtu.vvtestTestCase ):
     def test_call_the_get_terminal_width_function(self):
         ""
         w = argutil.get_terminal_width()
-        print3( 'width', w )
+        print ( 'width '+str(w) )
         assert w == None or ( w > 0 and w < 1024*1024 )
 
 
@@ -302,7 +301,7 @@ class help_page_tests( vtu.vvtestTestCase ):
             Line two.""" )
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         assert 'descritpion' in out
         for line in out.splitlines():
             if line.strip().startswith('Fake descritpion'):
@@ -315,7 +314,7 @@ class help_page_tests( vtu.vvtestTestCase ):
             Line two.""", formatter_class=argutil.RawDescriptionHelpFormatter )
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         assert 'descritpion' in out
         for line in out.splitlines():
             if 'Fake descritpion' in line:
@@ -331,7 +330,7 @@ class help_page_tests( vtu.vvtestTestCase ):
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         assert '-v' in out and '--prefix' in out
         for line in out.splitlines():
             if line.strip().startswith( '-v' ):
@@ -346,7 +345,7 @@ class help_page_tests( vtu.vvtestTestCase ):
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['--help'] )
 
-        print3( out )
+        print ( out )
         for line in out.splitlines():
             if 'usage' in line.lower():
                 assert line.strip().split()[1] == 'bullets'
@@ -364,7 +363,7 @@ class help_page_tests( vtu.vvtestTestCase ):
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         assert 'Line one' in out and 'Paragraph two' in out
         for line in out.splitlines():
             if 'Line one' in line:
@@ -382,7 +381,7 @@ class help_page_tests( vtu.vvtestTestCase ):
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         assert 'This is the start' in out
         assert 'finishendo' in out
         assert 'installation-artifacts' in out
@@ -405,7 +404,7 @@ class help_page_tests( vtu.vvtestTestCase ):
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         maxcol = max( [ len(line) for line in out.splitlines() ] )
         assert maxcol < 50
 
@@ -417,7 +416,7 @@ class help_page_tests( vtu.vvtestTestCase ):
 
         rtn,out,err = util.call_capture_output( psr.parse_args, ['-h'] )
 
-        print3( out )
+        print ( out )
         begin_desc = out[ out.index( 'Line one' ) : ]
         assert begin_desc.startswith( verbatim_help_message_answer )
 

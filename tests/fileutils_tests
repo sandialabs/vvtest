@@ -18,7 +18,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 # this is the module we are testing
 import fileutils
@@ -30,7 +29,7 @@ class is_subpath_tests( unittest.TestCase ):
 
     def setUp(self):
         ""
-        print3()
+        print ()
         os.chdir( util.working_directory )
         util.rmallfiles()
 
@@ -131,7 +130,7 @@ class using_tar_to_copy_files( unittest.TestCase ):
 
     def setUp(self):
         ""
-        print3()
+        print ()
         os.chdir( util.working_directory )
         util.rmallfiles()
 
@@ -195,7 +194,7 @@ class copy_path_tests( unittest.TestCase ):
 
     def setUp(self):
         ""
-        print3()
+        print ()
         os.chdir( util.working_directory )
         util.rmallfiles()
 
@@ -589,7 +588,7 @@ class permissions_tests( unittest.TestCase ):
 
     def setUp(self):
         ""
-        print3()
+        print ()
         os.chdir( util.working_directory )
         util.rmallfiles()
 

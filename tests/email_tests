@@ -15,7 +15,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 # this is the module we are testing
 import mailmessage as MM

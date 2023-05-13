@@ -154,7 +154,7 @@ def get_TestCase_classes( test_module ):
 def setup_test( cleanout=True ):
     """
     """
-    print3()
+    print ()
     os.chdir( working_directory )
 
     if cleanout:
@@ -242,7 +242,7 @@ def runcmd( cmd, chdir=None, raise_on_error=True, verbose=1 ):
         cwd = os.getcwd()
 
     if verbose > 0:
-        print3( 'RUN: '+dstr+cmdstr )
+        print ( 'RUN: '+dstr+cmdstr )
 
     if chdir:
         os.chdir( chdir )
@@ -270,13 +270,13 @@ def runcmd( cmd, chdir=None, raise_on_error=True, verbose=1 ):
     if x != 0:
         if raise_on_error:
             if verbose < 1:
-                print3( 'RUN: '+dstr+cmdstr )
-            print3( out )
+                print ( 'RUN: '+dstr+cmdstr )
+            print ( out )
             raise Exception( 'runcmd failed: '+repr(dstr+cmdstr) )
         elif verbose >= 1:
-            print3( out )
+            print ( out )
     elif verbose >= 2:
-        print3( out )
+        print ( out )
 
     return x,out
 

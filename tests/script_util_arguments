@@ -18,7 +18,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 # for unit testing the code in the config dir, such as script_utils
 sys.path.insert( 1, vtu.cfgdir )

@@ -15,7 +15,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.CommonSpec as CommonSpec
 import libvvtest.xmlwrapper as xmlwrapper
@@ -62,7 +61,7 @@ class writing_csh_scripts( vtu.vvtestTestCase ):
                                      ['/some/path'], testdir,
                                      [], [], 'runscript' )
 
-        # print3( util.readfile( 'runscript' ) )
+        # print ( util.readfile( 'runscript' ) )
 
 
 ########################################################################

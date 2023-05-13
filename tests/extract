@@ -15,7 +15,7 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
+from libvvtest.errors import TestSpecError
 
 
 class extract_use_cases( vtu.vvtestTestCase ):
@@ -162,7 +162,6 @@ class extract_use_cases( vtu.vvtestTestCase ):
         util.writefile( 'orig/file4.txt', "file four" )
         util.writefile( 'orig/atest_1.py', "py file one" )
         util.writefile( 'orig/2_atest.py', "py file two" )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( chdir='orig' )
         vrun.assertCounts( total=1, npass=1 )
@@ -208,7 +207,6 @@ class extract_use_cases( vtu.vvtestTestCase ):
     def test_extract_when_a_subdir_in_source_file_list(self):
         ""
         util.writefile( 'orig/auxdir/file1.txt', "file contents" )
-        time.sleep(1)
 
         util.write_py_script( 'orig/atest.vvt', """
             #VVT: copy : auxdir
@@ -218,7 +216,6 @@ class extract_use_cases( vtu.vvtestTestCase ):
             assert not os.path.islink( 'auxdir' )
             assert os.path.isfile( 'auxdir/file1.txt' )
             """ )
-        time.sleep(1)
 
         vtu.runvvtest( chdir='orig' ).assertCounts( total=1, npass=1 )
 
@@ -227,6 +224,29 @@ class extract_use_cases( vtu.vvtestTestCase ):
         vtu.runvvtest( '--extract copy orig' )
 
         vtu.runvvtest( chdir='copy' ).assertCounts( total=1, npass=1 )
+
+    def test_allowable_attributes_for_sources(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: testname : atest
+            #VVT: testname : btest
+            #VVT: sources (testname=btest) : foo.txt
+            #VVT: sources (testname=atest) : bar.txt
+            """ )
+        util.writefile( 'bad1.vvt', """
+            #VVT: sources (foobar) : hmm.txt
+            """ )
+        util.writefile( 'bad2.vvt', """
+            #VVT: sources (platform=Linux) : hmm.txt
+            """ )
+
+        tL = vtu.create_tests_from_file( 'atest.vvt' )
+        assert len(tL) == 2
+        self.assertEqual( tL[0].getSpec().getSourceFileList(), ['bar.txt'] )
+        self.assertEqual( tL[1].getSpec().getSourceFileList(), ['foo.txt'] )
+
+        self.assertRaises( TestSpecError, vtu.create_tests_from_file, 'bad1.vvt' )
+        self.assertRaises( TestSpecError, vtu.create_tests_from_file, 'bad2.vvt' )
 
 
 ########################################################################

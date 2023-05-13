@@ -15,7 +15,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 
 class generate_tests( vtu.vvtestTestCase ):

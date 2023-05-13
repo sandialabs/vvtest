@@ -15,7 +15,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 
 class parameterize_analyze_script_specs( vtu.vvtestTestCase ):

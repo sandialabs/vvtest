@@ -17,7 +17,6 @@ import filecmp
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from vvtestutils import windows, not_windows
 
@@ -187,7 +186,7 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
                                             [ ('file*.txt','dest.txt') ] )
             assert not ok
             out = '\n'.join( [ out.strip(), err.strip() ] )
-            print3( out )
+            print ( out )
             assert out.count( 'Error: ' ) == 2
             assert out.count( 'non-existent file' ) == 1
             assert out.count( 'more than one file' ) == 1

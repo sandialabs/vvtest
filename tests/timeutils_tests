@@ -15,7 +15,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 # this is the module we are testing
 import timeutils
@@ -93,19 +92,19 @@ class util_functions( unittest.TestCase ):
         assert timeutils.seconds_since_midnight( 0 ) == 0
         assert timeutils.seconds_since_midnight( 1 ) == 60*60
         try: timeutils.seconds_since_midnight(24)
-        except Exception: print3( sys.exc_info()[1] )
+        except Exception: print ( sys.exc_info()[1] )
         else: raise Exception( "expected an exception" )
         try: timeutils.seconds_since_midnight(25)
-        except Exception: print3( sys.exc_info()[1] )
+        except Exception: print ( sys.exc_info()[1] )
         else: raise Exception( "expected an exception" )
 
         assert timeutils.seconds_since_midnight( '0' ) == 0
         assert timeutils.seconds_since_midnight( '1' ) == 60*60
         try: timeutils.seconds_since_midnight('24')
-        except Exception: print3( sys.exc_info()[1] )
+        except Exception: print ( sys.exc_info()[1] )
         else: raise Exception( "expected an exception" )
         try: timeutils.seconds_since_midnight('25')
-        except Exception: print3( sys.exc_info()[1] )
+        except Exception: print ( sys.exc_info()[1] )
         else: raise Exception( "expected an exception" )
 
         assert timeutils.seconds_since_midnight( '1am' ) == 60*60
@@ -127,10 +126,10 @@ class util_functions( unittest.TestCase ):
         assert timeutils.hours_minutes_seconds( '0' ) == (0,0,0)
         assert timeutils.hours_minutes_seconds( '1' ) == (1,0,0)
         try: timeutils.hours_minutes_seconds('24')
-        except Exception: print3( sys.exc_info()[1] )
+        except Exception: print ( sys.exc_info()[1] )
         else: raise Exception( "expected an exception" )
         try: timeutils.hours_minutes_seconds('25')
-        except Exception: print3( sys.exc_info()[1] )
+        except Exception: print ( sys.exc_info()[1] )
         else: raise Exception( "expected an exception" )
 
         assert timeutils.hours_minutes_seconds( '1am' ) == (1,0,0)

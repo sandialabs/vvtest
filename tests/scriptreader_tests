@@ -15,7 +15,6 @@ import glob
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 from libvvtest.ScriptReader import ScriptReader
 from libvvtest.errors import TestSpecError
@@ -145,7 +144,7 @@ class ScriptReader_file_reads( vtu.vvtestTestCase ):
         fnL = glob.glob( 'script*.vvt' )
         fnL.sort()
         for fn in fnL:
-            print3( fn )
+            print ( fn )
             rdr = ScriptReader( fn )
             assert_speclist( rdr.getSpecList(), ('keyname', 'value') )
 

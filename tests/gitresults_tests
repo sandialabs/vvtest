@@ -17,7 +17,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 from gitresults import GitResults, GitResultsReader, ResultsSummary
 from gitresults import create_orphan_branch, branch_name_and_directory

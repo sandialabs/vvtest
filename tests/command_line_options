@@ -14,7 +14,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.cmdline as cmdline
 
@@ -104,7 +103,7 @@ class version_info( vtu.vvtestTestCase ):
         ""
         rtn,out,err = util.call_capture_output(
                         cmdline.parse_command_line, [ '--version' ], '1.2.3' )
-        print3( out )
+        print ( out )
         assert out.strip() and '1.2.3' in out
         assert 'Traceback' in err and 'SystemExit' in err
 
@@ -115,7 +114,7 @@ class create_derived_options( vtu.vvtestTestCase ):
         ""
         rtn,out,err = util.call_capture_output(
                         cmdline.parse_command_line, [ '-k', 'bad"' ] )
-        #print3( err )
+        #print ( err )
         assert 'command line problem with keyword options' in err
         assert 'Traceback' in err and 'SystemExit' in err
 

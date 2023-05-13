@@ -15,7 +15,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.CommonSpec as CommonSpec
 import libvvtest.xmlwrapper as xmlwrapper
@@ -48,14 +47,14 @@ class csh_common_specifications( vtu.vvtestTestCase ):
         db = create_and_load_CommonSpecDB( 'db1.xml' )
 
         clr = db.getClear()
-        print3( clr )
+        print ( clr )
         assert_same_lines( clr, ['unsetenv VARNAME1',
                                  'unsetenv VARNAME2'] )
 
         create_and_load_CommonSpecDB( 'db2.xml', db )
 
         clr = db.getClear()
-        print3( clr )
+        print ( clr )
         assert_same_lines( clr, ['unsetenv VARNAME1',
                                  'unsetenv VARNAME2',
                                  'unsetenv VARNAME3'] )
@@ -89,7 +88,7 @@ class csh_common_specifications( vtu.vvtestTestCase ):
         defs = db.getDefines()
         assert len( defs ) == 1
         cs = defs[0]
-        print3( cs )
+        print ( cs )
         assert_same_lines( cs.getDefine('anything'), ['# the script'] )
         assert cs.getVariable('anything') == None
         assert cs.getContent('anything') == None
@@ -99,7 +98,7 @@ class csh_common_specifications( vtu.vvtestTestCase ):
         defs = db.getDefines()
         assert len( defs ) == 1
         cs = defs[0]
-        print3( cs )
+        print ( cs )
         assert_same_lines( cs.getDefine('something'), ['# default'] )
         assert_same_lines( cs.getDefine('Linux'), ['# Linux'] )
         assert cs.getVariable('anything') == None
@@ -153,7 +152,7 @@ class csh_common_specifications( vtu.vvtestTestCase ):
 
         csL = db.getVariables()
         assert len(csL) == 1
-        print3( csL[0] )
+        print ( csL[0] )
         assert csL[0].getVariable('any')[0] == "VARNAME"
         assert csL[0].getVariable('any')[1].strip() == ""
 
@@ -161,7 +160,7 @@ class csh_common_specifications( vtu.vvtestTestCase ):
 
         csL = db.getVariables()
         assert len(csL) == 1
-        print3( csL[0].getVariable('other') )
+        print ( csL[0].getVariable('other') )
         assert csL[0].getVariable('other')[0] == "VARNAME"
         fragL = csL[0].getVariable('other')[1]
         assert len(fragL) == 1
@@ -176,14 +175,14 @@ class csh_common_specifications( vtu.vvtestTestCase ):
 
         csL = db.getVariables()
         assert len(csL) == 1
-        print3( csL[0].getVariable('other') )
+        print ( csL[0].getVariable('other') )
         assert csL[0].getVariable('other')[0] == "VARNAME"
         locL = csL[0].getVariable('other')[1]
         assert len(locL) == 2
         locp = locL[0]
         assert len(locp) == 2 and locp == ['path1','path2']
         assert locL[1] == '-h'
-        print3( csL[0].getVariable('Linux') )
+        print ( csL[0].getVariable('Linux') )
         locL = csL[0].getVariable('Linux')[1]
         assert len(locL) == 2
         locp = locL[0]
@@ -210,18 +209,18 @@ class csh_common_specifications( vtu.vvtestTestCase ):
 
         csL = db.getVariables()
         assert len(csL) == 1
-        print3( csL[0].getVariable('any') )
+        print ( csL[0].getVariable('any') )
         assert csL[0].getVariable('any')[0] == None
         locL = csL[0].getVariable('any')[1]
         assert len(locL) == 1
         frag = locL[0]
         assert_same_lines( locL[0], ['set RUNME = runme'] )
         cont = csL[0].getContent('any')
-        print3( cont )
+        print ( cont )
         assert_same_lines( cont, ['$RUNME $(CONTENT)'] )
 
         cs = db.findContent('runme')
-        print3( cs )
+        print ( cs )
         assert cs.getVariable('any')[0] == None
         locL = cs.getVariable('any')[1]
         assert len(locL) == 1

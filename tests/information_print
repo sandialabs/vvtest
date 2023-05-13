@@ -23,7 +23,6 @@ except Exception:
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 import libvvtest.printinfo as printinfo
 import libvvtest.batchutils as batchutils
@@ -126,7 +125,7 @@ class timing_output_tests( vtu.vvtestTestCase ):
         conwr.initialize( {'rundir':os.getcwd()} )
         rtn,out,err = util.call_capture_output( conwr.timings, MockTestList() )
 
-        print3( out )
+        print ( out )
 
         gold = textwrap.dedent( """\
             TIMEOUT  RUNTIME TEST

@@ -20,7 +20,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 import dasherlib
 
@@ -367,7 +366,7 @@ class the_tests( trigutil.trigTestCase ):
                 " --info 'Linux->these are the Linux tests'" + \
                 " --info '.*->not sure what these tests are'" + \
                 ' --gitlab '+url + ' webpage2'
-        print3( cmd )
+        print ( cmd )
         subprocess.check_call( cmd, shell=True )
 
         assert os.path.isfile( 'webpage2/index.htm' )

@@ -17,7 +17,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 postcmd = sys.executable + ' ' + trigutil.trigdir+'/postresults'
 

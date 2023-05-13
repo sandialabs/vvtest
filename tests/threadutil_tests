@@ -19,7 +19,6 @@ import threading
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 import threadutil
 

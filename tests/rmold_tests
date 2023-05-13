@@ -18,7 +18,6 @@ import unittest
 
 import trigtestutils as trigutil
 import testutils as util
-from testutils import print3
 
 rmold_file = os.path.join( trigutil.trigdir, 'rmold' )
 rmold_cmd = sys.executable + ' ' + rmold_file

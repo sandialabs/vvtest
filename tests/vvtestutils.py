@@ -23,7 +23,6 @@ from os.path import dirname, abspath
 from os.path import join as pjoin
 
 import testutils as util
-from testutils import print3
 
 
 testsrcdir = dirname( abspath( sys.argv[0] ) )
@@ -133,7 +132,7 @@ def launch_vvtest_then_terminate_it( *cmd_args, **options ):
 
     fp = open( logfilename, 'w' )
     try:
-        print3( cmdL )
+        print ( cmdL )
         pop = subprocess.Popen( cmdL,
                     stdout=fp.fileno(), stderr=fp.fileno(),
                     preexec_fn=lambda:os.setpgid(os.getpid(),os.getpid()) )
@@ -249,12 +248,12 @@ def remove_results():
         if f.startswith( 'TestResults.' ):
             if os.path.islink(f):
                 dest = os.readlink(f)
-                print3( 'rm -rf ' + dest )
+                print ( 'rm -rf ' + dest )
                 util.fault_tolerant_remove( dest )
-                print3( 'rm ' + f )
+                print ( 'rm ' + f )
                 os.remove(f)
             else:
-                print3( 'rm -rf ' + f )
+                print ( 'rm -rf ' + f )
                 util.fault_tolerant_remove( f )
 
 
@@ -277,7 +276,7 @@ class VvtestCommandRunner:
                              raise_on_error=False, verbose=verb )
 
         if x == 0:
-            print3( out )
+            print ( out )
 
         self.x = x
         self.out = out
@@ -743,9 +742,11 @@ def create_tests_from_file( filename, platname=core_platform_name(),
 
     tL = []
     for tspec in tc.fromFile( fname, dname ):
-        tL.append( testcase.TestCase( tspec ) )
+        tL.append( [tspec.getDisplayString(), testcase.TestCase( tspec )] )
 
-    return tL
+    tL.sort()
+
+    return [ tcase for _,tcase in tL ]
 
 
 def parse_single_test_file( filename, optionlist=[] ):

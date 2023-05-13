@@ -14,7 +14,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-print3 = util.print3
 
 import libvvtest.testcase as testcase
 from libvvtest.backlog import TestBacklog
@@ -41,7 +40,7 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         tL = []
         for tcase in back.iterate():
             tL.append( runtime_tuple(tcase) )
-            print3( tL[-1] )
+            print ( tL[-1] )
 
         assert tL == [ ['sdir/atest1.np=2', (2,0), 22],
                        ['sdir/atest0.np=2', (2,0), 12],
@@ -54,18 +53,18 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
 
         tcase = back.pop_by_size( (4,0) )
 
-        print3( runtime_tuple(tcase) )
+        print ( runtime_tuple(tcase) )
         self.assertEqual( runtime_tuple(tcase), [ 'sdir/atest1.np=2', (2,0), 22 ] )
 
         tcase = back.pop_by_size( (1,0) )
 
-        print3( runtime_tuple(tcase) )
+        print ( runtime_tuple(tcase) )
         self.assertEqual( runtime_tuple(tcase), [ 'sdir/atest1.np=1', (1,0), 21 ] )
 
         tL = []
         for tcase in back.consume():
             tL.append( runtime_tuple(tcase) )
-            print3( tL[-1] )
+            print ( tL[-1] )
 
         self.assertEqual( tL, [ [ 'sdir/atest0.np=2', (2,0), 12 ],
                                 [ 'sdir/atest0.np=1', (1,0), 11 ] ] )
@@ -110,7 +109,7 @@ class iterating_the_backlog( vtu.vvtestTestCase ):
         tL = []
         for texec in xlist.consumeBacklog():
             tL.append( runtime_tuple( texec.getTestCase() ) )
-            print3( tL[-1] )
+            print ( tL[-1] )
 
         assert tL[:4] == [ ['testC.np=8', (8, 0), None],
                            ['testB.ndevice=4.np=4', (4, 4), None],

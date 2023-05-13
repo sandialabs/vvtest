@@ -16,7 +16,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 
 class postclean_tests( vtu.vvtestTestCase ):

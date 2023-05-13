@@ -14,7 +14,6 @@ import time
 
 import vvtestutils as vtu
 import testutils as util
-from testutils import print3
 
 # Get access to script_utils so we can interrogate simple_aprepro's main().
 sys.path.insert(0, vtu.cfgdir)

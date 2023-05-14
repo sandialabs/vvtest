@@ -25,6 +25,8 @@ import libvvtest.outpututils as outpututils
 import libvvtest.testexec as testexec
 from libvvtest.location import Locator
 
+# magic: clean this up for xml removal
+
 
 class exechandler_free_functions( vtu.vvtestTestCase ):
 
@@ -96,7 +98,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
     def test_force_copy_path(self):
         ""
         src1,src2,src3 = self.prepare_for_link_and_copy()
-        time.sleep(1)
 
         with util.change_directory( 'destdir1' ):
             exechandler.force_copy_path_to_current_directory( src1, None )
@@ -111,8 +112,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         with util.change_directory( 'destdir3' ):
             exechandler.force_copy_path_to_current_directory( src1, 'tryme' )
 
-        time.sleep(1)
-
         for d in [ 'destdir1', 'destdir2' ]:
             assert util.readfile( d+'/file1.txt' ).strip() == 'file1 contents'
             assert not os.path.islink( d+'/symfile' )
@@ -125,7 +124,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
     def test_force_link_path(self):
         ""
         src1,src2,src3 = self.prepare_for_link_and_copy()
-        time.sleep(1)
 
         with util.change_directory( 'destdir1' ):
             exechandler.force_link_path_to_current_directory( src1, None )
@@ -139,8 +137,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
 
         with util.change_directory( 'destdir3' ):
             exechandler.force_link_path_to_current_directory( src1, 'tryme' )
-
-        time.sleep(1)
 
         for d in [ 'destdir1', 'destdir2' ]:
             assert os.path.islink( d+'/file1.txt' )
@@ -158,7 +154,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         self.prepare_for_link_and_copy()
         srcdir = abspath( 'srcdir' )
         util.writefile( 'srcdir/file1.*', 'file w/ wildcard char\n' )
-        time.sleep(1)
 
         fL = exechandler.get_source_file_names( 'srcdir/file*.txt' )
         fL.sort()
@@ -191,8 +186,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
             assert out.count( 'non-existent file' ) == 1
             assert out.count( 'more than one file' ) == 1
 
-        time.sleep(1)
-
         assert os.path.islink( 'destdir3/file1.txt' )
         assert util.readfile( 'destdir3/file1.txt' ).strip() == 'file1 contents'
 
@@ -215,7 +208,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         util.writefile( 'xdir/baseline.log', 'baseline log\n' )
         util.writefile( 'xdir/vvtest_util.sh', 'util sh\n' )
         util.writefile( 'xdir/vvtest_util.py', 'util py\n' )
-        util.writefile( 'xdir/runscript', 'run me\n' )
         util.writefile( 'xdir/machinefile', 'sparky\n' )
         util.writefile( 'xdir/testdata.repr', 'repr data\n' )
 
@@ -226,20 +218,13 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
     def test_pre_cleaning(self):
         ""
         self.make_example_execute_directory()
-        time.sleep(1)
+
+        form = None  # right now, the test format doesn't matter
 
         with util.change_directory( 'xdir' ):
-            # with xml specification form, the 'runscript' must not be removed
-            exechandler.pre_clean_execute_directory( 'xml' )
+            exechandler.pre_clean_execute_directory( form )
 
-        time.sleep(1)
-
-        self.check_example_pre_cleaned_execute_directory( 'xml' )
-
-        with util.change_directory( 'xdir' ):
-            exechandler.pre_clean_execute_directory( None )
-
-        self.check_example_pre_cleaned_execute_directory( None )
+        self.check_example_pre_cleaned_execute_directory( form )
 
     def check_example_pre_cleaned_execute_directory(self, specform):
         ""
@@ -248,11 +233,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         assert os.path.exists( 'xdir/baseline.log' )
         assert os.path.exists( 'xdir/vvtest_util.sh' )
         assert os.path.exists( 'xdir/vvtest_util.py' )
-
-        if specform == 'xml':
-            assert os.path.exists( 'xdir/runscript' )
-        else:
-            assert not os.path.exists( 'xdir/runscript' )
 
         assert not os.path.exists( 'xdir/testdata.repr' )
         assert not os.path.exists( 'xdir/machinefile' )
@@ -263,15 +243,12 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
     def test_post_cleaning(self):
         ""
         self.make_example_execute_directory()
-        time.sleep(1)
 
-        exechandler.post_clean_execute_directory( 'xdir', 'xml' )
-        time.sleep(1)
-        self.check_example_post_cleaned_execute_directory( 'xml' )
+        form = None  # right now, the test format doesn't matter
 
-        exechandler.post_clean_execute_directory( 'xdir', None )
-        time.sleep(1)
-        self.check_example_post_cleaned_execute_directory( None )
+        exechandler.post_clean_execute_directory( 'xdir', form )
+
+        self.check_example_post_cleaned_execute_directory( form )
 
     def check_example_post_cleaned_execute_directory(self, specform):
         ""
@@ -282,11 +259,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         assert os.path.exists( 'xdir/vvtest_util.py' )
         assert os.path.exists( 'xdir/machinefile' )
         assert os.path.exists( 'xdir/testdata.repr' )
-
-        if specform == 'xml':
-            assert os.path.exists( 'xdir/runscript' )
-        else:
-            assert not os.path.exists( 'xdir/runscript' )
 
         assert not os.path.exists( 'xdir/old.exo' )
         assert     os.path.exists( 'xdir/alink' )
@@ -301,7 +273,6 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
 
         with open( 'execute.log', 'wt' ) as fp:
             fp.write( out+'\nblah blah blah\n' )
-        time.sleep(1)
 
         cmd2 = outpututils.get_test_command_line( 'execute.log' )
         assert shlex.split(cmd2) == cmdL

@@ -19,8 +19,8 @@ class TestFile:
         self.rootpath = rootpath
         self.filepath = filepath
 
-        self.specform = None       # None means construction not done,
-                                   # or 'xml' or 'script'
+        # magic: why is the None value needed ???
+        self.specform = None       # None means construction not done, or a string
 
         self.enabled = True
         self.plat_enable = None    # a WordExpression
@@ -153,17 +153,13 @@ class TestFile:
         Returns None, or a string if this is an analyze test.  The string is
         is one of the following:
 
-            1. If this test is specified with XML, then the returned string
-               is a csh script fragment.
+            1. If the returned string starts with a hyphen, then the test
+               script should be run with the string as an option to the base
+               script file.
 
-            2. If this is a script test, and the returned string starts with
-               a hyphen, then the test script should be run with the string
-               as an option to the base script file.
-
-            3. If this is a script test, and the returned string does not start
-               with a hyphen, then the string is a filename of a separate
-               script to run.  The filename is a relative path to
-               getDirectory().
+            2. If the returned string does not start with a hyphen, then the
+               string is a filename of a separate script to run.  The filename
+               is a relative path to getDirectory().
         """
         return self.analyze_spec
 
@@ -290,16 +286,13 @@ class TestFile:
         Returns None if this test has no baseline script, or a string which
         is one of the following:
 
-            1. If this test is specified with XML, then the returned string
-               is a csh script fragment.
+            1. If the returned string starts with a hyphen, then the test
+               script should be run with the string as an option to the base
+               script file.
 
-            2. If this is a script test, and the returned string starts with
-               a hyphen, then the test script should be run with the string
-               as an option to the base script file.
-
-            3. If this is a script test, and the returned string does not start
-               with a hyphen, then the string is a filename of a separate
-               script to run.  The file path is relative to getDirectory().
+            2. If the returned string does not start with a hyphen, then the
+               string is a filename of a separate script to run.  The file
+               path is relative to getDirectory().
         """
         return self.baseline_spec
 
@@ -335,7 +328,8 @@ class TestFile:
 
     def getSpecificationForm(self):
         """
-        returns None if construction is not completed, otherwise 'xml' or 'script'
+        Back when there were two test specification formats, this would
+        indicate which one. Currently, it always returns "script".
         """
         return self.specform
 

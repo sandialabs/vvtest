@@ -155,7 +155,7 @@ class GitLabFileSelector:
     def include(self, filename):
         ""
         bn,ext = os.path.splitext( filename )
-        return ext in [ '.vvt', '.xml', '.log', '.txt', '.py', '.sh' ]
+        return ext in [ '.vvt', '.log', '.txt', '.py', '.sh' ]
 
 
 class GitLabMarkDownConverter:

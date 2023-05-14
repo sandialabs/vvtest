@@ -9,6 +9,14 @@ from os.path import basename
 
 
 class MakeScriptCommand:
+    """
+    This class is a helper to create the command line for executing the test
+    as well as command lines for rebaselining and running analyze tests.
+
+    If multiple test file formats are supported (as they have been in the past),
+    the self.tspec.getSpecificationForm() can be used to make command lines
+    that depend on the format.
+    """
 
     def __init__(self, loc, tspec, program=None,
                             shbang_supported=True):
@@ -26,37 +34,25 @@ class MakeScriptCommand:
 
     def make_base_execute_command(self, baseline):
         ""
-        if self.tspec.getSpecificationForm() == 'xml':
-            cmdL = self.make_test_script_command()
-            if baseline:
-                if self.tspec.getBaselineScript():
-                    cmdL.append( '--baseline' )
-                else:
-                    cmdL = None
+        if baseline:
+            cmdL = self.check_make_script_baseline_command()
+
+        elif self.tspec.isAnalyze():
+            ascr = self.tspec.getAnalyzeScript()
+            cmdL = self.command_from_filename_or_option( ascr )
 
         else:
-            if baseline:
-                cmdL = self.check_make_script_baseline_command()
-
-            elif self.tspec.isAnalyze():
-                ascr = self.tspec.getAnalyzeScript()
-                cmdL = self.command_from_filename_or_option( ascr )
-
-            else:
-                cmdL = self.make_test_script_command()
+            cmdL = self.make_test_script_command()
 
         return cmdL
 
     def make_test_script_command(self):
         ""
-        if self.tspec.getSpecificationForm() == 'xml':
-            cmdL = ['/bin/csh', '-f', './runscript']
-        else:
-            srcdir = self.loc.path_to_source( self.tspec.getFilepath(),
-                                              self.tspec.getRootpath() )
-            fname = basename( self.tspec.getFilename() )
-            cmdL = make_file_execute_command( srcdir, fname,
-                                              self.prog, self.shbang )
+        srcdir = self.loc.path_to_source( self.tspec.getFilepath(),
+                                          self.tspec.getRootpath() )
+        fname = basename( self.tspec.getFilename() )
+        cmdL = make_file_execute_command( srcdir, fname,
+                                          self.prog, self.shbang )
 
         return cmdL
 

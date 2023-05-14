@@ -113,9 +113,8 @@ def create_parser( argvlist, vvtest_version ):
         help='Include tests that contain the keyword "TDD", which are '
              'normally not included.' )
     grp.add_argument( '--scan-type', metavar='TYPE', dest='scan_type', action='append',
-        help='Value can be "vvt" or "xml" or "vvt,xml", and restricts test '
-             'file scanning to certain type(s) of test specification (i.e., the '
-             'test file extensions). Default is only *.vvt files.' )
+        help='Unused. Left in as a placeholder in case another test format type '
+             'comes along (such as the Sierra project).' )
 
     # behavior
     grp = psr.add_argument_group( 'Runtime behavior' )
@@ -606,13 +605,22 @@ def check_convert_date_spec( date_spec ):
 
 
 def check_adjust_scan_type( scan_type ):
-    ""
+    """
+    Only one type of test file format is recognized now (there used to be two).
+    If another was to come along, this function parses arguments such as
+
+        --scan-type vvt
+        --scan-type 'vvt,xml'
+        --scan-type vvt --scan-type xml
+
+    where "xml" is an example name.
+    """
     types = set()
     for val1 in scan_type:
         for val2 in val1.split(','):
             val2 = val2.strip()
             if val2:
-                if val2 not in ['vvt','xml']:
+                if val2 not in ['vvt']:
                     raise Exception( 'unknown scan type: '+repr(val2) )
                 types.add( val2 )
 

@@ -74,7 +74,9 @@ class ScriptTestParser:
 
     def makeTestInstance(self, testname, idtraits):
         ""
-        return TestSpec( testname, self.root, self.fpath, idtraits )
+        tspec = TestSpec( testname, self.root, self.fpath, idtraits )
+        # magic: tspec.setSpecificationForm( 'script' )
+        return tspec
 
     def parseTestInstance(self, tspec):
         ""

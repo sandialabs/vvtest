@@ -10,7 +10,6 @@ import platform
 from .errors import TestSpecError
 from .staging import mark_staged_tests
 from .parsevvt import ScriptTestParser, add_generator_dependencies
-from .parsexml import XMLTestParser
 
 
 class TestCreator:
@@ -31,15 +30,20 @@ class TestCreator:
         self.force_params = force_params
 
     def getValidFileExtensions(self, specform=None):
-        ""
+        """
+        Returns the list of test file extensions that this instance of vvtest
+        will recognize and parse. If given, the entries in 'specform' narrow
+        down the list of extensions.
+
+        The default extension (when no 'specform' is given) is just ".vvt".
+
+        This mechanism was valuable when there was an "xml" test form supported
+        in vvtest, but now is a placehholder in the unlikely event that the
+        ASC Sierra project decides to adopt vvtest and their existing test
+        format must be supported.
+        """
         if specform:
-            ext = set()
-            for form in specform:
-                if form == 'vvt':
-                    ext.add( '.vvt' )
-                elif form == 'xml':
-                    ext.add( '.xml' )
-            return list( ext )
+            return map_spec_form_to_extensions( specform )
         else:
             return ['.vvt']
 
@@ -74,34 +78,49 @@ class TestCreator:
         maker.reparseTest( tspec )
 
     def create_test_maker(self, relpath, rootpath, strict):
-        ""
+        """
+        When there were two different supported test file formats, this
+        function would branch and create an object for parsing each type.
+        It would create the point of abstraction for the format parsing.
+        """
         form = map_extension_to_spec_form( relpath )
 
-        if form == 'xml':
-            parser = XMLTestParser( relpath, rootpath,
-                                    self.platname,
-                                    self.optionlist,
-                                    self.force_params,
-                                    strict )
-
-        else:
-            assert form == 'script'
-
+        if form == 'script':
             parser = ScriptTestParser( relpath, rootpath,
                                        self.platname,
                                        self.optionlist,
                                        self.force_params )
+        else:
+            raise Exception( "Internal error: unknown test file format: "+str(form) )
 
         maker = TestMaker( parser, self.idflags )
 
         return maker
 
 
+def map_spec_form_to_extensions( specforms ):
+    """
+    This and the function map_extension_to_spec_form() go together.
+
+    This one returns the valid file extension(s) for the spec form names
+    in the 'specforms' list.
+    """
+    ext = set()
+
+    for form in specforms:
+        if form == 'vvt':
+            ext.add( '.vvt' )
+
+    return list( ext )
+
+
 def map_extension_to_spec_form( filepath ):
-    ""
-    if os.path.splitext( filepath )[1] == '.xml':
-        return 'xml'
-    else:
+    """
+    There used to be two test file formats, and this function mapped the
+    file extension to a string called the test "form".
+    """
+    ext = os.path.splitext( filepath )[1]
+    if ext == '.vvt':
         return 'script'
 
 
@@ -113,7 +132,12 @@ class TestMaker:
         self.idflags = idflags
 
     def createTests(self):
-        ""
+        """
+        Create the test instances from the test file.
+
+        The parser can indicate that the given file is not a valid file format
+        by returning an empty list from parseTestNames().
+        """
         nameL = self.parser.parseTestNames()
 
         self.tests = []

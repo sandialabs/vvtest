@@ -102,7 +102,7 @@ class HTMLWriter:
             fp.write( "<ul>\n" )
             thome = tspec.getRootpath()
             xfile = pjoin( thome, tspec.getFilepath() )
-            fp.write( '  <li>XML: <a href="file://' + xfile + '" ' + \
+            fp.write( '  <li>SRC: <a href="file://' + xfile + '" ' + \
                              'type="text/plain">' + xfile + "</a></li>\n" )
             fp.write( '  <li>Parameters:<code>' )
             for (k,v) in tspec.getParameters().items():

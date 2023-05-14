@@ -28,12 +28,10 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         ""
         creator = vtu.creator()
 
-        # default is just *.vvt now [June 2022]
+        # default is just *.vvt
         self.assertEquals( sorted(creator.getValidFileExtensions()), ['.vvt'] )
 
         self.assertEquals( sorted(creator.getValidFileExtensions(['vvt'])), ['.vvt'] )
-        self.assertEquals( sorted(creator.getValidFileExtensions(['xml'])), ['.xml'] )
-        self.assertEquals( sorted(creator.getValidFileExtensions(['xml','vvt'])), ['.vvt','.xml'] )
 
         self.assertEquals( sorted(creator.getValidFileExtensions([])), ['.vvt'] )
         self.assertEquals( sorted(creator.getValidFileExtensions(None)), ['.vvt'] )
@@ -43,27 +41,14 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         util.writefile( 'subdir/scr.vvt', """
             pass
             """ )
-        util.writefile( 'subdir/old.xml', """
-            <rtest name="old">
-                <execute>
-                    echo "hello"
-                </execute>
-            </rtest>
-            """ )
 
-        # as of June 2022, the default extension became only *.vvt files
-
-        tlist,scan = construct_TestList_and_TestFileScanner( specform=['vvt','xml'] )
+        tlist,scan = construct_TestList_and_TestFileScanner( specform=['vvt'] )
         scan.scanPath( tlist, 'subdir' )
 
         tL = list( tlist.getTests() )
-        assert len( tL ) == 2
-        if tL[0].getSpec().getName() == 'scr':
-            assert tL[0].getSpec().getFilepath() == 'scr.vvt'
-            assert tL[1].getSpec().getFilepath() == 'old.xml'
-        else:
-            assert tL[1].getSpec().getFilepath() == 'scr.vvt'
-            assert tL[0].getSpec().getFilepath() == 'old.xml'
+        assert len( tL ) == 1
+        self.assertEqual( tL[0].getSpec().getName(), 'scr' )
+        self.assertEqual( tL[0].getSpec().getFilepath(), 'scr.vvt' )
 
     def test_scan_a_single_test_file(self):
         ""
@@ -87,20 +72,11 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         assert x != 0
         assert 'does not exist' in out and 'mypath' in out
 
-    def write_vvt_and_xml_test_files(self):
+    def test_restrict_scan_to_one_extension(self):
         ""
         util.writefile( 'scr.vvt', """
             pass
             """ )
-        util.writefile( 'atest.xml', """
-            <rtest name="atest">
-                <execute> echo "hello" </execute>
-            </rtest>
-            """ )
-
-    def test_restrict_scan_to_one_extension(self):
-        ""
-        self.write_vvt_and_xml_test_files()
 
         tlist,scan = construct_TestList_and_TestFileScanner( specform=['vvt'] )
         scan.scanPath( tlist, '.' )
@@ -110,80 +86,25 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
         assert tL[0].getSpec().getName() == 'scr'
         assert tL[0].getSpec().getFilepath() == 'scr.vvt'
 
-        tlist,scan = construct_TestList_and_TestFileScanner( specform=['xml'] )
+        tlist,scan = construct_TestList_and_TestFileScanner( specform=['foobar'] )
         scan.scanPath( tlist, '.' )
 
         tL = list( tlist.getTests() )
-        assert len( tL ) == 1
-        assert tL[0].getSpec().getName() == 'atest'
-        assert tL[0].getSpec().getFilepath() == 'atest.xml'
+        assert len( tL ) == 0
 
     def test_command_line_interface_to_scan_type_restriction(self):
         ""
-        self.write_vvt_and_xml_test_files()
+        util.writefile( 'scr.vvt', """
+            pass
+            """ )
 
         vrun = vtu.runvvtest()
-        vrun.assertCounts( total=2, npass=2 )
-        assert vrun.getTestIds() == [ 'atest', 'scr' ]
+        vrun.assertCounts( total=1, npass=1 )
+        assert vrun.getTestIds() == [ 'scr' ]
 
         vrun = vtu.runvvtest( '-w --scan-type vvt' )
         vrun.assertCounts( total=1, npass=1 )
         assert vrun.getTestIds() == [ 'scr' ]
-
-        vrun = vtu.runvvtest( '-w --scan-type xml' )
-        vrun.assertCounts( total=1, npass=1 )
-        assert vrun.getTestIds() == [ 'atest' ]
-
-    def test_bad_xml_warnings(self):
-        ""
-        util.writefile( 'A/atest.xml', """
-            <rtest name="atest">
-                <execute> echo "hello" </execute>
-            </rtest>
-            """ )
-
-        util.writefile( 'B/atest.xml', """
-            <rtest name="atest">
-                <execute> echo "hello" <execute>
-            </rtest>
-            """ )
-
-        util.writefile( 'C/note.xml', """\
-<?xml version="1.0" encoding="UTF-8"?>
-<note>
-  <to>Tove</to>
-  <from>Jani</from>
-  <heading>Reminder</heading>
-  <body>Don't forget me this weekend!</body>
-</note>
-""" )
-
-        # file with an error in the XML
-        util.writefile( 'D/note.xml', """\
-<?xml version="1.0" encoding="UTF-8"?>
-<note>
-  <to>Tove</to>
-  <from>Jani<from>
-  <heading>Reminder</heading>
-  <body>Don't forget me this weekend!</body>
-</note>
-""" )
-
-        tL,out = scan_path_with_warnings_output( 'A' )
-        assert not out.strip()
-        assert len( tL ) == 1
-
-        tL,out = scan_path_with_warnings_output( 'B' )
-        assert util.greplines( 'Warning*skipping file*B/atest.xml', out )
-        assert len( tL ) == 0
-
-        tL,out = scan_path_with_warnings_output( 'C' )
-        assert not out.strip()
-        assert len( tL ) == 0
-
-        tL,out = scan_path_with_warnings_output( 'D' )
-        assert not out.strip()
-        assert len( tL ) == 0
 
     def test_scans_ignore_previous_results_directories(self):
         ""
@@ -205,15 +126,6 @@ class TestList_scan_behavior( vtu.vvtestTestCase ):
 
         with util.change_directory( 'xdir2' ):
             vtu.runvvtest( '../src' ).assertCounts( total=1, npass=1 )
-
-
-def scan_path_with_warnings_output( path, specform=['vvt','xml'] ):
-    ""
-    tlist,scan = construct_TestList_and_TestFileScanner( specform=specform )
-    rtn,out,err = util.call_capture_output( scan.scanPath, tlist, path )
-    assert not out.strip()
-
-    return tlist.getTests(), err.strip()
 
 
 def construct_TestList_and_TestFileScanner( specform=None ):

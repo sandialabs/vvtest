@@ -292,12 +292,12 @@ class FileSearcher:
         for k,v in params.items():
             varD[k] = v
 
-        xmldir = os.path.dirname( testfilename )
+        srcdir = os.path.dirname( testfilename )
         for src,dest in files:
             src = expand_variables(src,varD)
             for fn in self.globs:
                 if fnmatch.fnmatch( os.path.basename(src), fn ):
-                    f = os.path.join( xmldir, src )
+                    f = os.path.join( srcdir, src )
                     if os.path.isfile(f):
                         if self.search_filename( f ):
                             return True

@@ -19,8 +19,9 @@ class TestFileScanner:
     def __init__(self, loc, creator, tcasefactory, path_list=[], specform=None ):
         """
         The 'loc' is a Locator object.
+
         If 'specform' is not None, it must be a list of strings, such as
-        'vvt' and 'xml'.  The scanner will only pick up files for those test
+        ['vvt','xml'].  The scanner will only pick up files for those test
         specification forms.  Default is only 'vvt' files.
         """
         self.loc = loc
@@ -28,6 +29,7 @@ class TestFileScanner:
         self.fact = tcasefactory
         self.path_list = path_list
 
+        # this converts the specified form(s) to file name extensions
         self.extensions = creator.getValidFileExtensions( specform )
 
         self.xdirmap = {}  # TestSpec xdir -> TestCase object
@@ -42,7 +44,7 @@ class TestFileScanner:
 
     def scanPath(self, testlist, path):
         """
-        Recursively scans for test XML or VVT files starting at 'path'.
+        Recursively scans for test files starting at 'path'.
         """
         if os.path.isfile( path ):
             _,ext = os.path.splitext( path )
@@ -66,8 +68,8 @@ class TestFileScanner:
     def _scan_recurse(self, testlist, basedir, d, dirs, files):
         """
         This function is given to os.walk to recursively scan a directory
-        tree for test XML files.  The 'basedir' is the directory originally
-        sent to the os.walk function.
+        tree for test files.  The 'basedir' is the directory originally sent
+        to the os.walk function.
         """
         d = os.path.normpath(d)
 
@@ -85,13 +87,7 @@ class TestFileScanner:
         linkdirs = []
         for subd in list(dirs):
             rd = os.path.join( d, subd )
-            if not os.path.exists(rd) or \
-                    subd.startswith("TestResults.") or \
-                    subd.startswith("Build_") or \
-                    is_vvtest_cache_directory(rd):
-                # Note: using specific directory names to exclude is not
-                # necessary anymore (because of the vvtest.cache file), but
-                # is benign (until its not :)
+            if not os.path.exists(rd) or is_vvtest_cache_directory(rd):
                 dirs.remove( subd )
             elif os.path.islink(rd):
                 linkdirs.append( rd )
@@ -110,9 +106,8 @@ class TestFileScanner:
 
     def readTestFile(self, testlist, basepath, relfile):
         """
-        Initiates the parsing of a test file.  XML test descriptions may be
-        skipped if they don't appear to be a test file.  Attributes from
-        existing tests will be absorbed.
+        Initiates the parsing of a test file.  Attributes from existing tests
+        will be absorbed.
         """
         assert relfile and not os.path.isabs( relfile )
 
@@ -142,7 +137,7 @@ class TestFileScanner:
 
         tcase0 = self.xdirmap.get( xdir, None )
 
-        if tcase0 != None and \
+        if tcase0 is not None and \
            not tests_are_related_by_staging( tcase0.getSpec(), tspec ):
 
             tspec0 = tcase0.getSpec()

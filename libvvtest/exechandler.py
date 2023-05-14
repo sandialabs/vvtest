@@ -17,8 +17,6 @@ except Exception:
     from pipes import quote
 
 from . import logger
-from . import CommonSpec
-from . import cshScriptWriter
 from . import ScriptWriter
 from .makecmd import MakeScriptCommand
 
@@ -42,8 +40,6 @@ class ExecutionHandler:
         self.forkok = fork_supported
         self.shbang = shbang_supported
 
-        self.commondb = None
-
     def create_execution_directory(self, tcase):
         ""
         tspec = tcase.getSpec()
@@ -61,20 +57,11 @@ class ExecutionHandler:
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
 
-        if tspec.getSpecificationForm() == 'xml':
-            self.loadCommonXMLDB()
-
         texec.setTimeout( tstat.getAttr( 'timeout', 0 ) )
 
         xdir = tspec.getExecuteDirectory()
         wdir = pjoin( self.loc.getTestingDirectory(), xdir )
         texec.setRunDirectory( wdir )
-
-    def loadCommonXMLDB(self):
-        ""
-        if self.commondb is None:
-            cfgdirs = self.rtconfig.getAttr('configdir')
-            self.commondb = CommonSpec.load_common_xmldb( cfgdirs )
 
     def check_run_preclean(self, tcase, baseline):
         ""
@@ -224,9 +211,6 @@ class ExecutionHandler:
         ""
         tcase = texec.getTestCase()
 
-        if tcase.getSpec().getSpecificationForm() == 'xml':
-            self.write_xml_run_script( tcase, texec.getRunDirectory() )
-
         rundir = texec.getRunDirectory()
         self.write_script_utils( tcase, rundir )
 
@@ -251,41 +235,6 @@ class ExecutionHandler:
             self.copyBaselineFiles( tcase )
 
         return cmd_list
-
-    def write_xml_run_script(self, tcase, rundir):
-        ""
-        # no 'form' defaults to the XML test specification format
-
-        tspec = tcase.getSpec()
-
-        script_file = pjoin( rundir, 'runscript' )
-
-        if self.rtconfig.getAttr('preclean') or \
-           not os.path.exists( script_file ):
-
-            troot = self.loc.make_abspath( tspec.getRootpath() )
-            assert os.path.isabs( troot )
-            tdir = os.path.dirname( tspec.getFilepath() )
-            srcdir = normpath( pjoin( troot, tdir ) )
-
-            exepath = self.rtconfig.getAttr('exepath')
-            if exepath is not None:
-                exepath = self.loc.path_to_file( tspec.getFilepath(), exepath )
-
-            # note that this writes a different sequence if the test is an
-            # analyze test
-            cshScriptWriter.writeScript( tcase,
-                                         self.commondb,
-                                         self.platform,
-                                         self.rtconfig.getAttr('vvtestdir'),
-                                         exepath,
-                                         self.rtconfig.getAttr('configdir'),
-                                         srcdir,
-                                         self.rtconfig.getAttr('onopts'),
-                                         self.rtconfig.getAttr('offopts'),
-                                         script_file )
-
-            self.perms.apply( os.path.abspath( script_file ) )
 
     def write_script_utils(self, tcase, rundir):
         ""
@@ -377,12 +326,8 @@ def pre_clean_execute_directory( specform ):
                  'vvtest_util.py',
                  'vvtest_util.sh' ]
 
-    if specform == 'xml':
-        excludes.append( 'runscript' )
-
     for fn in os.listdir('.'):
-        if fn not in excludes and \
-           not fnmatch.fnmatch( fn, 'execute_*.log' ):
+        if fn not in excludes and not fnmatch.fnmatch( fn, 'execute_*.log' ):
             remove_path( fn )
 
 
@@ -395,12 +340,8 @@ def post_clean_execute_directory( rundir, specform ):
                  'machinefile',
                  'testdata.repr' ]
 
-    if specform == 'xml':
-        excludes.append( 'runscript' )
-
     for fn in os.listdir( rundir ):
-        if fn not in excludes and \
-           not fnmatch.fnmatch( fn, 'execute_*.log' ):
+        if fn not in excludes and not fnmatch.fnmatch( fn, 'execute_*.log' ):
             fullpath = pjoin( rundir, fn )
             if not os.path.islink( fullpath ):
                 remove_path( fullpath )

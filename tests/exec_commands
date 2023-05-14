@@ -156,6 +156,8 @@ def make_TestSpec( filename ):
     tspec = TestSpec( 'atest', os.getcwd(), filename )
 
     if os.path.splitext( filename )[1] == '.xml':
+        # the xml test format has been removed, but leaving this here to
+        # illustrate using the specification form in test creation
         tspec.setSpecificationForm( 'xml' )
     else:
         tspec.setSpecificationForm( 'script' )
@@ -164,22 +166,6 @@ def make_TestSpec( filename ):
 
 
 class function_make_test_script_command( vtu.vvtestTestCase ):
-
-    def test_an_xml_test_specification_is_hard_coded_to_runscript(self):
-        ""
-        os.mkdir( 'rundir' )
-        util.writefile( 'subdir/atest.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tspec = make_TestSpec( 'subdir/atest.xml' )
-
-        os.chdir( 'rundir' )
-
-        cmdL = mkobj(tspec).make_test_script_command()
-        assert len(cmdL) > 1
-        cmdstr = ' '.join( cmdL )
-        assert 'csh' in cmdstr and 'runscript' in cmdstr
 
     def test_a_script_test_runs_the_script_file(self):
         ""
@@ -373,56 +359,8 @@ class make_baseline_commands( vtu.vvtestTestCase ):
         assert 'atest.vvt ' in cmdstr
         assert '--do-analyze' in cmdstr and '--run-baseline' in cmdstr
 
-    def test_baseline_xml_test_without_script_fragment(self):
-        ""
-        os.mkdir( 'rundir' )
-        util.writefile( 'subdir/atest.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tspec = make_TestSpec( 'subdir/atest.xml' )
-
-        os.chdir( 'rundir' )
-
-        cmdL = mkobj(tspec).check_make_script_baseline_command()
-        assert cmdL == None
-
 
 class the_core_make_execute_command_function( vtu.vvtestTestCase ):
-
-    def test_xml_test_not_baseline(self):
-        ""
-        os.mkdir( 'rundir' )
-        util.writefile( 'subdir/atest.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tspec = make_TestSpec( 'subdir/atest.xml' )
-        tspec.setBaselineScript( 'echo hello\n' )
-
-        os.chdir( 'rundir' )
-
-        cmdL = mkobj(tspec).make_base_execute_command( 0 )
-        cmdstr = ' '.join( cmdL )
-        assert 'runscript' in cmdstr
-        assert '--baseline' not in cmdstr
-
-    def test_xml_test_with_baseline(self):
-        ""
-        os.mkdir( 'rundir' )
-        util.writefile( 'subdir/atest.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tspec = make_TestSpec( 'subdir/atest.xml' )
-        tspec.setBaselineScript( 'echo hello\n' )
-
-        os.chdir( 'rundir' )
-
-        cmdL = mkobj(tspec).make_base_execute_command( 1 )
-        cmdstr = ' '.join( cmdL )
-        assert 'runscript' in cmdstr
-        assert '--baseline' in cmdstr
 
     def test_script_test_with_baseline(self):
         ""
@@ -484,20 +422,6 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         cmdstr = ' '.join( cmdL )
         assert 'atest.vvt' in cmdstr
         assert '--run-baseline' not in cmdstr
-
-    def test_baseline_an_xml_test_without_a_baseline_script_fragment(self):
-        ""
-        os.mkdir( 'rundir' )
-        util.writefile( 'subdir/atest.xml', """
-            <rtest name="atest">
-            </rtest>""" )
-
-        tspec = make_TestSpec( 'subdir/atest.xml' )
-
-        os.chdir( 'rundir' )
-
-        cmdL = mkobj(tspec).make_base_execute_command( 1 )
-        assert cmdL == None
 
     def test_running_in_a_directory_containing_a_colon(self):
         ""

@@ -94,7 +94,6 @@ class generate_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : one = val1 val2
             #VVT: parameterize : two = spot skip gimp
             """)
-        time.sleep(1)
 
         vtu.runvvtest( '-g' ).assertCounts( total=9, notrun=9 )
         self.assert_9_testlist()
@@ -148,7 +147,6 @@ class generate_tests( vtu.vvtestTestCase ):
         util.writefile( "two.vvt", """
             #VVT: keywords : bar
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '-g' )
         vrun.assertCounts( total=2, notrun=2 )
@@ -161,7 +159,7 @@ class generate_tests( vtu.vvtestTestCase ):
         assert util.globfile( 'TestResults*/one' )
         assert len( glob.glob( 'TestResults*/two' ) ) == 0
 
-    def test_that_TestResults_and_Build_directories_are_excluded_from_scans(self):
+    def test_that_test_results_directories_are_excluded_from_scans(self):
         ""
         util.writefile( "one.vvt", """
             print ( 'one ran' )
@@ -172,16 +170,6 @@ class generate_tests( vtu.vvtestTestCase ):
 
         util.writefile( vrun.resultsDir()+'/two.vvt', """
             print ( 'two ran' )
-            """ )
-        time.sleep(1)
-
-        vtu.runvvtest().assertCounts( total=0 )
-
-        vtu.runvvtest( '-R' ).assertCounts( total=1, npass=1 )
-
-        os.mkdir( 'Build_gnu4_opt' )
-        util.writefile( "Build_gnu4_opt/three.vvt", """
-            print ( 'three ran' )
             """ )
         time.sleep(1)
 
@@ -207,8 +195,6 @@ class generate_tests( vtu.vvtestTestCase ):
         os.symlink( '../three', 'subdir/symthree' )
 
         os.symlink( '../subdir', 'one/symdir' )
-
-        time.sleep(1)
 
         vtu.runvvtest( 'one' ).assertCounts( total=3, npass=3 )
 
@@ -268,7 +254,6 @@ class generate_tests( vtu.vvtestTestCase ):
             import vvtest_util as vvt
             print ( 'test name '+vvt.NAME+'XXX' )
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '-w' )
         vrun.assertCounts( total=5, npass=5 )
@@ -301,7 +286,6 @@ class generate_tests( vtu.vvtestTestCase ):
         util.writefile( "three.vvt", """
             #VVT: keywords : bar baz
             """ )
-        time.sleep(1)
 
         for batch in [False,True]:
 

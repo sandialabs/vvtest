@@ -48,6 +48,8 @@ Fixes:
 
 Changes:
 
+    - Support for the XML test format has been removed.
+
     - A test script that is executable will be run directly (using the #!
       mechanism). Now when a plugin preload function returns a file path,
       that path will always be used to run the test (when before the test

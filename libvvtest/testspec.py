@@ -48,7 +48,7 @@ class TestSpec( TestFile ):
         srcfile = basename( self.getFilepath() )
         lnf.append( (srcfile,None) )
 
-        if self.isAnalyze() and self.getSpecificationForm() == 'script':
+        if self.isAnalyze():
             analyze_spec = self.getAnalyzeScript()
             if analyze_spec and not analyze_spec.startswith('-'):
                 lnf.append( (analyze_spec,None) )

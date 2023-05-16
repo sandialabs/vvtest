@@ -74,9 +74,7 @@ class ScriptTestParser:
 
     def makeTestInstance(self, testname, idtraits):
         ""
-        tspec = TestSpec( testname, self.root, self.fpath, idtraits )
-        # magic: tspec.setSpecificationForm( 'script' )
-        return tspec
+        return TestSpec( testname, self.root, self.fpath, idtraits )
 
     def parseTestInstance(self, tspec):
         ""
@@ -89,7 +87,7 @@ class ScriptTestParser:
         self.parse_dependencies  ( tspec )
         self.parse_preload_label ( tspec )
 
-        tspec.setSpecificationForm( 'script' )
+        tspec.setConstructionCompleted()
 
     ############## end public interface #################
 

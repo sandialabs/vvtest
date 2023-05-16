@@ -148,19 +148,27 @@ class BatchInfoPrinter( TestInformationPrinter ):
                 xdir = tcase.getSpec().getDisplayString()
                 logger.emit( '      *', xdir, end='\n' )
 
-    def printBatchRemainders(self, not_started_qids, not_finished_qids, notrun_list):
+    def printBatchRemainders(self, jobstats, notrun_list):
         ""
-        if len(not_started_qids)+len(not_finished_qids) > 0:
+        nostart = jobstats.get('notrun',[])
+        nofinish = jobstats.get('notdone',[])
+        failed = jobstats.get('fail',[])
+        if len(nostart)+len(nofinish)+len(failed) > 0:
             logger.emit("\n")
 
-        if len(not_started_qids) > 0:
+        if len(nostart) > 0:
             logger.warn(
-                "these batch numbers did not seem to start: {0}".format(' '.join(not_started_qids))
+                "these batch numbers did not seem to start: {0}".format(' '.join(nostart))
             )
 
-        if len(not_finished_qids) > 0:
+        if len(nofinish) > 0:
             logger.warn(
-                "these batch numbers did not seem to finish: {0}".format(' '.join(not_finished_qids))
+                "these batch numbers did not seem to finish: {0}".format(' '.join(nofinish))
+            )
+
+        if len(failed) > 0:
+            logger.warn(
+                "these batch numbers seemed to fail: {0}".format(' '.join(failed))
             )
 
         print_notrun_reasons( notrun_list )

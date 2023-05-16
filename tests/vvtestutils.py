@@ -779,6 +779,8 @@ def make_fake_TestSpec( name='atest', keywords=['key1','key2'], idflags=None ):
     ts.setKeywordList( keywords )
     ts.setParameters( { 'np':'4' } )
 
+    ts.setConstructionCompleted()
+
     return ts
 
 
@@ -788,8 +790,6 @@ def make_fake_TestCase( result=None, runtime=None, name='atest',
     tspec = make_fake_TestSpec( name, keywords )
     tcase = testcase.TestCase( tspec )
     tstat = tcase.getStat()
-
-    tspec.setSpecificationForm( 'dummy' )
 
     tstat.resetResults()
 
@@ -903,7 +903,6 @@ def make_TestCase_list( timespec='runtime' ):
 
             tspec = make_fake_TestSpec( name='atest'+str(i) )
             tspec.setParameters( { 'np':str(j+1) } )
-            tspec.setSpecificationForm( 'dummy' )
 
             tcase = testcase.TestCase( tspec )
             tstat = tcase.getStat()

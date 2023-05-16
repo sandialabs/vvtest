@@ -131,9 +131,9 @@ class Batcher:
         for bjob in jobL:
             notrunL.extend( self.results.getReasonForNotRun( bjob ) )
 
-        notrun,notdone = self.jobhandler.getUnfinishedJobIDs()
+        jobstats = self.jobhandler.getUnfinishedJobIDs()
 
-        return notrun, notdone, notrunL
+        return jobstats, notrunL
 
     def shutdown(self):
         ""

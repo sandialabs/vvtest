@@ -103,12 +103,12 @@ class BatchRunner( TestListRunner ):
                     break
 
             # any remaining tests cannot be run, so flush them
-            NS, NF, nrL = self.batch.flush()
+            jobstats, nrL = self.batch.flush()
 
         finally:
             self.batch.shutdown()
 
-        self.info.printBatchRemainders( NS, NF, nrL )
+        self.info.printBatchRemainders( jobstats, nrL )
 
         rtn = encode_integer_warning( self.tlist )
         self.rtinfo['returncode'] = rtn

@@ -78,8 +78,7 @@ class ExecutionHandler:
         files.
         """
         print( "Cleaning execute directory for execution..." )
-        specform = tcase.getSpec().getSpecificationForm()
-        pre_clean_execute_directory( specform )
+        pre_clean_execute_directory()
 
     def check_set_working_files(self, tcase, baseline):
         """
@@ -137,9 +136,7 @@ class ExecutionHandler:
         Should only be run right after the test script finishes.  It removes
         all files in the execute directory except for a few vvtest files.
         """
-        specform = tcase.getSpec().getSpecificationForm()
-
-        post_clean_execute_directory( rundir, specform )
+        post_clean_execute_directory( rundir )
 
     def copyBaselineFiles(self, tcase):
         ""
@@ -319,7 +316,7 @@ def echo_test_execution_info( testname, cmd_list, timeout ):
     print('')
 
 
-def pre_clean_execute_directory( specform ):
+def pre_clean_execute_directory():
     ""
     excludes = [ 'execute.log',
                  'baseline.log',
@@ -331,7 +328,7 @@ def pre_clean_execute_directory( specform ):
             remove_path( fn )
 
 
-def post_clean_execute_directory( rundir, specform ):
+def post_clean_execute_directory( rundir ):
     ""
     excludes = [ 'execute.log',
                  'baseline.log',

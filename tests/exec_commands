@@ -155,13 +155,6 @@ def make_TestSpec( filename ):
     ""
     tspec = TestSpec( 'atest', os.getcwd(), filename )
 
-    if os.path.splitext( filename )[1] == '.xml':
-        # the xml test format has been removed, but leaving this here to
-        # illustrate using the specification form in test creation
-        tspec.setSpecificationForm( 'xml' )
-    else:
-        tspec.setSpecificationForm( 'script' )
-
     return tspec
 
 

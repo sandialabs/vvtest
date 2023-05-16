@@ -219,14 +219,12 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         ""
         self.make_example_execute_directory()
 
-        form = None  # right now, the test format doesn't matter
-
         with util.change_directory( 'xdir' ):
-            exechandler.pre_clean_execute_directory( form )
+            exechandler.pre_clean_execute_directory()
 
-        self.check_example_pre_cleaned_execute_directory( form )
+        self.check_example_pre_cleaned_execute_directory()
 
-    def check_example_pre_cleaned_execute_directory(self, specform):
+    def check_example_pre_cleaned_execute_directory(self):
         ""
         assert os.path.exists( 'xdir/execute.log' )
         assert os.path.exists( 'xdir/execute_stage.log' )
@@ -244,13 +242,11 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         ""
         self.make_example_execute_directory()
 
-        form = None  # right now, the test format doesn't matter
+        exechandler.post_clean_execute_directory( 'xdir' )
 
-        exechandler.post_clean_execute_directory( 'xdir', form )
+        self.check_example_post_cleaned_execute_directory()
 
-        self.check_example_post_cleaned_execute_directory( form )
-
-    def check_example_post_cleaned_execute_directory(self, specform):
+    def check_example_post_cleaned_execute_directory(self):
         ""
         assert os.path.exists( 'xdir/execute.log' )
         assert os.path.exists( 'xdir/execute_stage.log' )

@@ -287,16 +287,13 @@ class BatchJobHandler:
 
     def getUnfinishedJobIDs(self):
         ""
-        notrun = []
-        notdone = []
+        stats = {}
         for bjob in self.getDone():
             bid = str( bjob.getBatchID() )
-            if bjob.getResult() == 'notrun':
-                notrun.append( bid )
-            elif bjob.getResult() == 'notdone':
-                notdone.append( bid )
+            if bjob.getResult() in ['notrun','notdone','fail']:
+                stats.setdefault(bjob.getResult(),[]).append( bid )
 
-        return notrun, notdone
+        return stats
 
     def cancelStartedJobs(self):
         ""

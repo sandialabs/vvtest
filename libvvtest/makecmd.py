@@ -13,9 +13,8 @@ class MakeScriptCommand:
     This class is a helper to create the command line for executing the test
     as well as command lines for rebaselining and running analyze tests.
 
-    If multiple test file formats are supported (as they have been in the past),
-    the self.tspec.getSpecificationForm() can be used to make command lines
-    that depend on the format.
+    Back when a second test file format was supported, this class would also
+    consider the format to form the command lines.
     """
 
     def __init__(self, loc, tspec, program=None,

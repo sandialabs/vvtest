@@ -19,9 +19,6 @@ class TestFile:
         self.rootpath = rootpath
         self.filepath = filepath
 
-        # magic: why is the None value needed ???
-        self.specform = None       # None means construction not done, or a string
-
         self.enabled = True
         self.plat_enable = None    # a WordExpression
         self.option_enable = None  # a WordExpression
@@ -43,6 +40,8 @@ class TestFile:
         self.src_files = []        # extra source files listed by the test
         self.deps = []             # list of DependencyPattern
         self.skip_reason = None
+
+        self.complete = False      # True if parsing from file is complete
 
     def getFilename(self):
         """
@@ -318,20 +317,13 @@ class TestFile:
         """
         return list( self.deps )
 
-    def setSpecificationForm(self, form):
-        ""
-        self.specform = form
-
     def constructionCompleted(self):
         ""
-        return self.specform != None
+        return self.complete
 
-    def getSpecificationForm(self):
-        """
-        Back when there were two test specification formats, this would
-        indicate which one. Currently, it always returns "script".
-        """
-        return self.specform
+    def setConstructionCompleted(self):
+        ""
+        self.complete = True
 
     def setRootpath(self, path):
         ""

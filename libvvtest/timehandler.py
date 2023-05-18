@@ -23,9 +23,10 @@ class TimeHandler:
 
     def loadExternalRuntimes(self, tcaselist):
         """
-        For each test, a 'runtimes' file will be read (if it exists) and the
-        run time for this platform extracted.  This run time is saved as the
-        test execute time.
+        For each test, the user plugin will be queried or a "runtimes" file
+        will be read (if it exists) and the run time for this platform extracted.
+        This run time is saved in the 'xtime' test attribute (accessed via the
+        TestStatus.getRuntime() method).
         """
         self.cache.load()
 
@@ -48,7 +49,7 @@ class TimeHandler:
     def setTimeouts(self, tcaselist):
         """
         A timeout is calculated for each test and placed in the 'timeout'
-        attribute.
+        test attribute.
         """
         for tcase in tcaselist:
 

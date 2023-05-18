@@ -717,8 +717,11 @@ def generate_test_list( opts, optD, rtdata ):
     if opts.partition:
         import libvvtest.grouper as grouper
 
-        pops = optD['partition_dict']
-        tlists = grouper.partition_tests( tlist, pops['n'] )
+        rtdata.timehandler.setTimeouts( tlist.getTests() )
+
+        partition_specs = optD['partition_dict']
+
+        tlists = grouper.partition_tests( tlist, partition_specs )
         for i,tl in enumerate( tlists ):
             tl.setFilename( 'vvtestlist.'+str(i) )
             fn = tl.stringFileWrite( **(rtdata.rtinfo) )

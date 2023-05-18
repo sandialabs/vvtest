@@ -55,7 +55,7 @@ class suite( vtu.vvtestTestCase ):
         tlist.createAnalyzeGroupMap()
         tlist.connectDependencies()
 
-        parts = grouper.partition_tests( tlist, 1 )
+        parts = grouper.partition_tests( tlist, {'n':1,'balance':'count'} )
 
         assert len(parts) == 1
         tcaseL = list( parts[0].getTests() )
@@ -73,7 +73,7 @@ class suite( vtu.vvtestTestCase ):
         tlist.connectDependencies()
         assert len( list( tlist.getTests() ) ) == 3
 
-        parts = grouper.partition_tests( tlist, 2 )
+        parts = grouper.partition_tests( tlist, {'n':2,'balance':'count'} )
 
         assert len(parts) == 2
         tl0 = list(parts[0].getTests())
@@ -91,26 +91,58 @@ class suite( vtu.vvtestTestCase ):
         tlist.createAnalyzeGroupMap()
         tlist.connectDependencies()
 
-        parts = grouper.partition_tests( tlist, 1 )
+        parts = grouper.partition_tests( tlist, {'n':1,'balance':'count'} )
         assert len(parts) == 1 and len(list(parts[0].getTests())) == 24
 
-        parts = grouper.partition_tests( tlist, 2 )
+        parts = grouper.partition_tests( tlist, {'n':2,'balance':'count'} )
         assert len(parts) == 2
         assert len(list(parts[0].getTests())) == 12
         assert len(list(parts[1].getTests())) == 12
 
-        parts = grouper.partition_tests( tlist, 3 )
+        parts = grouper.partition_tests( tlist, {'n':3,'balance':'count'} )
         assert len(parts) == 3
         assert len(list(parts[0].getTests())) == 8
         assert len(list(parts[1].getTests())) == 8
         assert len(list(parts[2].getTests())) == 8
 
-        parts = grouper.partition_tests( tlist, 4 )
+        parts = grouper.partition_tests( tlist, {'n':4,'balance':'count'} )
         assert len(parts) == 4
         assert len(list(parts[0].getTests())) == 6
         assert len(list(parts[1].getTests())) == 6
         assert len(list(parts[2].getTests())) == 6
         assert len(list(parts[2].getTests())) == 6
+
+    def test_load_balancing_by_test_execute_time(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize (int): x = 1 2 3 4 5 6 7 8 9 10
+            """ )
+        tlist = vtu.create_testlist_from_test_files( 'atest.vvt' )
+
+        # set tests with a low runtime except one - make it high
+
+        for t in tlist.getTests():
+            x = t.getSpec().getParameters(typed=True)['x']
+            if x == 6:
+                t.getStat().setRuntime( 5*60 )
+            else:
+                t.getStat().setRuntime( x )
+
+        # the default balance should be "time"
+
+        for specs in [ {'n':2}, {'n':2, 'balance':'time'} ]:
+
+            parts = grouper.partition_tests( tlist, specs )
+
+            # one partition with test number 6, and the rest in the other partition
+            assert len(parts) == 2
+            tl0 = list( parts[0].getTests() )
+            tl1 = list( parts[1].getTests() )
+            if len(tl0) == 9:
+                assert len(tl1) == 1 and tl1[0].getSpec().getParameters()['x'] == '6'
+            else:
+                assert len(tl0) == 1
+                assert len(tl1) == 9 and tl0[0].getSpec().getParameters()['x'] == '6'
 
     def test_mixed_partitioning_case(self):
         ""
@@ -132,7 +164,7 @@ class suite( vtu.vvtestTestCase ):
         tlist.createAnalyzeGroupMap()
         tlist.connectDependencies()
 
-        parts = grouper.partition_tests( tlist, 3 )
+        parts = grouper.partition_tests( tlist, {'n':3} )
         assert len(parts) == 3
         chkL = []
         for tl in parts:
@@ -183,7 +215,7 @@ class suite( vtu.vvtestTestCase ):
             #VVT: depends on = atest
             import os
             import vvtest_util as vvt
-            os.path.isfile( vvt.DEPDIRS[0]+'/afile.txt' )
+            assert os.path.isfile( vvt.DEPDIRS[0]+'/afile.txt' )
             """ )
 
         vtu.runvvtest( '-g --partition 1 dir' )

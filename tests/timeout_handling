@@ -403,18 +403,14 @@ class test_timeouts( vtu.vvtestTestCase ):
         vrun.assertCounts( total=1, npass=1 )
         aval = int( vrun.greplogs( 'atestTIMEOUT=' )[0].split('=',1)[1] )
 
-        # a bump factor is added; however, doing so is now deprecated [Oct 2020]
-        assert aval >= 5*60*60
+        fivehr = 5*60*60
+        assert aval >= fivehr and aval < fivehr + 10
 
 
 class total_timeout( vtu.vvtestTestCase ):
 
     def test_timing_out_vvtest_itself(self):
         ""
-        # magic: this test does not work for subprocess mode in python 2.7,
-        #        but does with python 3.6+ (I think subprocess.communicate
-        #        waits for all child processes to finish before returning)
-
         util.writefile( 'atest.vvt', """
             import time
             time.sleep(20)

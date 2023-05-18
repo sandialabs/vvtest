@@ -169,12 +169,6 @@ def find_cache_file( cwd ):
 
     cashfile = find_vvtest_test_root_file( cwd, troot, 'vvtest.cache' )
 
-    if not cashfile:
-        # June 2022: name changed from test.cache to vvtest.cache, but look
-        #            for the old name for a while (a year?)
-        # this note is also in vvtest and scanner.py
-        cashfile = find_vvtest_test_root_file( cwd, troot, 'test.cache' )
-
     return cashfile
 
 

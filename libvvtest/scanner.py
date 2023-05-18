@@ -179,14 +179,4 @@ def is_vvtest_cache_directory( cdir ):
     if os.path.exists( fname ):
         return True
 
-    # June 2022: name changed from test.cache to vvtest.cache, but look
-    #            for the old name for a while (a year?)
-    # this note is also in vvtest and location.py
-    fname = pjoin( cdir, 'test.cache' )
-    if os.path.exists( fname ):
-        with open( fname, 'rt' ) as fp:
-            ver = fp.read(20).strip()
-        if ver.startswith('VERSION='):
-            return True
-
     return False

@@ -16,7 +16,7 @@ import re
 import vvtestutils as vtu
 import testutils as util
 
-from libvvtest.RuntimeConfig import FileSearcher
+from libvvtest.runconfig import FileSearcher
 
 
 class filtering_by_file_search( vtu.vvtestTestCase ):

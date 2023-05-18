@@ -16,8 +16,6 @@ import glob
 import vvtestutils as vtu
 import testutils as util
 
-from libvvtest.RuntimeConfig import RuntimeConfig
-
 
 class filter_and_num_processors( vtu.vvtestTestCase ):
 

@@ -176,7 +176,7 @@ def construct_locator_and_cache_handler( rtdata, opts, optD, vvtestdir ):
 
 def construct_runtime_config( rtdata, opts, optD ):
     ""
-    from libvvtest.RuntimeConfig import RuntimeConfig
+    from libvvtest.runconfig import RuntimeConfig
 
     rtconfig = RuntimeConfig()
 

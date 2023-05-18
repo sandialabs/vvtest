@@ -20,7 +20,7 @@ from testutils import print3
 from libvvtest.errors import TestSpecError
 
 from libvvtest.parseutil import evaluate_platform_expr
-from libvvtest.RuntimeConfig import RuntimeConfig
+from libvvtest.runconfig import RuntimeConfig
 from libvvtest.testcase import TestCase
 import libvvtest.testlistio as tio
 from libvvtest.tcfactory import TestCaseFactory

@@ -43,7 +43,7 @@ resultspy = pjoin( topdir, 'libvvtest', 'results.py' )
 import libvvtest.testspec as testspec
 import libvvtest.testcase as testcase
 import libvvtest.teststatus as teststatus
-from libvvtest.RuntimeConfig import RuntimeConfig
+from libvvtest.runconfig import RuntimeConfig
 from libvvtest.userplugin import UserPluginBridge, import_user_plugin
 import libvvtest.paramset as paramset
 from libvvtest.testlist import TestList

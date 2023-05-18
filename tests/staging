@@ -21,7 +21,7 @@ import libvvtest.paramset as paramset
 from libvvtest.testcase import TestCase
 from libvvtest.testspec import TestSpec
 from libvvtest.ScriptReader import ScriptReader
-from libvvtest.RuntimeConfig import RuntimeConfig
+from libvvtest.runconfig import RuntimeConfig
 import libvvtest.depend as depend
 import libvvtest.testlistio as tio
 import libvvtest.exechandler as exechandler

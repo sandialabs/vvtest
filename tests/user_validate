@@ -16,7 +16,7 @@ import time
 import vvtestutils as vtu
 import testutils as util
 
-from libvvtest.RuntimeConfig import RuntimeConfig
+from libvvtest.runconfig import RuntimeConfig
 from libvvtest.filtering import TestFilter
 from libvvtest.userplugin import UserPluginBridge, import_user_plugin
 

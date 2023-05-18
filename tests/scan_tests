@@ -16,7 +16,6 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.testlist as testlist
-from libvvtest.RuntimeConfig import RuntimeConfig
 from libvvtest.scanner import TestFileScanner
 from libvvtest.tcfactory import TestCaseFactory
 from libvvtest.location import Locator

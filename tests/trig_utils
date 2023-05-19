@@ -19,21 +19,20 @@ import testutils as util
 class trig_utility_tests( vtu.vvtestTestCase ):
 
     def test_a_file_from_the_trig_dir_can_be_imported(self):
-        ""
+        """
+        when the trig directory goes away, this test should instead pick up
+        perms.py from libvvtest
+        """
         util.writefile( 'atest.vvt', """
-            import os, sys
             import vvtest_util as vvt
-            import filecopy
-            os.mkdir( 'destdir' )
-            filecopy.copy_files( ['vvtest_util.py'], 'destdir' )
+            import perms
+            print ( 'USRNAME='+str(perms.my_user_name()) )
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=1, npass=1 )
-        tdir = vrun.resultsDir()
 
-        assert os.path.isfile( tdir+'/atest/destdir/vvtest_util.py' )
+        assert len( vrun.greplogs( 'USRNAME=' ) ) == 1
 
 
 ########################################################################

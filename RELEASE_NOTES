@@ -48,6 +48,14 @@ Fixes:
 
 Changes:
 
+    - The deprecated functions in trig/perms.py have been removed.
+
+    - Some deprecated utility files have been removed: runcmd.py, runjob.py,
+      runjob_remote.py, runner, trigger.py, and triglog.py.  The rest of the
+      files in the "trig" directory are now deprecated as well. In the future,
+      the ones still used by vvtest will be moved into the "libvvtest"
+      directory and the others removed.
+
     - Support for the XML test format has been removed.
 
     - A test script that is executable will be run directly (using the #!

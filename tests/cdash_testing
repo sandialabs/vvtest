@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: trig
+#RUNTEST: vvtest
 
 import sys
 sys.dont_write_bytecode = True
@@ -22,7 +22,7 @@ import testutils as util
 import cdashutil
 
 
-class submitting_files( trigutil.trigTestCase ):
+class submitting_files( unittest.TestCase ):
 
     def test_send_file_to_a_web_server_using_curl(self):
         ""
@@ -83,7 +83,7 @@ class submitting_files( trigutil.trigTestCase ):
         self.run_upload_file_test( None )
 
 
-class file_formatting( trigutil.trigTestCase ):
+class file_formatting( unittest.TestCase ):
 
     def test_reading_xml(self):
         ""

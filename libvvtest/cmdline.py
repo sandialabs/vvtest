@@ -14,7 +14,8 @@ from .keyexpr import create_keyword_expression
 from .platexpr import create_platform_expression
 from .paramexpr import create_parameter_expression
 from . import wordcheck
-from timeutils import parse_num_seconds
+from .timehandler import parse_num_seconds
+
 
 def parse_command_line( argvlist, vvtest_version=None ):
     ""
@@ -35,11 +36,12 @@ def parse_command_line( argvlist, vvtest_version=None ):
 ##############################################################################
 
 description = """\
-The vvtest program generates and runs a set of scripts, called tests.
-In normal operation, a list of tests to run is determined by recursively
-scanning the directory arguments (or the current working directory if
-none are given).  The tests are filtered using the command line options,
-then run in a subdirectory prefixed with "TestResults".
+The vvtest program scans for and runs a set of scripts, called tests.
+In normal operation, a set of tests to run is determined by recursively
+scanning the given command line directories (or the current working directory
+if none are given) for files with extension "*.vvt".  The tests are filtered
+using the command line options, then run in a subdirectory prefixed with
+"TestResults".
 """
 
 def create_parser( argvlist, vvtest_version ):

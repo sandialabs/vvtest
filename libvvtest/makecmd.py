@@ -112,19 +112,21 @@ def make_file_execute_command( srcdir, path,
                                prog=None,
                                shbang=True ):
     ""
-    if os.path.isabs( path ):
-        if prog:
+    if prog:
+        if os.path.splitext(prog)[1] == '.py':
+            return [ sys.executable, prog, path ]
+        else:
             return [ prog, path ]
-        elif shbang and os.access( path, os.X_OK ):
+
+    elif os.path.isabs( path ):
+        if shbang and os.access( path, os.X_OK ):
             return [ path ]
         else:
             return [ sys.executable, path ]
 
     else:
         srcpath = os.path.join( srcdir, path )
-        if prog:
-            return [ prog, path ]
-        elif shbang and os.access( srcpath, os.X_OK ):
+        if shbang and os.access( srcpath, os.X_OK ):
             return [ './'+path ]
         else:
             return [ sys.executable, path ]

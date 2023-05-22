@@ -1,6 +1,14 @@
 
 Improvements:
 
+    - The absolute path of the test execution directory is now added to
+      PYTHONPATH for test script invocation (along with an empty path). This
+      is more resilient in the case that a preload script removes empty paths
+      from the PYTHONPATH.
+
+    - For better Windows support, if the test_preload() plugin function returns
+      a filename with a ".py" extension, then Python is used to execute it.
+
     - A set of tests can now be partitioned and stored in testlist files to
       be run separately. Adding the --partition <int> option along with -g will
       cause vvtestlist.* files to be created. The tests in these files can be

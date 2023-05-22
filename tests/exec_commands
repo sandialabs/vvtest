@@ -12,6 +12,7 @@ sys.excepthook = sys.__excepthook__
 import os
 from os.path import abspath, basename
 import time
+import glob
 
 import vvtestutils as vtu
 import testutils as util
@@ -23,14 +24,18 @@ from libvvtest.testspec import TestSpec
 import libvvtest.testexec as testexec
 from libvvtest.location import Locator
 
+from vvtestutils import windows, not_windows
+
 
 def mkobj( tspec, **kwargs ):
     ""
-    return makecmd.MakeScriptCommand( Locator(os.getcwd()), tspec, **kwargs )
+    return makecmd.MakeScriptCommand( Locator(os.getcwd()), tspec,
+                                      shbang_supported=not windows )
 
 
 class function_make_file_execute_command( vtu.vvtestTestCase ):
 
+    @not_windows
     def test_an_executable_script_is_executed_directly(self):
         ""
         os.mkdir( 'rundir' )
@@ -68,8 +73,9 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
             """ )
         cwd = os.getcwd()
 
-        cmdL = makecmd.make_file_execute_command( cwd, 'ascript', shbang=True )
-        assert cmdL[0] == './ascript'
+        if not windows:
+            cmdL = makecmd.make_file_execute_command( cwd, 'ascript', shbang=True )
+            assert cmdL[0] == './ascript'
 
         cmdL = makecmd.make_file_execute_command( cwd, 'ascript', shbang=False )
         assert cmdL[0] == sys.executable
@@ -85,18 +91,19 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
             """ )
 
         cwd = os.getcwd()
+        shbang = not windows
 
-        cmdL = makecmd.make_file_execute_command( cwd, 'ascript' )
-        assert len(cmdL) == 2
-        assert cmdL[0] == sys.executable
-        assert cmdL[1] == 'ascript'
+        cmdL = makecmd.make_file_execute_command( cwd, 'ascript', shbang=shbang )
+        self.assertEqual( len(cmdL), 2 )
+        self.assertEqual( cmdL[0], sys.executable )
+        self.assertEqual( cmdL[1], 'ascript' )
 
         os.chdir( 'rundir' )
 
-        cmdL = makecmd.make_file_execute_command( cwd, 'subdir/ascript' )
-        assert len(cmdL) == 2
-        assert cmdL[0] == sys.executable
-        assert cmdL[1] == 'subdir/ascript'
+        cmdL = makecmd.make_file_execute_command( cwd, 'subdir/ascript', shbang=shbang )
+        self.assertEqual( len(cmdL), 2 )
+        self.assertEqual( cmdL[0], sys.executable )
+        self.assertEqual( cmdL[1], 'subdir/ascript' )
 
     def test_the_python_to_use_can_be_specified(self):
         ""
@@ -122,12 +129,25 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
 
         cwd = os.getcwd()
         prog = '/fake/program'
+        shbang = not windows
 
-        cmdL = makecmd.make_file_execute_command( cwd, 'ascript', prog )
+        cmdL = makecmd.make_file_execute_command( cwd, 'ascript', prog, shbang=shbang )
         assert cmdL[0] == prog and cmdL[1] == 'ascript'
 
-        cmdL = makecmd.make_file_execute_command( cwd, abscript, prog )
+        cmdL = makecmd.make_file_execute_command( cwd, abscript, prog, shbang=shbang )
         assert cmdL[0] == prog and cmdL[1] == abscript
+
+    def test_specifying_a_program_with_a_py_extension_will_run_python(self):
+        ""
+        prog = util.writefile( 'afile.py', """
+            print ( 'hello' )
+            """ )
+
+        cwd = os.getcwd()
+
+        cmdL = makecmd.make_file_execute_command( cwd, 'ascript', prog )
+        assert cmdL[0] == sys.executable
+        assert cmdL[1] == prog
 
     def test_an_absolute_file_path_ignores_srcdir(self):
         ""
@@ -142,12 +162,18 @@ class function_make_file_execute_command( vtu.vvtestTestCase ):
             """ )
         absfile = os.path.abspath( 'subdir/afile' )
 
+        shbang = not windows
+
         os.chdir( 'rundir' )
 
-        cmdL = makecmd.make_file_execute_command( '/foo/bar', abscript )
-        assert len(cmdL) == 1 and cmdL[0] == abscript
+        cmdL = makecmd.make_file_execute_command( '/foo/bar', abscript, shbang=shbang )
+        if shbang:
+            assert len(cmdL) == 1 and cmdL[0] == abscript
+        else:
+            # without shbang (ie, Windows), python is always used to run
+            assert len(cmdL) == 2 and cmdL[1] == abscript
 
-        cmdL = makecmd.make_file_execute_command( '/foo/bar', absfile )
+        cmdL = makecmd.make_file_execute_command( '/foo/bar', absfile, shbang=shbang )
         assert len(cmdL) == 2 and cmdL[0] == sys.executable and cmdL[1] == absfile
 
 
@@ -160,6 +186,7 @@ def make_TestSpec( filename ):
 
 class function_make_test_script_command( vtu.vvtestTestCase ):
 
+    @not_windows
     def test_a_script_test_runs_the_script_file(self):
         ""
         os.mkdir( 'rundir' )
@@ -175,7 +202,7 @@ class function_make_test_script_command( vtu.vvtestTestCase ):
         assert len(cmdL) > 1
         cmdstr = ' '.join( cmdL )
         assert 'python' in cmdstr or 'Python' in cmdstr
-        assert 'atest.vvt' in cmdstr
+        assert 'atest.vvt' in cmdL
 
     def test_an_executable_script_runs_under_python_if_shbang_not_supported(self):
         ""
@@ -189,7 +216,10 @@ class function_make_test_script_command( vtu.vvtestTestCase ):
 
         os.chdir( 'rundir' )
 
-        cmdL = mkobj(tspec, shbang_supported=False).make_test_script_command()
+        obj = makecmd.MakeScriptCommand( Locator(os.getcwd()), tspec,
+                                         shbang_supported=False )
+        cmdL = obj.make_test_script_command()
+
         assert len(cmdL) > 1
         assert cmdL[0] == sys.executable and basename(cmdL[1]) == 'atest.vvt'
 
@@ -212,8 +242,7 @@ class function_command_from_filename_or_option( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).command_from_filename_or_option( 'auxscript' )
-        cmdstr = ' '.join( cmdL )
-        assert './auxscript' in cmdstr
+        assert 'auxscript' == cmdL[-1] or './auxscript' == cmdL[-1]
 
     def test_command_from_an_option_specification(self):
         ""
@@ -227,8 +256,7 @@ class function_command_from_filename_or_option( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).command_from_filename_or_option( '--foobar' )
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt ' in cmdstr and '--foobar' in cmdstr
+        assert 'atest.vvt' == cmdL[-2] and '--foobar' == cmdL[-1]
 
 
 class make_baseline_commands( vtu.vvtestTestCase ):
@@ -246,8 +274,7 @@ class make_baseline_commands( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).check_make_script_baseline_command()
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt ' in cmdstr and '--run-baseline' in cmdstr
+        assert 'atest.vvt' == cmdL[-2] and '--run-baseline' == cmdL[-1]
 
     def test_baseline_analyze_command_with_baseline_option(self):
         ""
@@ -268,10 +295,9 @@ class make_baseline_commands( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).make_baseline_analyze_command()
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt ' in cmdstr
-        assert '--do-analyze' in cmdstr
-        assert '--run-baseline' in cmdstr
+        assert 'atest.vvt' == cmdL[-3]
+        assert '--do-analyze' == cmdL[-2]
+        assert '--run-baseline' == cmdL[-1]
 
     def test_baseline_analyze_command_with_baseline_filename(self):
         ""
@@ -295,9 +321,8 @@ class make_baseline_commands( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).make_baseline_analyze_command()
-        cmdstr = ' '.join( cmdL )
-        assert 'atest_bline.py ' in cmdstr
-        assert '--do-analyze' in cmdstr
+        assert 'atest_bline.py' == cmdL[-2]
+        assert '--do-analyze' == cmdL[-1]
 
     def test_baseline_analyze_command_with_baseline_and_analyze_filename(self):
         ""
@@ -324,9 +349,9 @@ class make_baseline_commands( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).make_baseline_analyze_command()
-        cmdstr = ' '.join( cmdL )
-        assert 'atest_bline.py' in cmdstr
-        assert 'atest_analyze' not in cmdstr
+        for seg in cmdL:
+            assert not seg.endswith('atest_analyze')
+        assert 'atest_bline.py' == cmdL[-1]
 
     def test_make_baseline_command_with_analyze_test(self):
         ""
@@ -348,9 +373,9 @@ class make_baseline_commands( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).check_make_script_baseline_command()
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt ' in cmdstr
-        assert '--do-analyze' in cmdstr and '--run-baseline' in cmdstr
+        self.assertEqual( 'atest.vvt', cmdL[-3] )
+        assert ( '--do-analyze' == cmdL[-2] and '--run-baseline' == cmdL[-1] ) or \
+               ( '--do-analyze' == cmdL[-1] and '--run-baseline' == cmdL[-2] )
 
 
 class the_core_make_execute_command_function( vtu.vvtestTestCase ):
@@ -369,9 +394,7 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).make_base_execute_command( 1 )
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt ' in cmdstr
-        assert '--run-baseline' in cmdstr
+        assert 'atest.vvt' == cmdL[-2] and '--run-baseline' == cmdL[-1]
 
     def test_analyze_script_test_no_baseline(self):
         ""
@@ -393,10 +416,8 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).make_base_execute_command( 0 )
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt ' in cmdstr
-        assert '--do-analyze' in cmdstr
-        assert '--run-baseline' not in cmdstr
+        self.assertEqual( 'atest.vvt', cmdL[-2] )
+        self.assertEqual( '--do-analyze', cmdL[-1] )
 
     def test_plain_script_test_no_baseline(self):
         ""
@@ -412,10 +433,9 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         os.chdir( 'rundir' )
 
         cmdL = mkobj(tspec).make_base_execute_command( 0 )
-        cmdstr = ' '.join( cmdL )
-        assert 'atest.vvt' in cmdstr
-        assert '--run-baseline' not in cmdstr
+        self.assertEqual( 'atest.vvt', cmdL[-1] )
 
+    @not_windows
     def test_running_in_a_directory_containing_a_colon(self):
         ""
         util.writefile( 'sub:dir/atest.vvt', """
@@ -444,6 +464,7 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         self.assertEqual( vrun.countGrepLogs( 'check atest', 'atest' ), 1 )
         self.assertEqual( vrun.countGrepLogs( 'check btest', 'btest' ), 1 )
 
+    @not_windows
     def test_running_vvtest_out_of_a_directory_containing_a_colon(self):
         ""
         os.mkdir( 'install:dir' )
@@ -528,7 +549,10 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
             """ )
 
         with util.set_environ( PYTHONPATH=pth ):
-            x,out = util.runcmd( vtu.vvtest_file )
+            if windows:
+                x,out = util.runcmd( '"'+sys.executable+'" '+vtu.vvtest_file )
+            else:
+                x,out = util.runcmd( vtu.vvtest_file )
 
         assert len( util.grepfiles( 'coolname=atest', '*/atest/execute.log' ) ) == 1
         assert len( util.greplines( 'diff *atest', out ) ) > 0
@@ -545,10 +569,45 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
             """ )
 
         with util.set_environ( PYTHONPATH=None ):
-            x,out = util.runcmd( vtu.vvtest_file )
+            if windows:
+                x,out = util.runcmd( '"'+sys.executable+'" '+vtu.vvtest_file )
+            else:
+                x,out = util.runcmd( vtu.vvtest_file )
 
         assert len( util.grepfiles( 'coolname=atest', '*/atest/execute.log' ) ) == 1
         assert len( util.greplines( 'diff *atest', out ) ) > 0
+
+    def test_that_the_execute_directory_is_added_to_PYTHONPATH(self):
+        ""
+        fn = util.writefile( 'adir/myrunner.py', """
+            import os, sys, subprocess
+            # remove empty paths and single dots from PYTHONPATH
+            dL = []
+            for d in os.environ.get('PYTHONPATH','').split(':'):
+                if d and d != '.':
+                    dL.append(d)
+            os.environ['PYTHONPATH'] = ':'.join(dL)
+            sys.exit( subprocess.call( [sys.executable]+sys.argv[1:] ) )
+            """ )
+
+        util.writefile( 'adir/vvtest_user_plugin.py', """
+            def test_preload( cmdline ):
+                return """+repr(fn)+"""
+            """ )
+
+        adir = abspath( 'adir' )
+
+        pat = 'atest-PYTHONPATH='
+        util.writefile( 'atest.vvt', """
+            import vvtest_util as vvt
+            import os
+            print ( """+repr(pat)+"""+str(os.environ.get('PYTHONPATH',None)) )
+            """ )
+
+        vrun = vtu.runvvtest( '-vv --config', adir )
+        vrun.assertCounts( total=1, npass=1 )
+        pypath = vrun.greplogs(pat)[0].strip().split(pat,1)[1]
+        assert abspath( glob.glob('TestResults*/atest')[0] ) in pypath
 
 
 class TestExec_class_functions( vtu.vvtestTestCase ):

@@ -54,26 +54,24 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
 
     def test_setting_PYTHONPATH(self):
         ""
-        os.mkdir( 'colon:path' )
-
         with util.set_environ( PYTHONPATH=None ):
 
-            ps = exechandler.determine_PYTHONPATH( ['/some/path'] )
-            self.assertEqual( ps, ':/some/path' )
-            ps = exechandler.determine_PYTHONPATH( ['/some/colon:path'] )
-            self.assertEqual( ps, ':' )
-            ps = exechandler.determine_PYTHONPATH( [abspath('colon:path')] )
-            self.assertEqual( ps, ':' )
+            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/some/path'] )
+            self.assertEqual( ps, ':/ab/cd:/some/path' )
+            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/some/foo:bar'] )
+            self.assertEqual( ps, ':/ab/cd' )
+            ps = exechandler.determine_PYTHONPATH( '/ab/cd', [abspath('foo:bar')] )
+            self.assertEqual( ps, ':/ab/cd' )
 
-            ps = exechandler.determine_PYTHONPATH( ['/foo/bar','/pypath'] )
-            self.assertEqual( ps, ':/foo/bar:/pypath' )
+            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/foo/bar','/pypath'] )
+            self.assertEqual( ps, ':/ab/cd:/foo/bar:/pypath' )
 
-            ps = exechandler.determine_PYTHONPATH( ['/foo/bar','/to/day'] )
-            self.assertEqual( ps, ':/foo/bar:/to/day' )
+            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/foo/bar','/to/day'] )
+            self.assertEqual( ps, ':/ab/cd:/foo/bar:/to/day' )
 
         with util.set_environ( PYTHONPATH='/usr/path:/an:other' ):
-            ps = exechandler.determine_PYTHONPATH( ['/pypath'] )
-            self.assertEqual( ps, ':/pypath:/usr/path:/an:other' )
+            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/pypath'] )
+            self.assertEqual( ps, ':/ab/cd:/pypath:/usr/path:/an:other' )
 
     def prepare_for_link_and_copy(self):
         ""
@@ -95,6 +93,7 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
 
         return src1, src2, src3
 
+    @not_windows  # soft links are unreliable
     def test_force_copy_path(self):
         ""
         src1,src2,src3 = self.prepare_for_link_and_copy()
@@ -121,6 +120,7 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         assert not os.path.islink( 'destdir3/tryme' )
         assert util.readfile( 'destdir3/tryme' ).strip() == 'file1 contents'
 
+    @not_windows  # soft links are unreliable
     def test_force_link_path(self):
         ""
         src1,src2,src3 = self.prepare_for_link_and_copy()
@@ -149,6 +149,7 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         assert os.path.islink( 'destdir3/tryme' )
         assert util.readfile( 'destdir3/tryme' ).strip() == 'file1 contents'
 
+    @not_windows  # only because call_capture_output fails
     def test_link_and_copy_files(self):
         ""
         self.prepare_for_link_and_copy()
@@ -212,7 +213,8 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         util.writefile( 'xdir/testdata.repr', 'repr data\n' )
 
         util.writefile( 'xdir/old.exo', 'exo data\n' )
-        os.symlink( 'execute.log', 'xdir/alink' )
+        if not windows:
+            os.symlink( 'execute.log', 'xdir/alink' )
         util.writefile( 'xdir/subdir/afile', 'afile contents\n' )
 
     def test_pre_cleaning(self):
@@ -257,9 +259,11 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
         assert os.path.exists( 'xdir/testdata.repr' )
 
         assert not os.path.exists( 'xdir/old.exo' )
-        assert     os.path.exists( 'xdir/alink' )
+        if not windows:
+            assert os.path.exists( 'xdir/alink' )
         assert not os.path.exists( 'xdir/subdir' )
 
+    @not_windows  # only because call_capture_output fails
     def test_writing_and_reading_the_execute_log_header(self):
         ""
         cmdL = [ sys.executable, '--longopt', 'foo bar', 'myarg' ]

@@ -218,7 +218,7 @@ class ExecutionHandler:
         self.check_write_mpi_machine_file( texec.getResourceObject() )
         self.check_set_working_files( tcase, baseline )
 
-        set_PYTHONPATH( self.rtconfig.getAttr( 'configdir' ) )
+        set_PYTHONPATH( rundir, self.rtconfig.getAttr( 'configdir' ) )
 
         prog = self.plugin.testPreload( tcase )
 
@@ -252,7 +252,7 @@ class ExecutionHandler:
                 self.perms.apply( os.path.abspath( script_file ) )
 
 
-def set_PYTHONPATH( configdirs ):
+def set_PYTHONPATH( rundir, configdirs ):
     """
     When running Python in a test, the sys.path must include a few vvtest
     directories as well as the user's config dir.  This can be done with
@@ -275,19 +275,19 @@ def set_PYTHONPATH( configdirs ):
     import vvtest_util.py first thing, the directories are placed in
     PYTHONPATH here too (but only those that do not contain colons).
     """
-    os.environ['PYTHONPATH'] = determine_PYTHONPATH( configdirs )
+    os.environ['PYTHONPATH'] = determine_PYTHONPATH( rundir, configdirs )
 
 
-def determine_PYTHONPATH( configdirs ):
+def determine_PYTHONPATH( rundir, configdirs ):
     """
     Note: Adding configdirs to PYTHONPATH has been marked deprecated, Dec 2021.
           Tests should instead import vvtest_util.py.  When removed, this
     function must still make sure an empty directory is added to PYTHONPATH in
-    the case of the test execution directory containing colons in the path.
-    This is so that the test can import the vvtest_util.py file from the test
-    directory.
+    the case of the test execution directory contains colons in the path.
+    This is so that the test can still import the vvtest_util.py file from the
+    test directory.
     """
-    val = ''
+    val = ':'+rundir
 
     for cfgd in configdirs:
         if ':' not in cfgd:
@@ -295,9 +295,6 @@ def determine_PYTHONPATH( configdirs ):
 
     if 'PYTHONPATH' in os.environ:
         val += ':'+os.environ['PYTHONPATH']
-
-    if not val:
-        val = ':'
 
     return val
 

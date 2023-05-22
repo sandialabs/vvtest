@@ -10,6 +10,7 @@ sys.excepthook = sys.__excepthook__
 import os
 from os.path import abspath, normpath, basename, dirname
 from os.path import join as pjoin
+import platform
 import re
 import shutil
 import stat
@@ -28,6 +29,7 @@ import unittest
 import gzip
 from textwrap import dedent
 
+windows = platform.uname()[0].lower().startswith('win')
 
 working_directory = None
 use_this_ssh = 'fake'
@@ -211,13 +213,15 @@ def writescript( fname, content ):
 
     writefile( fname, content )
 
-    perm = stat.S_IMODE( os.stat(fname)[stat.ST_MODE] )
-    perm = perm | stat.S_IXUSR
+    if not windows:
 
-    try:
-        os.chmod( fname, perm )
-    except Exception:
-        pass
+        perm = stat.S_IMODE( os.stat(fname)[stat.ST_MODE] )
+        perm = perm | stat.S_IXUSR
+
+        try:
+            os.chmod( fname, perm )
+        except Exception:
+            pass
 
     return abspath( fname )
 

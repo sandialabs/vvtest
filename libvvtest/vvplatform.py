@@ -24,7 +24,6 @@ class Platform:
         self.platname = platname
         self.cplrname = cplrname
 
-        self.envD = dict( environ )
         self.attrs = dict( attrs )
 
         self.maxsize  = (None,None)  # max core, max device
@@ -50,12 +49,6 @@ class Platform:
     def getNodeSize(self):
         ""
         return self.nodesize
-
-    def getEnvironment(self):
-        """
-        Returns a dictionary of environment variables and their values.
-        """
-        return self.envD
 
     def getAttributes(self):
         ""

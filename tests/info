@@ -69,7 +69,6 @@ class info_tests( vtu.vvtestTestCase ):
         util.writefile( 'sdir/skeys.vvt', """
             #VVT: keywords : mars jupiter fast
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--keys' )
         assert_keywords( vrun, ['fast', 'hello', 'jupiter', 'mars', 'world'] )
@@ -129,7 +128,6 @@ class info_tests( vtu.vvtestTestCase ):
               #VVT: parameterize : np = 1 4
               pass
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--keys' )
         assert_keywords( vrun, ['jupiter', 'mars'] )
@@ -196,7 +194,6 @@ class info_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : np = 1 4
             pass
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, npass=2 )
@@ -207,36 +204,26 @@ class info_tests( vtu.vvtestTestCase ):
 
     def test_info_mode_should_not_apply_default_max_procs_filter(self):
         ""
-        # TODO: this platform_plugin.py mechanism is deprecated as of Feb 2023
-        util.writefile( 'cfg1/platform_plugin.py', """
-            def initialize( plat ):
-                plat.setattr( 'maxprocs', 4 )
-            """ )
-        util.writefile( 'cfg2/idplatform.py', """
+        util.writefile( 'cfg/idplatform.py', """
             def load_specifications( specs, platname, cplrname, options ):
                 specs['maxprocs'] = 4
             """ )
         util.writefile( 'procs.vvt', """
             #VVT: parameterize : np = 1 8
             """ )
-        time.sleep(1)
 
-        for cfg in ['cfg1','cfg2']:
+        vrun = vtu.runvvtest( "-N 8 --config cfg" )
+        vrun.assertCounts( total=2, npass=2 )
+        tdir = vrun.resultsDir()
 
-            vtu.remove_results()
+        vrun = vtu.runvvtest( "-i -v -N 4 --config cfg" )
+        vrun.assertCounts( total=1, npass=1 )
 
-            vrun = vtu.runvvtest( "-N 8 --config "+cfg )
-            vrun.assertCounts( total=2, npass=2 )
-            tdir = vrun.resultsDir()
+        vrun = vtu.runvvtest( "-i -v --config cfg" )
+        vrun.assertCounts( total=2, npass=2 )
 
-            vrun = vtu.runvvtest( "-i -v -N 4 --config "+cfg )
-            vrun.assertCounts( total=1, npass=1 )
-
-            vrun = vtu.runvvtest( "-i -v --config "+cfg )
-            vrun.assertCounts( total=2, npass=2 )
-
-            vrun = vtu.runvvtest( "-i -v --config", abspath(cfg), chdir=tdir )
-            vrun.assertCounts( total=2, npass=2 )
+        vrun = vtu.runvvtest( "-i -v --config", abspath('cfg'), chdir=tdir )
+        vrun.assertCounts( total=2, npass=2 )
 
     def test_info_mode_should_not_apply_default_platform_filter(self):
         ""
@@ -257,7 +244,6 @@ class info_tests( vtu.vvtestTestCase ):
         util.writefile( 'both.vvt', """
             #VVT: enable (platforms="XBox or PlayStation")
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( "--config config1", addplatform=False )
         vrun.assertCounts( total=2, npass=2 )
@@ -325,7 +311,6 @@ class info_tests( vtu.vvtestTestCase ):
             #VVT: keywords (testname=horse) : patchwork
             echo "hello world"
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '--files' )
         assert_files( vrun, [ 'multi.vvt'] )
@@ -375,7 +360,6 @@ class info_tests( vtu.vvtestTestCase ):
         util.writefile( 'bar.vvt', """
             pass
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, npass=2 )
@@ -455,7 +439,6 @@ class info_tests( vtu.vvtestTestCase ):
         util.writefile( 'gold.vvt', """
             #VVT: keywords = nugget underground
             """ )
-        time.sleep(1)
 
         vrun = vtu.runvvtest( '-k velvet' )
         vrun.assertCounts( total=2, npass=1, diff=1 )

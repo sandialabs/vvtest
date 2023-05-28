@@ -1188,9 +1188,7 @@ def create_Batcher( opts, optD, rtdata, namer,
 
     assert opts.batch_id is None
 
-    batchitf = BatchQueueInterface( plat.getNodeSize(),
-                                    plat.getAttributes(),
-                                    plat.getEnvironment() )
+    batchitf = BatchQueueInterface( plat.getNodeSize(), plat.getAttributes() )
 
     batchlimit = opts.batch_limit
     if batchlimit == None:

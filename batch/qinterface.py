@@ -17,7 +17,7 @@ from .batchfactory import construct_batch_system
 
 class BatchQueueInterface:
 
-    def __init__(self, node_size, attrs={}, envD={}):
+    def __init__(self, node_size, attrs={}):
         """
         The 'attrs' must have a "batchsys" key with one of these values:
 
@@ -30,7 +30,6 @@ class BatchQueueInterface:
         """
         self.batch = None
         self.attrs = dict( attrs )
-        self.envD = dict( envD )
 
         assert node_size[0] and node_size[0] > 0
         self.nodesize = node_size
@@ -96,10 +95,6 @@ class BatchQueueInterface:
         bufL.extend( [ '',
                        'echo "job start time = `date`"',
                        'echo "job time limit = '+str(queue_time)+'"' ] )
-
-        # set the environment variables from the platform into the script
-        for k,v in self.envD.items():
-            bufL.append( 'export '+k+'="'+v +'"' )
 
         bufL.extend( [ '',
                        command,

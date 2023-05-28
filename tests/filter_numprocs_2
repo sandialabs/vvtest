@@ -62,12 +62,7 @@ class filter_and_num_processors( vtu.vvtestTestCase ):
 
     def test_maxprocs_filtering(self):
         ""
-        # TODO: platform_plugin.py was deprecated on Feb 2022
-        util.writefile( 'cfg1/platform_plugin.py', """
-            def initialize( plat ):
-                plat.setattr( 'maxprocs', 3 )
-            """ )
-        util.writefile( 'cfg2/idplatform.py', """
+        util.writefile( 'cfg/idplatform.py', """
             def load_specifications( specs, platname, cplrname, opts ):
                 specs['maxprocs'] = 3
             """ )
@@ -78,25 +73,23 @@ class filter_and_num_processors( vtu.vvtestTestCase ):
             #VVT: analyze : --analyze
             """ )
 
-        for cfgd in ['cfg1','cfg2']:
+        for batch in [False,True]:
+            vtu.remove_results()
 
-            for batch in [False,True]:
-                vtu.remove_results()
+            vrun = vtu.runvvtest( '-vv --config cfg', batch=batch )
+            vrun.assertCounts( total=4, npass=2, skip=2 )
+            tdir = vrun.resultsDir()
 
-                vrun = vtu.runvvtest( '-vv --config '+cfgd, batch=batch )
-                vrun.assertCounts( total=4, npass=2, skip=2 )
-                tdir = vrun.resultsDir()
+            vtu.remove_results()
+            vrun = vtu.runvvtest( '-vv -N 4 --config cfg', batch=batch )
+            vrun.assertCounts( total=4, npass=4 )
 
-                vtu.remove_results()
-                vrun = vtu.runvvtest( '-vv -N 4 --config '+cfgd, batch=batch )
-                vrun.assertCounts( total=4, npass=4 )
+            # in restart, no max procs filter unless -N is on command line
+            vrun = vtu.runvvtest( '-R --config cfg', batch=batch, chdir=tdir )
+            vrun.assertCounts( total=4, npass=4 )
 
-                # in restart, no max procs filter unless -N is on command line
-                vrun = vtu.runvvtest( '-R --config '+cfgd, batch=batch, chdir=tdir )
-                vrun.assertCounts( total=4, npass=4 )
-
-                vrun = vtu.runvvtest( '-R -N 2 --config '+cfgd, batch=batch, chdir=tdir )
-                vrun.assertCounts( total=2, npass=2 )
+            vrun = vtu.runvvtest( '-R -N 2 --config cfg', batch=batch, chdir=tdir )
+            vrun.assertCounts( total=2, npass=2 )
 
     def test_max_procs_filter_is_not_applied_in_batch_mode_by_default(self):
         ""

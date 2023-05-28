@@ -79,15 +79,6 @@ def writeScript( testcase, filename, lang, rtconfig, plat, loc ):
                'skip_exit_status = '+str(SKIP_EXIT_STATUS),
                'opt_analyze = "--execute-analysis-sections" in sys.argv[1:]' )
 
-        platenv = plat.getEnvironment()
-        w.add( '',
-               '# platform settings',
-               'PLATFORM_VARIABLES = '+repr(platenv),
-               'def apply_platform_variables():',
-               '    "sets the platform variables in os.environ"' )
-        for k,v in platenv.items():
-            w.add( '    os.environ["'+k+'"] = '+repr(v) )
-
         w.add( '', '# parameters defined by the test' )
         paramD = tspec.getParameters( typed=True )
         w.add( 'PARAM_DICT = '+repr( paramD ) )
@@ -179,20 +170,6 @@ def writeScript( testcase, filename, lang, rtconfig, plat, loc ):
         w.add( '',
                'diff_exit_status='+str(DIFF_EXIT_STATUS),
                'skip_exit_status='+str(SKIP_EXIT_STATUS) )
-
-        platenv = plat.getEnvironment()
-        w.add( '',
-               '# platform settings',
-               'PLATFORM_VARIABLES="'+' '.join( platenv.keys() )+'"' )
-        for k,v in platenv.items():
-            w.add( 'PLATVAR_'+k+'="'+v+'"' )
-        w.add( 'apply_platform_variables() {',
-               '    # sets the platform variables in the environment' )
-        for k,v in platenv.items():
-            w.add( '    export '+k+'="'+v+'"' )
-        if len(platenv) == 0:
-            w.add( '    :' )  # cannot have an empty function
-        w.add( '}' )
 
         w.add( '', '# parameters defined by the test' )
         paramD = tspec.getParameters()

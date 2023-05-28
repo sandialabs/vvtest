@@ -133,66 +133,20 @@ def create_Platform_instance( platname, mode, platopts,
 
     platname,cplrname = creator.determine_platform_and_compiler( platname )
 
-    if not creator.found_deprecated_plugin():
+    specs = PlatformSpecs( attrtab )
 
-        specs = PlatformSpecs( attrtab )
+    specs.add_group( platopts )
+    specs.add_group( environ_platform_specs() )
 
-        specs.add_group( platopts )
-        specs.add_group( environ_platform_specs() )
+    creator.load( specs )
 
-        creator.load( specs )
+    plat = Platform( mode=mode,
+                     platname=platname,
+                     cplrname=cplrname,
+                     environ={},
+                     attrs=dict(specs) )
 
-        plat = Platform( mode=mode,
-                         platname=platname,
-                         cplrname=cplrname,
-                         environ={},
-                         attrs=dict(specs) )
-
-    else:
-        # TODO: this branch is deprecated and should be removed after Feb 2023
-
-        # The name=value options given to the Platform object originate from these
-        # places:
-        #     (1) direct from command line, such as -N and --max-devices
-        #     (2) indirect from command line, --platopts name=value
-        #     (2.1) settings from VVTEST_PLATFORM_SPECS environ variable
-        #     (3) options given to setBatchSystem() in platform_plugin.py
-        #     (4) set via platcfg.setattr() in platform_plugin.py
-
-        platopts = attrtab.normalize_group( platopts )
-
-        tmp = attrtab.normalize_group( environ_platform_specs() )
-        tmp.update( platopts )
-        platopts = tmp
-
-        optdict = {}
-        if platname: optdict['--plat']    = platname
-        if platopts: optdict['--platopt'] = platopts
-        if onopts:   optdict['-o']        = onopts
-        if offopts:  optdict['-O']        = offopts
-
-        # options (2) are available to platform plugin through the 'optdict' (yuck!)
-        platcfg = PlatformConfig( optdict, platname, cplrname )
-
-        # platform plugin can set attrs via:
-        #   - options (3) by calling setBatchSystem()
-        #   - options (4) by calling setattr() directly
-        if creator.platplugin is not None and \
-           hasattr( creator.platplugin, 'initialize' ):
-            creator.platplugin.initialize( platcfg )
-
-        # options (2) are transferred/overwritten to the platconfig object attrs
-        for n,v in platopts.items():
-            platcfg.setattr( n, v )
-
-        # the union of all options are given to Platform object
-        plat = Platform( mode=mode,
-                         platname=platname,
-                         cplrname=cplrname,
-                         environ=platcfg.envD,
-                         attrs=platcfg.attrs )
-
-    # options (1) are selected first in here if non-None
+    # options are selected first in here if non-None
     plat.initialize( numprocs, maxprocs, devices, max_devices )
 
     return plat
@@ -207,9 +161,6 @@ class PlatformCreator:
         self.options = ( [], [] )  # onopts, offopts
 
         self.idmods = gather_modules_by_filename( 'idplatform.py' )
-
-        # TODO: this plugin is deprecated as of Feb 2022
-        self.platplugin = import_file_from_sys_path( 'platform_plugin.py' )
 
         self.platname = None
         self.cplrname = None
@@ -242,11 +193,7 @@ class PlatformCreator:
                                  'variable cannot be empty' )
         else:
             for idmod in self.idmods:
-                if hasattr( idmod, 'platform' ):
-                    # TODO: use of platform() was deprecated Feb 2022
-                    pname = idmod.platform( optdict )
-                    break
-                elif hasattr( idmod, 'get_platform' ):
+                if hasattr( idmod, 'get_platform' ):
                     plat = idmod.get_platform()
                     if plat:
                         pname = plat
@@ -258,13 +205,7 @@ class PlatformCreator:
         cname = None
 
         for idmod in self.idmods:
-            if hasattr( idmod, 'compiler' ):
-                # TODO: use of compiler() was deprecated Feb 2022
-                cplr = idmod.compiler( pname, optdict )
-                if cplr:
-                    cname = cplr
-                break
-            elif hasattr( idmod, 'get_compiler' ):
+            if hasattr( idmod, 'get_compiler' ):
                 cplr = idmod.get_compiler( pname, self.options[0] )
                 if cplr:
                     cname = cplr
@@ -274,10 +215,6 @@ class PlatformCreator:
         self.cplrname = cname
 
         return pname,cname
-
-    def found_deprecated_plugin(self):
-        ""
-        return self.platplugin is not None
 
     def load(self, specs):
         ""
@@ -313,71 +250,6 @@ def environ_platform_specs():
                 eD[ kvL[0] ] = kvL[1]
 
     return eD
-
-
-class PlatformConfig:
-    """
-    This class is used as an interface to the platform_plugin.py mechanism.
-    It is only necessary for backward compatibility, because a Platform
-    object used to be passed into the plugin initialize() function. Using
-    this "proxy" object allows the configuration mechanism to be separated
-    from the implementation (the Platform class).
-    """
-
-    def __init__(self, optdict, platname, cplrname):
-        ""
-        self.optdict = optdict
-        self.platname = platname
-        self.cplrname = cplrname
-
-        self.attrtable = AttrTable()
-        self.envD = {}
-        self.attrs = {}
-
-    def getName(self):  return self.platname
-    def getCompiler(self): return self.cplrname
-    def getOptions(self): return self.optdict
-
-    def setenv(self, name, value):
-        ""
-        if value == None:
-            if name in self.envD:
-                del self.envD[name]
-        else:
-            self.envD[name] = value
-
-    def setattr(self, name, value):
-        ""
-        if value == None:
-            if name in self.attrs:
-                del self.attrs[name]
-        else:
-            n,v = self.attrtable.normalize( name, value )
-            self.attrs[n] = v
-
-    def getattr(self, name, *default):
-        ""
-        if len(default) > 0:
-            return self.attrs.get( name, default[0] )
-        else:
-            return self.attrs[name]
-
-    def setBatchSystem(self, batchsys, ppnarg, **kwargs ):
-        ""
-        batchattrs = self.attrtable.normalize_group( kwargs )
-
-        ppn = batchattrs.get( 'ppn', ppnarg )
-        assert ppn and ppn > 0
-
-        self.setattr( 'batchsys', batchsys )
-
-        for n,v in batchattrs.items():
-            self.setattr( n, v )
-
-        if 'ppn' not in self.attrs:
-            self.setattr( 'ppn', ppn )
-
-        self.attrs = self.attrtable.normalize_group( self.attrs )
 
 
 class PlatformSpecs:

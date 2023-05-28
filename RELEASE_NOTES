@@ -56,6 +56,9 @@ Fixes:
 
 Changes:
 
+    - The deprecated script_util_plugin.sh file is no longer sourced in the
+      vvtest_util.sh file. This would only affect bash script tests.
+
     - The old, deprecated platform plugin mechanism has been removed.
 
     - Similar to the handling of PYTHONPATH, the manipulation of the PATH

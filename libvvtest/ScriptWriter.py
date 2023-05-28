@@ -209,9 +209,8 @@ def writeScript( testcase, filename, lang, rtconfig, plat, loc ):
                'RESOURCE_IDS_ndevice=""',
                'RESOURCE_TOTAL_ndevice="0"' )
 
-        # the name script_util_plugin.sh is now deprecated, Dec 2021
         for d in configdirs[::-1]:
-            for fn in ['script_util.sh','script_util_plugin.sh']:
+            for fn in ['script_util.sh']:
                 pn = pjoin( d, fn )
                 if os.path.isfile(pn):
                     w.add( 'source '+quote(pn) )

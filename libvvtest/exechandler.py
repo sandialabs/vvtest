@@ -17,7 +17,7 @@ except Exception:
     from pipes import quote
 
 from . import logger
-from . import ScriptWriter
+from . import writeutil
 from .makecmd import MakeScriptCommand
 
 
@@ -242,12 +242,12 @@ class ExecutionHandler:
             if self.rtconfig.getAttr('preclean') or \
                not os.path.exists( script_file ):
 
-                ScriptWriter.writeScript( tcase,
-                                          script_file,
-                                          lang,
-                                          self.rtconfig,
-                                          self.platform,
-                                          self.loc )
+                writeutil.write_util_scripts( tcase,
+                                              script_file,
+                                              lang,
+                                              self.rtconfig,
+                                              self.platform,
+                                              self.loc )
 
                 self.perms.apply( os.path.abspath( script_file ) )
 

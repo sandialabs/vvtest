@@ -120,7 +120,7 @@ class Testing_boostrap_file( vtu.vvtestTestCase ):
 
     def test_a_bootstrap_file_setting_the_config_dir(self):
         ""
-        util.writefile( 'myconfig/script_util_plugin.py', """
+        util.writefile( 'myconfig/script_util.py', """
             import os, sys
             def my_special_func():
                 print ( 'my special function called' )
@@ -134,7 +134,7 @@ class Testing_boostrap_file( vtu.vvtestTestCase ):
 
         util.writefile( 'hello.vvt', """
             import os, sys
-            import script_util_plugin as util
+            import script_util as util
             util.my_special_func()
             """ )
 
@@ -145,13 +145,13 @@ class Testing_boostrap_file( vtu.vvtestTestCase ):
 
     def test_a_bootstrap_config_dir_is_overridden_with_command_line(self):
         ""
-        util.writefile( 'myconfig/script_util_plugin.py', """
+        util.writefile( 'myconfig/script_util.py', """
             import os, sys
             def my_special_func():
                 print ( 'my special function called' )
             """ )
 
-        util.writefile( 'cmdconfig/script_util_plugin.py', """
+        util.writefile( 'cmdconfig/script_util.py', """
             import os, sys
             def my_special_func():
                 print ( 'command config function called' )
@@ -165,7 +165,7 @@ class Testing_boostrap_file( vtu.vvtestTestCase ):
 
         util.writefile( 'hello.vvt', """
             import os, sys
-            import script_util_plugin as util
+            import script_util as util
             util.my_special_func()
             """ )
 

@@ -19,7 +19,7 @@ from .testspec import TestSpec
 from .depend import DependencyPattern
 from .testid import TestID
 
-from .ScriptReader import ScriptReader, check_parse_attributes_section
+from .readvvt import ScriptReader, check_parse_attributes_section
 
 from .paramset import ParameterSet
 

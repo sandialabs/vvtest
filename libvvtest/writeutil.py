@@ -6,7 +6,6 @@
 
 import os, sys
 from os.path import join as pjoin
-from os.path import dirname, normpath
 
 try:
     from shlex import quote
@@ -16,7 +15,7 @@ except Exception:
 from .teststatus import DIFF_EXIT_STATUS, SKIP_EXIT_STATUS
 
 
-def writeScript( testcase, filename, lang, rtconfig, plat, loc ):
+def write_util_scripts( testcase, filename, lang, rtconfig, plat, loc ):
     """
     Writes a helper script for the test.  The script language is based on
     the 'lang' argument.

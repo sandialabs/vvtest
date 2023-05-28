@@ -16,7 +16,7 @@ import glob
 import vvtestutils as vtu
 import testutils as util
 
-from libvvtest.ScriptReader import ScriptReader
+from libvvtest.readvvt import ScriptReader
 from libvvtest.errors import TestSpecError
 import libvvtest.parsevvt as parsevvt
 

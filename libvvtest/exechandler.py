@@ -218,7 +218,7 @@ class ExecutionHandler:
         self.check_write_mpi_machine_file( texec.getResourceObject() )
         self.check_set_working_files( tcase, baseline )
 
-        set_PYTHONPATH( rundir, self.rtconfig )
+        set_PATH_and_PYTHONPATH( rundir, self.rtconfig )
 
         prog = self.plugin.testPreload( tcase )
 
@@ -252,7 +252,7 @@ class ExecutionHandler:
                 self.perms.apply( os.path.abspath( script_file ) )
 
 
-def set_PYTHONPATH( rundir, rtconfig ):
+def set_PATH_and_PYTHONPATH( rundir, rtconfig ):
     """
     When running Python in a test, the sys.path must include a few vvtest
     directories as well as the user's config dir.  These paths are passed
@@ -262,11 +262,12 @@ def set_PYTHONPATH( rundir, rtconfig ):
     up Python's handling of the paths.  To work in this case (an unlikely
     event), an empty path is added to the PYTHONPATH so the test will be
     able to import the vvtest_util.py from the current working directory.
-    After that, the test must manage sys.path manually.
+    After that, the test must manage sys.path manually to work in this case.
     """
     configdirs = rtconfig.getAttr( 'configdir' )
     vdir = rtconfig.getAttr( 'vvtestdir' )
     os.environ['PYTHONPATH'] = determine_PYTHONPATH( rundir, configdirs, vdir )
+    os.environ['PATH'] = determine_PATH( rundir, configdirs )
 
 
 def determine_PYTHONPATH( rundir, configdirs, vdir ):
@@ -285,6 +286,22 @@ def determine_PYTHONPATH( rundir, configdirs, vdir ):
 
     if 'PYTHONPATH' in os.environ:
         val += ':'+os.environ['PYTHONPATH']
+
+    return val
+
+
+def determine_PATH( rundir, configdirs ):
+    """
+    Add the test execute directory, and the config directories to the PATH.
+    """
+    val = rundir
+
+    for cfgd in configdirs:
+        if ':' not in cfgd:
+            val += ':'+cfgd
+
+    if 'PATH' in os.environ:
+        val += ':'+os.environ['PATH']
 
     return val
 

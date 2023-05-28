@@ -349,15 +349,14 @@ class config_tests( vtu.vvtestTestCase ):
             """ )
         util.writefile( 'rundir/atest.vvt', """
             import subprocess
-            import vvtest_util as vvt
             subprocess.check_call( 'myscript', shell=True )
             import script_util as util
             assert util.which('exprutil')
             """ )
         util.writescript( 'rundir/btest.vvt', """
             #!/bin/bash
-            source ./vvtest_util.sh
             myscript || exit 1
+            source ./vvtest_util.sh
             type exprutil || exit 1
             """ )
 

@@ -77,6 +77,37 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
             ps = func( '/ab/cd', ['/pypath'], '/x/y' )
             self.assertEqual( ps, ':/ab/cd:/pypath:/x/y:/usr/path:/an:other' )
 
+    def test_setting_PATH(self):
+        ""
+        # note that paths with colons are not added to PATH
+
+        func = exechandler.determine_PATH
+
+        with util.set_environ( PATH=None ):
+
+            ps = func( '/ab/cd', ['/some/path'] )
+            self.assertEqual( ps, '/ab/cd:/some/path' )
+            ps = func( '/ab/cd', ['/some/path'] )
+            self.assertEqual( ps, '/ab/cd:/some/path' )
+            ps = func( '/ab/cd', ['/some/foo:bar'] )
+            self.assertEqual( ps, '/ab/cd' )
+            ps = func( '/ab/cd', [abspath('foo:bar')] )
+            self.assertEqual( ps, '/ab/cd' )
+
+            ps = func( '/ab/cd', ['/foo/bar','/pypath'] )
+            self.assertEqual( ps, '/ab/cd:/foo/bar:/pypath' )
+
+            ps = func( '/ab/cd', ['/foo/bar','/to/day'] )
+            self.assertEqual( ps, '/ab/cd:/foo/bar:/to/day' )
+
+        with util.set_environ( PATH='/usr/path:/an:other' ):
+            ps = func( '/ab/cd', ['/pypath'] )
+            self.assertEqual( ps, '/ab/cd:/pypath:/usr/path:/an:other' )
+
+        with util.set_environ( PATH='/usr/path:' ):
+            ps = func( '/ab/cd', ['/pypath'] )
+            self.assertEqual( ps, '/ab/cd:/pypath:/usr/path:' )
+
     def prepare_for_link_and_copy(self):
         ""
         src1 = util.writefile( 'srcdir/file1.txt', "file1 contents\n" )

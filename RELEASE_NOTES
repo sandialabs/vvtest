@@ -56,6 +56,10 @@ Fixes:
 
 Changes:
 
+    - Similar to the handling of PYTHONPATH, the manipulation of the PATH
+      environment variable is now done prior to test launch rather than in
+      the vvtest_util.py and vvtest_util.sh file.
+
     - Contrary to a statement below, the PYTHONPATH is now loaded with all
       necessary paths before a test is launched. The manipulation of sys.path
       in the vvtest_util.py file has been removed.

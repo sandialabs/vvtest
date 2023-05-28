@@ -440,8 +440,6 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         ""
         util.writefile( 'sub:dir/atest.vvt', """
             import os
-            # this import will have to be added when PYTHONPATH is deprecated
-            # import vvtest_util
             os.mkdir('subd')
             os.chdir('subd')
             import script_util as util
@@ -472,35 +470,23 @@ class the_core_make_execute_command_function( vtu.vvtestTestCase ):
         vtu.copy_vvtest_into_directory( 'install:dir' )
         localvvtest = abspath( 'install:dir/vvtest' )
 
+        # config directories containing a colon are not added to PYTHONPATH;
+        # for tests to still work that use the script utils, they would have
+        # to import vvtest_util then manually add the vvtest_util.CONFIGDIR
+        # paths to sys.path
+
         util.writefile( 'rundir/atest.vvt', """
-            import os
-            # have to import this to get config dirs added to sys.path (and
-            # will be needed for all situations when PYTHONPATH is deprecated)
-            import vvtest_util
-            os.mkdir('subd')
-            os.chdir('subd')
-            import script_util as util
-            if util.platform_expr("not fakeplatform"):
-                print ( 'check atest' )
-            util.exit_diff()
-            """ )
-        util.writescript( 'rundir/btest.vvt', """
-            #!/bin/bash
-            mkdir subd
-            cd subd
-            source ../vvtest_util.sh
-            platform_expr "not fakeplatform" && echo "check btest"
-            exit_diff
+            import vvtest_util as vvt
+            cdir = repr(vvt.CONFIGDIR)
+            print ( 'atest-configdirs='+cdir )
             """ )
 
         os.chdir( 'rundir' )
         x,out = util.runcmd( localvvtest )
         # print ( out )
 
-        assert len( util.greplines( 'diff *atest', out ) ) > 0
-        assert len( util.greplines( 'diff *btest', out ) ) > 0
-        assert len( util.grepfiles( 'check atest', '*/atest/execute.log' ) ) == 1
-        assert len( util.grepfiles( 'check btest', '*/btest/execute.log' ) ) == 1
+        fL = util.grepfiles( 'atest-configdirs=', '*/atest/execute.log' )
+        assert len(fL) == 1
 
     def test_the_set_environ_utility_context_manager(self):
         ""

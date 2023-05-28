@@ -499,11 +499,13 @@ def get_repo_toplevel( gitrun, directory=None, verbose=0 ):
                             verbose=verbose )
         top = top.strip()
 
-    if x == 0 and not top:
+    if (x == 0 and not top) or \
+       (x != 0 and 'fatal: this operation must be run in a work tree' in top):
         top = _find_toplevel_bare_git_repo( directory )
         if basename( top ) == '.git':
             # must be in the .git subdirectory of a clone
             top = dirname( top )
+        x = 0  # artificially set to be ok
 
     if x != 0 or not top:
         raise GitInterfaceError( 'could not determine top level '

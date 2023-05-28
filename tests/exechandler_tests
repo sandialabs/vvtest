@@ -25,8 +25,6 @@ import libvvtest.outpututils as outpututils
 import libvvtest.testexec as testexec
 from libvvtest.location import Locator
 
-# magic: clean this up for xml removal
-
 
 class exechandler_free_functions( vtu.vvtestTestCase ):
 
@@ -54,24 +52,30 @@ class exechandler_free_functions( vtu.vvtestTestCase ):
 
     def test_setting_PYTHONPATH(self):
         ""
+        # note that paths with colons are not included in PYTHONPATH
+
+        func = exechandler.determine_PYTHONPATH
+
         with util.set_environ( PYTHONPATH=None ):
 
-            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/some/path'] )
+            ps = func( '/ab/cd', ['/some/path'], '/x/y' )
+            self.assertEqual( ps, ':/ab/cd:/some/path:/x/y' )
+            ps = func( '/ab/cd', ['/some/path'], '/x/y:z' )
             self.assertEqual( ps, ':/ab/cd:/some/path' )
-            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/some/foo:bar'] )
-            self.assertEqual( ps, ':/ab/cd' )
-            ps = exechandler.determine_PYTHONPATH( '/ab/cd', [abspath('foo:bar')] )
-            self.assertEqual( ps, ':/ab/cd' )
+            ps = func( '/ab/cd', ['/some/foo:bar'], '/x/y' )
+            self.assertEqual( ps, ':/ab/cd:/x/y' )
+            ps = func( '/ab/cd', [abspath('foo:bar')], '/x/y' )
+            self.assertEqual( ps, ':/ab/cd:/x/y' )
 
-            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/foo/bar','/pypath'] )
-            self.assertEqual( ps, ':/ab/cd:/foo/bar:/pypath' )
+            ps = func( '/ab/cd', ['/foo/bar','/pypath'], '/x/y' )
+            self.assertEqual( ps, ':/ab/cd:/foo/bar:/pypath:/x/y' )
 
-            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/foo/bar','/to/day'] )
-            self.assertEqual( ps, ':/ab/cd:/foo/bar:/to/day' )
+            ps = func( '/ab/cd', ['/foo/bar','/to/day'], '/x/y' )
+            self.assertEqual( ps, ':/ab/cd:/foo/bar:/to/day:/x/y' )
 
         with util.set_environ( PYTHONPATH='/usr/path:/an:other' ):
-            ps = exechandler.determine_PYTHONPATH( '/ab/cd', ['/pypath'] )
-            self.assertEqual( ps, ':/ab/cd:/pypath:/usr/path:/an:other' )
+            ps = func( '/ab/cd', ['/pypath'], '/x/y' )
+            self.assertEqual( ps, ':/ab/cd:/pypath:/x/y:/usr/path:/an:other' )
 
     def prepare_for_link_and_copy(self):
         ""

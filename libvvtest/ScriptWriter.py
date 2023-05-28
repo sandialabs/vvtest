@@ -74,13 +74,6 @@ def writeScript( testcase, filename, lang, rtconfig, plat, loc ):
 
         w.add( 'CONFIGDIR = '+repr(configdirs) )
 
-        # order matters; configdir should be the first entry in sys.path
-        w.add( '',
-               'sys.path.insert( 0, '+repr(trigdir)+' )',
-               'sys.path.insert( 0, VVTESTSRC )' )
-        for d in configdirs[::-1]:
-            w.add( 'sys.path.insert( 0, '+repr(d)+' )' )
-
         w.add( '',
                'tmpL = '+repr(configdirs),
                'if "PATH" in os.environ:',

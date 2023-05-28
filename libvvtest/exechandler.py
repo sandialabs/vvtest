@@ -218,7 +218,7 @@ class ExecutionHandler:
         self.check_write_mpi_machine_file( texec.getResourceObject() )
         self.check_set_working_files( tcase, baseline )
 
-        set_PYTHONPATH( rundir, self.rtconfig.getAttr( 'configdir' ) )
+        set_PYTHONPATH( rundir, self.rtconfig )
 
         prog = self.plugin.testPreload( tcase )
 
@@ -252,46 +252,36 @@ class ExecutionHandler:
                 self.perms.apply( os.path.abspath( script_file ) )
 
 
-def set_PYTHONPATH( rundir, configdirs ):
+def set_PYTHONPATH( rundir, rtconfig ):
     """
     When running Python in a test, the sys.path must include a few vvtest
-    directories as well as the user's config dir.  This can be done with
-    PYTHONPATH *unless* a directory contains a colon, which messes up
-    Python's handling of the paths.
+    directories as well as the user's config dir.  These paths are passed
+    into the test execution using PYTHONPATH.
 
-    To work in this case, sys.path is set in the vvtest_util.py file.
-    The user's test just imports vvtest_util.py first thing.  However,
-    importing vvtest_util.py assumes the execute directory is in sys.path
-    on startup.  Normally it would be, but this can fail to be the case
-    if the script is a soft link (which it is for the test script).
-
-    The solution is to make sure PYTHONPATH contains an empty directory,
-    which Python will expand to the current working directory. Note that
-    versions of Python before 3.4 would allow the value of PYTHONPATH to
-    be an empty string, but for 3.4 and later, it must at least be a single
-    colon.
-
-    [July 2019] To preserve backward compatibility for tests that do not
-    import vvtest_util.py first thing, the directories are placed in
-    PYTHONPATH here too (but only those that do not contain colons).
+    This all works fine unless a directory contains a colon, which messes
+    up Python's handling of the paths.  To work in this case (an unlikely
+    event), an empty path is added to the PYTHONPATH so the test will be
+    able to import the vvtest_util.py from the current working directory.
+    After that, the test must manage sys.path manually.
     """
-    os.environ['PYTHONPATH'] = determine_PYTHONPATH( rundir, configdirs )
+    configdirs = rtconfig.getAttr( 'configdir' )
+    vdir = rtconfig.getAttr( 'vvtestdir' )
+    os.environ['PYTHONPATH'] = determine_PYTHONPATH( rundir, configdirs, vdir )
 
 
-def determine_PYTHONPATH( rundir, configdirs ):
+def determine_PYTHONPATH( rundir, configdirs, vdir ):
     """
-    Note: Adding configdirs to PYTHONPATH has been marked deprecated, Dec 2021.
-          Tests should instead import vvtest_util.py.  When removed, this
-    function must still make sure an empty directory is added to PYTHONPATH in
-    the case of the test execution directory contains colons in the path.
-    This is so that the test can still import the vvtest_util.py file from the
-    test directory.
+    Add an empty directory, the test execute directory, and the config
+    directories to PYTHONPATH.
     """
     val = ':'+rundir
 
     for cfgd in configdirs:
         if ':' not in cfgd:
             val += ':'+cfgd
+
+    if ':' not in vdir:
+        val += ':'+vdir
 
     if 'PYTHONPATH' in os.environ:
         val += ':'+os.environ['PYTHONPATH']

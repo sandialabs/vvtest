@@ -1,6 +1,9 @@
 
 Improvements:
 
+    - The parameter generator feature now allows more than one dependency
+      to be specified per test instance.
+
     - The absolute path of the test execution directory is now added to
       PYTHONPATH for test script invocation (along with an empty path). This
       is more resilient in the case that a preload script removes empty paths

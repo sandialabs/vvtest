@@ -387,7 +387,7 @@ class suite( vtu.vvtestTestCase ):
 
         self.assertRaises( TestSpecError, chdep, {'foo':'bar'}, 1, 0 )
         self.assertRaises( TestSpecError, chdep, ['pat*',None], 3, 0 )
-        self.assertRaises( TestSpecError, chdep, [{'A':{'a':'b'}, 'B':{'c':'d'}}], 1, 0 )
+        chdep( [{'A':{'a':'b'}, 'B':{'c':'d'}}], 1, 0 )  # this is ok
         self.assertRaises( TestSpecError, chdep, [{2:{'a':'b'}}], 1, 0 )
         self.assertRaises( TestSpecError, chdep, [{'A':'a'}], 1, 0 )
         self.assertRaises( TestSpecError, chdep, [{'A':{2:'b'}}], 1, 0 )
@@ -408,6 +408,9 @@ class suite( vtu.vvtestTestCase ):
         dmap = creat( 'atest', [{'A':'a'},{'B':2}], [None,{'C':{}}], 0 )
         self.assertEqual( dmap, {('atest', ('B', '2')): {'C': {}}} )
 
+        dmap = creat( 'atest', [{'A':'a'}], [{'C':{},'D':{'d':3}}], 0 )
+        self.assertEqual( dmap, {('atest', ('A', 'a')): {'C': {}, 'D': {'d': '3'}}} )
+
     def test_adding_generator_dependencies(self):
         ""
         util.writefile( 'A.vvt', """
@@ -416,14 +419,17 @@ class suite( vtu.vvtestTestCase ):
         util.writefile( 'B.vvt', """
             #VVT: parameterize : bar = 3 9
             """ )
+        util.writefile( 'C.vvt', """
+            pass
+            """ )
         util.writefile( 'genscript', """
             import sys
             from json import dumps
-            print ( dumps( [ {'foo':3}, {'foo':9} ] ) )
-            print ( dumps( [ {'B':{'bar':3}}, 'B.bar=9' ] ) )
+            print ( dumps( [ {'foo':3}, {'foo':9}, {'foo':11} ] ) )
+            print ( dumps( [ {'B':{'bar':3}}, 'B.bar=9', {'B':{'bar':9},'C':{}} ] ) )
             """ )
 
-        tlist = vtu.create_testlist_from_test_files( 'A.vvt', 'B.vvt' )
+        tlist = vtu.create_testlist_from_test_files( 'A.vvt', 'B.vvt', 'C.vvt' )
         tlist.connectDependencies()
 
         dep = get_single_dependency( tlist, 'A', foo='3' )
@@ -431,6 +437,11 @@ class suite( vtu.vvtestTestCase ):
 
         dep = get_single_dependency( tlist, 'A', foo='9' )
         assert dep.getName() == 'B' and dep.getParameters() == {'bar':'9'}
+
+        dep1,dep2 = get_double_dependency( tlist, 'A', foo='11' )
+        DL = sorted( [ (dep1.getName(),dep1.getParameters()),
+                       (dep2.getName(),dep2.getParameters()) ] )
+        self.assertEqual( DL, [('B',{'bar':'9'}),('C',{})] )
 
     def test_integration_test_of_generator_specified_dependencies(self):
         ""
@@ -489,7 +500,7 @@ def find_test_by_id( tlist, testid ):
         if tc.getSpec().getID() == testid:
             return tc
 
-    return tc
+    raise Exception( "test not found: "+str(testid) )
 
 
 def get_single_dependency( tlist, testname, **params ):
@@ -500,9 +511,21 @@ def get_single_dependency( tlist, testname, **params ):
     assert len(deps) == 1
 
     dep = find_test_by_id( tlist, deps[0].getTestID() ).getSpec()
-    assert dep is not None
 
     return dep
+
+
+def get_double_dependency( tlist, testname, **params ):
+    ""
+    tc = find_test_by_name_and_params( tlist, testname, **params )
+
+    deps = tc.getDependencies()
+    assert len(deps) == 2
+
+    dep1 = find_test_by_id( tlist, deps[0].getTestID() ).getSpec()
+    dep2 = find_test_by_id( tlist, deps[1].getTestID() ).getSpec()
+
+    return dep1,dep2
 
 
 ########################################################################

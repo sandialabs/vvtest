@@ -825,8 +825,6 @@ def check_deplist( deplist, required_length, lineno ):
         elif type(obj) == str:
             pass # ok
         elif type(obj) == dict:
-            if len(obj) != 1:
-                raiseError( 'dependency list dictionaries must have length one', line=lineno )
             for k,v in obj.items():
                 if type(k) != str:
                     raiseError( 'dependency list: items must be test name to param dict', line=lineno )
@@ -880,10 +878,11 @@ def create_dependency_map( testname, plist, deplist, lineno ):
         elif type(depobj) == str:
             depmap[key] = depobj
         else:
-            # depobj is testname to param dict
-            depname,pdict = list( depobj.items() )[0]
-            D = dict( [ (k,to_str(v)) for k,v in pdict.items() ] )
-            depmap[key] = { depname:D }
+            # depobj is testnames to param dicts
+            D= {}
+            for depname,pdict in depobj.items():
+                D[depname] = dict( [ (k,to_str(v)) for k,v in pdict.items() ] )
+            depmap[key] = D
 
     return depmap
 
@@ -898,10 +897,10 @@ def add_generator_dependencies( tspec, depmap ):
             if type(pat) == str:
                 tspec.addDependencyPattern( DependencyPattern(pat) )
             else:
-                dname,dparams = list( pat.items() )[0]
-                tid = TestID( dname, '', dparams, [], tspec.getIDTraits() )
-                mat = os.path.basename( tid.computeMatchString() )
-                tspec.addDependencyPattern( DependencyPattern(mat) )
+                for dname,dparams in pat.items():
+                    tid = TestID( dname, '', dparams, [], tspec.getIDTraits() )
+                    mat = os.path.basename( tid.computeMatchString() )
+                    tspec.addDependencyPattern( DependencyPattern(mat) )
 
 
 def make_names_and_value_lists( plist, lineno ):

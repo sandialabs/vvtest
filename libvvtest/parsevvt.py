@@ -1008,14 +1008,14 @@ def run_generator_prog( cmdL, cmdstr, executable ):
     if x == -1:
         raiseError( 'parameter generator command timed out:',
                     repr(cmdstr), '' )
-    elif x != 0:
-        raiseError( 'parameter generator command failed:',
-                    repr(cmdstr), '\n'+out+'\n'+err )
 
     if mjr > 2:
         out = out.decode() if out else ''
         err = err.decode() if err else ''
 
+    if x != 0:
+        raiseError( 'parameter generator command failed:',
+                    repr(cmdstr), '\n'+out+'\n'+err )
 
     return out
 

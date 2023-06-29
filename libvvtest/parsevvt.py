@@ -999,19 +999,23 @@ def run_generator_prog( cmdL, cmdstr, executable ):
         x = pop.returncode
     else:
         try:
-            out,err = pop.communicate( None, 10 )  # fail after 10 seconds
+            out,err = pop.communicate( None, 60 )  # fail after 60 seconds
             x = pop.returncode
         except subprocess.TimeoutExpired:
             pop.kill()
-            x = 1
+            x = -1
+
+    if x == -1:
+        raiseError( 'parameter generator command timed out:',
+                    repr(cmdstr), '' )
+    elif x != 0:
+        raiseError( 'parameter generator command failed:',
+                    repr(cmdstr), '\n'+out+'\n'+err )
 
     if mjr > 2:
         out = out.decode() if out else ''
         err = err.decode() if err else ''
 
-    if x != 0:
-        raiseError( 'parameter generator command failed:',
-                    repr(cmdstr), '\n'+out+'\n'+err )
 
     return out
 

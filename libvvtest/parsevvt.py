@@ -857,8 +857,8 @@ def to_str( obj ):
 def test_id_tuple( testname, test_params ):
     ""
     L = [testname]
-    for k,v in test_params.items():
-        L.append( (k,to_str(v)) )
+    for k in sorted(test_params):
+        L.append( (k,to_str(test_params[k])) )
     return tuple(L)
 
 

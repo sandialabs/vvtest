@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -30,7 +30,7 @@ from libvvtest.gitlabwriter import make_submit_info
 
 from libvvtest.teststatus import TestStatus, DIFF_EXIT_STATUS
 from libvvtest.testcase import TestCase
-from gitinterface import clone_repo, get_remote_branches
+from libvvtest.gitinterface import clone_repo, get_remote_branches
 
 
 class gitlab_output_format_tests( vtu.vvtestTestCase ):

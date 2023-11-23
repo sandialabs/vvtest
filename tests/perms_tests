@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -16,12 +16,12 @@ import subprocess as sp
 import unittest
 import stat
 
-import trigtestutils as trigutil
 import testutils as util
+import vvtestutils as vtu
 
-import perms
+from libvvtest import perms
 
-class umask_behavior( trigutil.trigTestCase ):
+class umask_behavior( vtu.vvtestTestCase ):
 
     def test_working_with_umask(self):
         ""
@@ -55,11 +55,11 @@ class umask_behavior( trigutil.trigTestCase ):
         assert msk5 == (stat.S_IWGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH)
 
 
-class implementation_tests( trigutil.trigTestCase ):
+class implementation_tests( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
-        trigutil.trigTestCase.setUp( self, True )
+        vtu.vvtestTestCase.setUp( self, True )
 
         self.save_umask = os.umask(0)
 
@@ -569,11 +569,11 @@ class implementation_tests( trigutil.trigTestCase ):
         assert util.get_file_group( 'file.txt' ) == grp
 
 
-class interface_tests( trigutil.trigTestCase ):
+class interface_tests( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
-        trigutil.trigTestCase.setUp( self, True )
+        vtu.vvtestTestCase.setUp( self, True )
 
         self.save_umask = os.umask(0)
 
@@ -675,7 +675,7 @@ def find_invalid_groupid( grpidL ):
     return gid
 
 
-class auxiliary_function_tests( trigutil.trigTestCase ):
+class auxiliary_function_tests( vtu.vvtestTestCase ):
 
     def test_getting_the_user_name(self):
         ""

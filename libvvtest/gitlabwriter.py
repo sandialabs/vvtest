@@ -11,8 +11,8 @@ from os.path import join as pjoin
 from . import logger
 from . import outpututils
 
-import gitinterface
-import gitresults
+from . import gitinterface
+from . import gitresults
 
 
 class GitLabWriter:

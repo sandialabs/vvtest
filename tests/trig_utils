@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -18,7 +18,7 @@ import testutils as util
 
 class trig_utility_tests( vtu.vvtestTestCase ):
 
-    def test_a_file_from_the_trig_dir_can_be_imported(self):
+    def test_a_file_from_the_libvvtest_dir_can_be_imported(self):
         """
         when the trig directory goes away, this test should instead pick up
         perms.py from libvvtest; in that case, no sys.path manipulation is
@@ -27,8 +27,7 @@ class trig_utility_tests( vtu.vvtestTestCase ):
         util.writefile( 'atest.vvt', """
             import sys
             import vvtest_util as vvt
-            sys.path.insert( 1, vvt.VVTESTSRC+'/trig' )
-            import perms
+            import libvvtest.perms as perms
             print ( 'USRNAME='+str(perms.my_user_name()) )
             """ )
 

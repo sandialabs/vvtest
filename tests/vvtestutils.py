@@ -27,13 +27,9 @@ import testutils as util
 
 testsrcdir = dirname( abspath( sys.argv[0] ) )
 topdir = dirname( testsrcdir )
-trigdir = pjoin( topdir, 'trig' )
 
 # imports for core vvtest modules are relative to the "vvt" directory
 sys.path.insert( 0, topdir )
-
-# import paths for shared modules
-sys.path.insert( 1, trigdir )
 
 cfgdir = os.path.join( topdir, 'config' )
 

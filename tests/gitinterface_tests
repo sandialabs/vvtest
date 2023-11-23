@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: trig
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -20,30 +20,32 @@ import string
 import random
 import unittest
 
-import trigtestutils as trigutil
 import testutils as util
 from testutils import print3
+import vvtestutils as vtu
 
-from gitinterface import GitInterfaceError, GitRepo, GitRunner
-from gitinterface import set_environ, change_directory
-from gitinterface import create_repo, clone_repo
-from gitinterface import get_repo_toplevel, _find_toplevel_bare_git_repo
-from gitinterface import _copy_path_to_current_directory
-from gitinterface import runcmd
-from gitinterface import update_repository_mirror
-from gitinterface import repository_url_match
-from gitinterface import is_a_local_repository
-from gitinterface import verify_repository_url
-from gitinterface import repo_name_from_url
-from gitinterface import get_remote_branches
-from gitinterface import is_subdir
+from libvvtest.gitinterface import (
+    GitInterfaceError, GitRepo, GitRunner,
+    set_environ, change_directory,
+    create_repo, clone_repo,
+    get_repo_toplevel, _find_toplevel_bare_git_repo,
+    _copy_path_to_current_directory,
+    runcmd,
+    update_repository_mirror,
+    repository_url_match,
+    is_a_local_repository,
+    verify_repository_url,
+    repo_name_from_url,
+    get_remote_branches,
+    is_subdir,
+)
 
 
-class with_set_environ( trigutil.trigTestCase ):
+class with_set_environ( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
-        trigutil.trigTestCase.setUp( self, cleanout=False )
+        vtu.vvtestTestCase.setUp( self, cleanout=False )
 
     def test_setting_no_names_should_not_change_environ(self):
         ""
@@ -93,7 +95,7 @@ class with_set_environ( trigutil.trigTestCase ):
         self.assertEqual( orig, state )
 
 
-class create_and_clone( trigutil.trigTestCase ):
+class create_and_clone( vtu.vvtestTestCase ):
 
     def test_getting_a_repository_toplevel(self):
         ""
@@ -547,7 +549,7 @@ class create_and_clone( trigutil.trigTestCase ):
         assert not err.strip()
 
 
-class commit_and_push( trigutil.trigTestCase ):
+class commit_and_push( vtu.vvtestTestCase ):
 
     def test_create_repo_and_commit_a_file(self):
         ""
@@ -687,11 +689,11 @@ class commit_and_push( trigutil.trigTestCase ):
         assert 'new content2' in util.readfile( 'checkrepo/adir/file2.txt' )
 
 
-class branches( trigutil.trigTestCase ):
+class branches( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
-        trigutil.trigTestCase.setUp( self )
+        vtu.vvtestTestCase.setUp( self )
 
         self.url = util.create_bare_repo_with_file_and_branch( 'example' )
         time.sleep(1)
@@ -996,7 +998,7 @@ class branches( trigutil.trigTestCase ):
         self.assertRaises( GitInterfaceError, git.delete_remote_branch, 'foobar' )
 
 
-class tagging( trigutil.trigTestCase ):
+class tagging( vtu.vvtestTestCase ):
 
     def test_checking_out_a_tag(self):
         ""
@@ -1049,11 +1051,11 @@ class tagging( trigutil.trigTestCase ):
         self.assertRaises( GitInterfaceError, git.create_tag, 'newtag', 'mesg' )
 
 
-class pulling( trigutil.trigTestCase ):
+class pulling( vtu.vvtestTestCase ):
 
     def setUp(self):
         ""
-        trigutil.trigTestCase.setUp( self )
+        vtu.vvtestTestCase.setUp( self )
 
         self.url = util.create_bare_repo_with_file_and_branch( 'example' )
         time.sleep(1)
@@ -1132,7 +1134,7 @@ class pulling( trigutil.trigTestCase ):
         self.assertRaises( GitInterfaceError, git.pull )
 
 
-class orphan_branches( trigutil.trigTestCase ):
+class orphan_branches( vtu.vvtestTestCase ):
 
     def test_copy_file_or_directory_to_current_directory(self):
         ""
@@ -1210,7 +1212,7 @@ class orphan_branches( trigutil.trigTestCase ):
             git.create_remote_orphan_branch, 'topic', 'start it', 'readme.txt' )
 
 
-class mirroring_repositories( trigutil.trigTestCase ):
+class mirroring_repositories( vtu.vvtestTestCase ):
 
     def test_copy_one_repo_to_a_second_empty_repo(self):
         ""
@@ -1337,7 +1339,7 @@ class mirroring_repositories( trigutil.trigTestCase ):
                 update_repository_mirror, src_url, cpy_url )
 
 
-class misc_functions( trigutil.trigTestCase ):
+class misc_functions( vtu.vvtestTestCase ):
 
     def test_repo_name_from_url(self):
         ""
@@ -1458,7 +1460,7 @@ class misc_functions( trigutil.trigTestCase ):
             assert is_subdir( os.getcwd(), pjoin( '..', 'dir1', '..', 'dir2' ) )
 
 
-class status_tests( trigutil.trigTestCase ):
+class status_tests( vtu.vvtestTestCase ):
 
     def make_repo_and_clone(self):
         ""

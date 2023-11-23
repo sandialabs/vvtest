@@ -10,7 +10,7 @@ from os.path import join as pjoin
 import stat
 import itertools
 
-import perms
+from . import perms
 from .errors import FatalError
 from . import pathutil
 

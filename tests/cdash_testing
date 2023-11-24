@@ -24,6 +24,10 @@ import libvvtest.cdashutil as cdashutil
 
 class submitting_files( unittest.TestCase ):
 
+    def setUp(self):
+        ""
+        util.setup_test( cleanout=False )
+
     def test_send_file_to_a_web_server_using_curl(self):
         ""
         contents = write_sample_upload_file( 'sub.txt' )
@@ -84,6 +88,10 @@ class submitting_files( unittest.TestCase ):
 
 
 class file_formatting( unittest.TestCase ):
+
+    def setUp(self):
+        ""
+        util.setup_test( cleanout=False )
 
     def test_reading_xml(self):
         ""

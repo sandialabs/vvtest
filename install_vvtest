@@ -46,7 +46,6 @@ def main():
     copy_path( 'libvvtest', todir )
     copy_path( 'config', todir )
     copy_path( 'batch', todir )
-    copy_path( 'trig', todir )
 
 
 #########################################################################

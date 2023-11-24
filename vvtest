@@ -583,7 +583,7 @@ def construct_gitlab_writer( rtdata, opts, optD ):
 def construct_cdash_writer( rtdata, opts, optD ):
     ""
     import libvvtest.cdashwriter as cdashwriter
-    import cdashutil
+    import libvvtest.cdashutil as cdashutil
 
     cdashobj = cdashwriter.CDashWriter( rtdata.perms,
                                         cdashutil.TestResultsFormatter(),
@@ -1296,24 +1296,10 @@ def get_vvtest_directory():
     return d
 
 
-def adjust_sys_path_for_shared_modules( vvtestdir ):
-    ""
-    trigdir = normpath( pjoin( vvtestdir, 'trig' ) )
-
-    if os.path.isdir( trigdir ):
-        if trigdir not in sys.path:
-            sys.path.insert( 1, trigdir )
-    else:
-        raise FatalError( '*** vvtest error: '
-                          'failed to find "trig" directory for imports' )
-
-
 def main():
     ""
     exepath = normpath( abspath( sys.argv[0] ) )
     vvtestdir = get_vvtest_directory()
-
-    adjust_sys_path_for_shared_modules( vvtestdir )
 
     try:
         rtdata,opts,optD = construct_vvtest( sys.argv, vvtestdir, exepath )

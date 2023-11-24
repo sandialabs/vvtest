@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 import os
 import sys
 from contextlib import contextmanager

@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -16,13 +16,17 @@ import time
 import unittest
 import subprocess
 
-import trigtestutils as trigutil
 import testutils as util
+import vvtestutils as vtu
 
-import cdashutil
+import libvvtest.cdashutil as cdashutil
 
 
 class submitting_files( unittest.TestCase ):
+
+    def setUp(self):
+        ""
+        util.setup_test( cleanout=False )
 
     def test_send_file_to_a_web_server_using_curl(self):
         ""
@@ -84,6 +88,10 @@ class submitting_files( unittest.TestCase ):
 
 
 class file_formatting( unittest.TestCase ):
+
+    def setUp(self):
+        ""
+        util.setup_test( cleanout=False )
 
     def test_reading_xml(self):
         ""

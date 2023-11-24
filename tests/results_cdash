@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -19,7 +19,7 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.cdashwriter as cdashwriter
-import cdashutil
+import libvvtest.cdashutil as cdashutil
 
 from libvvtest.testlist import TestList
 from libvvtest.permsetter import PermissionSetter

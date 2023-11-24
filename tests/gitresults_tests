@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: trig
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -15,13 +15,15 @@ from os.path import join as pjoin
 import time
 import unittest
 
-import trigtestutils as trigutil
 import testutils as util
+import vvtestutils as vtu
 
-from gitresults import GitResults, GitResultsReader, ResultsSummary
-from gitresults import create_orphan_branch, branch_name_and_directory
-from gitresults import map_git_url_to_web_url, get_elapsed_time
-from gitinterface import clone_repo
+from libvvtest.gitresults import (
+    GitResults, GitResultsReader, ResultsSummary,
+    create_orphan_branch, branch_name_and_directory,
+    map_git_url_to_web_url, get_elapsed_time,
+)
+from libvvtest.gitinterface import clone_repo
 
 
 class the_GitResults_class( unittest.TestCase ):
@@ -215,7 +217,7 @@ class naming_schemes( unittest.TestCase ):
         assert sb.endswith( '.whatever' )
 
 
-class results_reader_tests( trigutil.trigTestCase ):
+class results_reader_tests( vtu.vvtestTestCase ):
 
     def test_mapping_git_url_to_web_url(self):
         ""
@@ -267,7 +269,7 @@ class results_reader_tests( trigutil.trigTestCase ):
                 time.sleep(1)
             """ )
         time.sleep(1)
-        x,out = util.runcmd( trigutil.vvtest_file + \
+        x,out = util.runcmd( vtu.vvtest_file + \
                              ' -vv -n 4 --plat '+core_platform_name() + \
                              ' --gitlab '+giturl, verbose=2 )
 

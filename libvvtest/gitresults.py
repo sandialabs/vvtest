@@ -8,9 +8,10 @@ import tempfile
 import shutil
 import re
 
-from gitinterface import GitInterfaceError
-from gitinterface import clone_repo, get_remote_branches
-from gitinterface import change_directory, print3
+from . import logger
+from .gitinterface import GitInterfaceError
+from .gitinterface import clone_repo, get_remote_branches
+from .gitinterface import change_directory
 
 
 class GitResults:
@@ -34,7 +35,7 @@ class GitResults:
                                 epochdate,
                                 granularity )
 
-        print3( 'Using directory', self.subdir, 'on branch', branch )
+        logger.info( 'Using directory', self.subdir, 'on branch', branch )
 
         rdir = get_results_orphan_branch( self.git, branch, self.subdir )
         assert os.path.isdir( rdir )
@@ -45,7 +46,7 @@ class GitResults:
         ""
         branch = self.git.get_branch()
 
-        print3( 'Pushing results...' )
+        logger.info( 'Pushing results...' )
         self.git.add( self.subdir )
         self.git.commit( message )
         resilient_commit_push( self.git )
@@ -229,7 +230,7 @@ def get_results_orphan_branch( git, branch, subdir ):
 def check_remove_directory( dirpath ):
     ""
     if os.path.exists( dirpath ):
-        print3( 'rm -r '+dirpath )
+        logger.info( 'rm -r '+dirpath )
         shutil.rmtree( dirpath )
 
 
@@ -280,7 +281,7 @@ def clone_results_repo( giturl, working_directory, branch=None ):
 
     tmpdir = tempfile.mkdtemp( '', 'gitresults_work_clone_', os.getcwd() )
 
-    print3( 'Cloning', giturl, 'into', tmpdir )
+    logger.info( 'Cloning', giturl, 'into', tmpdir )
     git = clone_repo( giturl, tmpdir, branch='master' )
 
     return git

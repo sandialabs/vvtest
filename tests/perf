@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 """
 This test can be run like any other, and exercises the performance test

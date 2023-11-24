@@ -4,7 +4,7 @@
 # (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
 # Government retains certain rights in this software.
 
-#RUNTEST: vvtest
+#RUNTEST:
 
 import sys
 sys.dont_write_bytecode = True
@@ -16,13 +16,56 @@ import subprocess as sp
 import unittest
 import stat
 
-import trigtestutils as trigutil
 import testutils as util
+import vvtestutils as vtu
 
-import perms
+from libvvtest import perms
+
+class umask_behavior( vtu.vvtestTestCase ):
+
+    def test_working_with_umask(self):
+        ""
+        msk1 = perms.get_umask()
+        msk2 = perms.get_umask()
+        print ( 'umask '+repr(oct(msk1))+' '+repr(oct(msk2)) )
+        assert msk1 == msk2
+
+        try:
+            msk3 = os.umask( 0 )
+
+            with open( 'file1.txt', 'wt' ) as fp:
+                fp.write( 'content\n' )
+            assert util.has_group_write( 'file1.txt' )
+            assert util.has_world_read( 'file1.txt' )
+            assert util.has_world_write( 'file1.txt' )
+            assert not util.has_world_execute( 'file1.txt' )
+
+            msk4 = os.umask( stat.S_IWGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH )
+            with open( 'file2.txt', 'wt' ) as fp:
+                fp.write( 'content\n' )
+            assert not util.has_group_write( 'file2.txt' )
+            assert not util.has_world_read( 'file2.txt' )
+            assert not util.has_world_write( 'file2.txt' )
+            assert not util.has_world_execute( 'file2.txt' )
+
+        finally:
+            msk5 = os.umask( msk1 )
+
+        assert msk4 == 0
+        assert msk5 == (stat.S_IWGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH)
 
 
-class implementation_tests( trigutil.trigTestCase ):
+class implementation_tests( vtu.vvtestTestCase ):
+
+    def setUp(self):
+        ""
+        vtu.vvtestTestCase.setUp( self, True )
+
+        self.save_umask = os.umask(0)
+
+    def tearDown(self):
+        ""
+        os.umask( self.save_umask )
 
     def test_removing_filemode_bits(self):
         ""
@@ -145,37 +188,6 @@ class implementation_tests( trigutil.trigTestCase ):
         assert util.has_owner_execute( 'tmpdir' )
         assert util.has_group_execute( 'tmpdir' )
         assert not util.has_world_execute( 'tmpdir' )
-
-    def test_working_with_umask(self):
-        ""
-        msk1 = perms.get_umask()
-        msk2 = perms.get_umask()
-        print ( 'umask '+repr(oct(msk1))+' '+repr(oct(msk2)) )
-        assert msk1 == msk2
-
-        try:
-            msk3 = os.umask( 0 )
-
-            with open( 'file1.txt', 'wt' ) as fp:
-                fp.write( 'content\n' )
-            assert util.has_group_write( 'file1.txt' )
-            assert util.has_world_read( 'file1.txt' )
-            assert util.has_world_write( 'file1.txt' )
-            assert not util.has_world_execute( 'file1.txt' )
-
-            msk4 = os.umask( stat.S_IWGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH )
-            with open( 'file2.txt', 'wt' ) as fp:
-                fp.write( 'content\n' )
-            assert not util.has_group_write( 'file2.txt' )
-            assert not util.has_world_read( 'file2.txt' )
-            assert not util.has_world_write( 'file2.txt' )
-            assert not util.has_world_execute( 'file2.txt' )
-
-        finally:
-            msk5 = os.umask( msk1 )
-
-        assert msk4 == 0
-        assert msk5 == (stat.S_IWGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH)
 
     def test_setting_the_group(self):
         ""
@@ -557,7 +569,17 @@ class implementation_tests( trigutil.trigTestCase ):
         assert util.get_file_group( 'file.txt' ) == grp
 
 
-class interface_tests( trigutil.trigTestCase ):
+class interface_tests( vtu.vvtestTestCase ):
+
+    def setUp(self):
+        ""
+        vtu.vvtestTestCase.setUp( self, True )
+
+        self.save_umask = os.umask(0)
+
+    def tearDown(self):
+        ""
+        os.umask( self.save_umask )
 
     def test_using_the_permissions_object(self):
         ""
@@ -653,7 +675,7 @@ def find_invalid_groupid( grpidL ):
     return gid
 
 
-class auxiliary_function_tests( trigutil.trigTestCase ):
+class auxiliary_function_tests( vtu.vvtestTestCase ):
 
     def test_getting_the_user_name(self):
         ""

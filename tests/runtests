@@ -30,8 +30,7 @@ working directory.  Without any arguments, all the test scripts are run.
 OPTIONS
     -h, --help  : this help
     -j <int>    : max concurrent tests (default is one)
-    -k <keyword>: only run tests with this keyword; may be repeated;
-                  common keywords are "vvtest" and "trig"
+    -k <keyword>: only run tests with this keyword; may be repeated
     -s          : pass -s to the unit tests that take the option (use real ssh)
     -p <directory> : python version test; this triggers a loop over python
                      installations under the given directory, and runs each

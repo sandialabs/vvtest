@@ -1,6 +1,26 @@
 
 Improvements:
 
+    - 
+
+Fixes:
+
+    - 
+
+Changes:
+
+    - 
+
+
+==============================================================================
+
+Release 1.5
+-----------
+
+Nov 24, 2023
+
+Improvements:
+
     - The parameter generator feature now allows more than one dependency
       to be specified per test instance.
 

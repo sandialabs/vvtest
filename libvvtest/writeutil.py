@@ -34,8 +34,6 @@ def write_util_scripts( testcase, filename, lang, rtconfig, plat, loc ):
     tdir = rtconfig.getAttr('vvtestdir')
     assert tdir
 
-    trigdir = pjoin( tdir, 'trig' )
-
     projdir = rtconfig.getAttr('exepath')
     if projdir is None:
         projdir = ''

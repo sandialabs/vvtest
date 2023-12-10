@@ -15,7 +15,7 @@ except Exception:
 from .teststatus import DIFF_EXIT_STATUS, SKIP_EXIT_STATUS
 
 
-def write_util_scripts( testcase, filename, lang, rtconfig, plat, loc ):
+def write_util_scripts( testcase, filename, lang, baseline, rtconfig, plat, loc ):
     """
     Writes a helper script for the test.  The script language is based on
     the 'lang' argument.
@@ -74,7 +74,10 @@ def write_util_scripts( testcase, filename, lang, rtconfig, plat, loc ):
         w.add( '',
                'diff_exit_status = '+str(DIFF_EXIT_STATUS),
                'skip_exit_status = '+str(SKIP_EXIT_STATUS),
-               'opt_analyze = "--execute-analysis-sections" in sys.argv[1:]' )
+               'opt_analyze = "--execute-analysis-sections" in sys.argv[1:]',
+               'is_baseline = '+repr( True if baseline else False ),
+               'is_analyze = '+repr( True if tspec.isAnalyze() else False ),
+               'is_analysis_only = '+repr( True if rtconfig.getAttr('analyze') else False ) )
 
         w.add( '', '# parameters defined by the test' )
         paramD = tspec.getParameters( typed=True )
@@ -166,7 +169,10 @@ def write_util_scripts( testcase, filename, lang, rtconfig, plat, loc ):
 
         w.add( '',
                'diff_exit_status='+str(DIFF_EXIT_STATUS),
-               'skip_exit_status='+str(SKIP_EXIT_STATUS) )
+               'skip_exit_status='+str(SKIP_EXIT_STATUS),
+               'is_baseline='+( '1' if baseline else '0' ),
+               'is_analyze='+( '1' if tspec.isAnalyze() else '0' ),
+               'is_analysis_only='+( '1' if rtconfig.getAttr('analyze') else '0' ) )
 
         w.add( '', '# parameters defined by the test' )
         paramD = tspec.getParameters()

@@ -1,0 +1,120 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST:
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+import time
+import glob
+
+import vvtestutils as vtu
+import testutils as util
+
+
+class suite( vtu.vvtestTestCase ):
+
+    def test_analyze_and_baseline_markers_in_vvtest_util(self):
+        ""
+        print_statement = """
+            print( ' '.join( [
+                vvt.NAME,
+                'is_baseline='+str(vvt.is_baseline),
+                'is_analyze='+str(vvt.is_analyze),
+                'is_analysis_only='+str(vvt.is_analysis_only),
+            ] ) )
+        """
+        util.writefile( 'atest.vvt', """
+            #VVT: baseline : --baseline
+            import vvtest_util as vvt
+            """+print_statement )
+        util.writefile( 'btest.vvt', """
+            #VVT: baseline : --baseline
+            #VVT: parameterize : B = 1 2
+            import vvtest_util as vvt
+            """+print_statement )
+        util.writefile( 'ctest.vvt', """
+            #VVT: baseline : --baseline
+            #VVT: parameterize : C = 1 2
+            #VVT: analyze : --analyze
+            import vvtest_util as vvt
+            """+print_statement )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=6, npass=6 )
+
+        self.assert_flags( vrun, 'atest', False, False, False )
+        self.assert_flags( vrun, 'btest', False, False, False )
+        self.assert_flags( vrun, 'ctest$', False, True, False )
+        self.assert_flags( vrun, 'ctest.C=', False, False, False )
+
+        vrun = vtu.runvvtest( '-B' )
+        vrun.assertCounts( total=6, npass=6 )
+
+        self.assert_flags( vrun, 'atest', True, False, False, log='baseline.log' )
+        self.assert_flags( vrun, 'btest', True, False, False, log='baseline.log' )
+        self.assert_flags( vrun, 'ctest$', True, True, False, log='baseline.log' )
+        self.assert_flags( vrun, 'ctest.C=', True, False, False, log='baseline.log' )
+
+        vrun = vtu.runvvtest( '-a -R' )
+        vrun.assertCounts( total=6, npass=6 )
+
+        self.assert_flags( vrun, 'atest', False, False, True )
+        self.assert_flags( vrun, 'btest', False, False, True )
+        self.assert_flags( vrun, 'ctest$', False, True, True )
+        self.assert_flags( vrun, 'ctest.C=', False, False, True )
+
+        vrun = vtu.runvvtest( '-B -a' )
+        vrun.assertCounts( total=6, npass=6 )
+
+        self.assert_flags( vrun, 'atest', True, False, True, log='baseline.log' )
+        self.assert_flags( vrun, 'btest', True, False, True, log='baseline.log' )
+        self.assert_flags( vrun, 'ctest$', True, True, True, log='baseline.log' )
+        self.assert_flags( vrun, 'ctest.C=', True, False, True, log='baseline.log' )
+
+    def test_analyze_and_baseline_markers_are_provided_in_bash_test_scripts(self):
+        ""
+        util.writescript( 'atest.vvt', """
+            #!/usr/bin/bash
+            #VVT: baseline : --baseline
+            #VVT: parameterize : A = 1 2
+            #VVT: analyze : --analyze
+            source ./vvtest_util.sh
+            echo "$NAME is_baseline=$is_baseline is_analyze=$is_analyze is_analysis_only=$is_analysis_only"
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=3, npass=3 )
+
+        self.assert_flags( vrun, 'atest$', False, True, False )
+        self.assert_flags( vrun, 'atest.A=', False, False, False )
+
+    def test_filtering_by_analyze_test(self):
+        ""
+        pass  # magic: not done
+
+    def assert_flags(self, vrun, testname,
+                           flag_baseline, flag_analyze, flag_analysis_only,
+                           log='execute.log' ):
+        ""
+        flines = vrun.greplogs( 'is_baseline=', testname, log_basename=log )
+        self.assertTrue( len(flines) > 0 )
+        for line in flines:
+            toks = line.strip().split()
+            assert len(toks) == 4
+            b = eval( toks[1].split('is_baseline=')[1] )
+            self.assertTrue( b if flag_baseline else not b )
+            b = eval( toks[2].split('is_analyze=')[1] )
+            self.assertTrue( b if flag_analyze else not b )
+            b = eval( toks[3].split('is_analysis_only=')[1] )
+            self.assertTrue( b if flag_analysis_only else not b )
+
+
+########################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

@@ -209,7 +209,7 @@ class ExecutionHandler:
         tcase = texec.getTestCase()
 
         rundir = texec.getRunDirectory()
-        self.write_script_utils( tcase, rundir )
+        self.write_script_utils( tcase, rundir, baseline )
 
         tm = texec.getTimeout()
         self.set_timeout_environ_variable( tm )
@@ -233,7 +233,7 @@ class ExecutionHandler:
 
         return cmd_list
 
-    def write_script_utils(self, tcase, rundir):
+    def write_script_utils(self, tcase, rundir, baseline):
         ""
         for lang in ['py','sh']:
 
@@ -245,6 +245,7 @@ class ExecutionHandler:
                 writeutil.write_util_scripts( tcase,
                                               script_file,
                                               lang,
+                                              baseline,
                                               self.rtconfig,
                                               self.platform,
                                               self.loc )

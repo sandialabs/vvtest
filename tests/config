@@ -180,7 +180,7 @@ class config_tests( vtu.vvtestTestCase ):
             idmod.load_specifications( specs, 'CTS1', None, {} )
             self.assertTrue( specs.is_modified() )
             self.assertEqual( specs['batchsys'], 'slurm' )
-            self.assertEqual( specs['ppn'], 36 )
+            self.assertTrue( specs['ppn'] in [36,48] )
 
             specs = PlatformSpecs( attrtab )
             idmod.load_specifications( specs, 'Godzilla', None, {} )

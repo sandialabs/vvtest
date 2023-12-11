@@ -1,6 +1,13 @@
 
 Improvements:
 
+    - Two new command line options were added:
+
+        -z : Excludes tests that are not the analyze test of an
+             parameterize/analyze test group
+        -Z : Excludes tests that are the analyze test of an parameterize/analyze
+             test group
+
     - Three new flags were added to the vvtest_util.py file for each test:
 
         is_baseline : True when rebaselining (when the -B or -b flag is given)

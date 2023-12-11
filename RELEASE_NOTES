@@ -1,7 +1,22 @@
 
 Improvements:
 
-    - 
+    - Two new command line options were added:
+
+        -z : Excludes tests that are not the analyze test of an
+             parameterize/analyze test group
+        -Z : Excludes tests that are the analyze test of an parameterize/analyze
+             test group
+
+    - Three new flags were added to the vvtest_util.py file for each test:
+
+        is_baseline : True when rebaselining (when the -B or -b flag is given)
+        is_analyze  : True if this test is analyze test of an analyze/parameterize
+        is_analysis_only : True if the -a / --analyze command line flag is given
+
+      The 'is_analysis_only' variable supersedes (and deprecates) the
+      'opt_analyze' variable and the --execute-analysis-sections test command
+      line option.
 
 Fixes:
 
@@ -9,7 +24,12 @@ Fixes:
 
 Changes:
 
-    - 
+    - When the -a or --analyze option is given on the vvtest command line, the
+      --execute-analysis-sections option is placed on the test script command
+      line.  Also, the 'opt_analyze' boolean is set in the vvtest_util.py file
+      in this case.  Now these are both deprecated and will be removed next
+      release.  The capability is replaced with the 'is_analysis_only' boolean
+      variable in the vvtest_util.py file.
 
 
 ==============================================================================

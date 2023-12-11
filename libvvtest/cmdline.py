@@ -96,6 +96,14 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '-A', dest='dash_A', action='store_true',
         help='Ignore platform exclusions specified in the tests.' )
 
+    # filter by analyze test
+    grp.add_argument( '-z', dest='dash_z', action='store_true',
+        help='Only include the analyze tests of analyze/parameterize '
+             'test groups.' )
+    grp.add_argument( '-Z', dest='dash_Z', action='store_true',
+        help='Exclude the analyze tests of analyze/parameterize '
+             'test groups.' )
+
     # runtime filtering
     grp.add_argument( '--tmin',
         help='Only include tests whose previous runtime is greater than '
@@ -145,8 +153,9 @@ def create_parser( argvlist, vvtest_version ):
     grp.add_argument( '-L', dest='dash_L', action='store_true',
         help='Do not redirect test output to log files.' )
     grp.add_argument( '-a', '--analyze', dest='analyze', action='store_true',
-        help='Causes the option --execute-analysis-sections to be given to '
-             'each test invocation.  Only makes sense in combination with -R.' )
+        help='Only run the analysis sections of each test.  Note that a test '
+             'must be written to support this option (using the '
+             'vvtest_util.is_analysis_only flag) otherwise the whole test is run.' )
     grp.add_argument( '--test-args', metavar='ARGS', action='append',
         help='Pass options and/or arguments to each test script.' )
     grp.add_argument( '--encode-exit-status', action='store_true',
@@ -382,6 +391,10 @@ def adjust_options_and_create_derived_options( opts ):
         onL,offL = clean_on_off_options( opts.dash_o, opts.dash_O )
         derived_opts['onopts'] = onL
         derived_opts['offopts'] = offL
+
+        errtype = 'z/Z options'
+        if opts.dash_z and opts.dash_Z:
+            raise Exception( 'cannot specify both -z and -Z' )
 
         errtype = '--run-dir'
         if opts.run_dir is not None:

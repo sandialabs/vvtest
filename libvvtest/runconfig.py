@@ -56,6 +56,8 @@ class RuntimeConfig:
         self.runtime_range = None
         self.runtime_sum = None
 
+        self.analyze_tests = None  # None, True, or False
+
         for n,v in RuntimeConfig.attr_init.items():
             self.setAttr( n, v )
 
@@ -170,6 +172,28 @@ class RuntimeConfig:
             return True
         else:
             return expr.evaluate( self.optlist )
+
+    def setAnalyzeTestFilter(self, only_analyze_tests, no_analyze_tests):
+        """
+        Default is no filtering by whether a test is an analyze test.  If
+        'only_analyze_tests' is True then non-analyze tests are excluded.
+        If 'no_analyze_tests' is True then analyze tests are excluded.
+        """
+        if only_analyze_tests:
+            assert not no_analyze_tests  # both cannot be True
+            self.analyze_tests = True
+        elif no_analyze_tests:
+            self.analyze_tests = False
+        else:
+            self.analyze_tests = None
+
+    def evaluate_analyze_test(self, is_analyze_test):
+        ""
+        if self.analyze_tests is True:
+            return True if is_analyze_test else False
+        elif self.analyze_tests is False:
+            return False if is_analyze_test else True
+        return True
 
     def setRuntimeRange(self, min_runtime, max_runtime):
         ""

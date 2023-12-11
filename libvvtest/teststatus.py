@@ -22,6 +22,7 @@ KEYWORD_SKIP = 'keyword'
 RESULTS_KEYWORD_SKIP = 'resultskeyword'
 SUBDIR_SKIP = 'subdir'
 RUNTIME_SKIP = 'runskip'
+ANALYZE_SKIP = 'analyze'
 
 SKIP_REASON = {
         PARAM_SKIP           : 'excluded by parameter expression',
@@ -34,6 +35,7 @@ SKIP_REASON = {
         'platform'           : 'excluded by platform expression',
         'option'             : 'excluded by option expression',
         'tdd'                : 'TDD test',
+        ANALYZE_SKIP         : 'excluded by analyze test filter',
         'search'             : 'excluded by file search expression',
         'maxprocs'           : 'exceeds max processors',
         'maxdevices'         : 'exceeds max devices',
@@ -171,6 +173,10 @@ class TestStatus:
         ""
         self.markSkipped('depskip')
 
+    def markSkipByAnalyzeTest(self):
+        ""
+        self.markSkipped(ANALYZE_SKIP)
+
     def markSkipByCummulativeRuntime(self):
         ""
         self.markSkipped('tsum')
@@ -193,7 +199,8 @@ class TestStatus:
             if skp.startswith( PARAM_SKIP ) or \
                skp.startswith( RESTART_PARAM_SKIP ) or \
                skp.startswith( RESULTS_KEYWORD_SKIP ) or \
-               skp.startswith( SUBDIR_SKIP ):
+               skp.startswith( SUBDIR_SKIP ) or \
+               skp.startswith( ANALYZE_SKIP ):
                 skipit = False
             else:
                 skipit = True

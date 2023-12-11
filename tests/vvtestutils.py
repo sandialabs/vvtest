@@ -341,11 +341,11 @@ class VvtestCommandRunner:
         ""
         return len( self.grepLines( shell_pattern ) )
 
-    def greplogs(self, shell_pattern, testid_pattern=None):
+    def greplogs(self, shell_pattern, testid_pattern=None, log_basename='execute.log'):
         ""
-        xL = util.findfiles( 'execute.log', self.rdir )
+        xL = util.findfiles( log_basename, self.rdir )
         if testid_pattern != None:
-            xL = filter_logfile_list_by_testid( xL, testid_pattern )
+            xL = filter_logfile_list_by_testid( xL, testid_pattern, log_basename )
         return util.grepfiles( shell_pattern, *xL )
 
     def countGrepLogs(self, shell_pattern, testid_pattern=None):
@@ -530,7 +530,10 @@ def parse_test_ids( vvtest_output ):
     tlist = []
     for line in extract_testlines( vvtest_output ):
 
-        s = line.strip().split()[-1]
+        toks = line.strip().split()
+        if toks[0] == 'skip':
+            toks = line.split('skip_reason=')[0].strip().split()
+        s = toks[-1]
         if s.startswith( 'stage=' ):
             s = ' '.join( line.strip().split()[-2:] )
 
@@ -559,7 +562,7 @@ def parse_started_tests( vvtest_output, results_dir ):
     return startlist
 
 
-def filter_logfile_list_by_testid( logfiles, testid_pattern ):
+def filter_logfile_list_by_testid( logfiles, testid_pattern, log_basename ):
     ""
     pat = util.adjust_shell_pattern_to_work_with_fnmatch( testid_pattern )
 
@@ -567,7 +570,7 @@ def filter_logfile_list_by_testid( logfiles, testid_pattern ):
 
     for pn in logfiles:
         d,b = os.path.split( pn )
-        assert b == 'execute.log'
+        assert b == log_basename
         if fnmatch.fnmatch( os.path.basename( d ), pat ):
             newL.append( pn )
 

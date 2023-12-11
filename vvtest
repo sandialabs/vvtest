@@ -234,6 +234,8 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
     if opts.analyze:   rtconfig.setAttr( 'analyze', True )
     if opts.dash_L:    rtconfig.setAttr( 'logfile', False )
 
+    rtconfig.setAnalyzeTestFilter( opts.dash_z, opts.dash_Z )
+
     if opts.test_args:
         argL = []
         for args in opts.test_args:

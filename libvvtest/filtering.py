@@ -128,6 +128,18 @@ class TestFilter:
         self._record_skipped_tests( ok, tcase )
         return ok
 
+    def checkAnalyzeTest(self, tcase):
+        ""
+        tspec = tcase.getSpec()
+
+        ok = self.rtconfig.evaluate_analyze_test( tspec.isAnalyze() )
+
+        if not ok:
+            tcase.getStat().markSkipByAnalyzeTest()
+
+        self._record_skipped_tests( ok, tcase )
+        return ok
+
     def checkFileSearch(self, tcase):
         ""
         tspec = tcase.getSpec()
@@ -234,6 +246,7 @@ class TestFilter:
                 self.checkPlatform( tcase ) and \
                 self.checkOptions( tcase ) and \
                 self.checkTDD( tcase ) and \
+                self.checkAnalyzeTest( tcase ) and \
                 self.checkFileSearch( tcase ) and \
                 self.checkMaxSize( tcase ) and \
                 self.checkRuntime( tcase ) and \
@@ -255,6 +268,7 @@ class TestFilter:
                     self.checkKeywords( tcase, results_keywords=True ) and \
                     self.checkParameters( tcase, permanent=False ) and \
                     self.checkTDD( tcase ) and \
+                    self.checkAnalyzeTest( tcase ) and \
                     self.checkMaxSize( tcase ) and \
                     self.checkRuntime( tcase )
 

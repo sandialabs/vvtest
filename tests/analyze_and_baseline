@@ -16,12 +16,12 @@ import glob
 import vvtestutils as vtu
 import testutils as util
 
+from libvvtest.runconfig import RuntimeConfig
 
-class suite( vtu.vvtestTestCase ):
 
-    def test_analyze_and_baseline_markers_in_vvtest_util(self):
-        ""
-        print_statement = """
+class flags( vtu.vvtestTestCase ):
+
+    print_statement = """
             print( ' '.join( [
                 vvt.NAME,
                 'is_baseline='+str(vvt.is_baseline),
@@ -29,21 +29,24 @@ class suite( vtu.vvtestTestCase ):
                 'is_analysis_only='+str(vvt.is_analysis_only),
             ] ) )
         """
+
+    def test_analyze_and_baseline_markers_in_vvtest_util(self):
+        ""
         util.writefile( 'atest.vvt', """
             #VVT: baseline : --baseline
             import vvtest_util as vvt
-            """+print_statement )
+            """+flags.print_statement )
         util.writefile( 'btest.vvt', """
             #VVT: baseline : --baseline
             #VVT: parameterize : B = 1 2
             import vvtest_util as vvt
-            """+print_statement )
+            """+flags.print_statement )
         util.writefile( 'ctest.vvt', """
             #VVT: baseline : --baseline
             #VVT: parameterize : C = 1 2
             #VVT: analyze : --analyze
             import vvtest_util as vvt
-            """+print_statement )
+            """+flags.print_statement )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=6, npass=6 )
@@ -94,10 +97,6 @@ class suite( vtu.vvtestTestCase ):
         self.assert_flags( vrun, 'atest$', False, True, False )
         self.assert_flags( vrun, 'atest.A=', False, False, False )
 
-    def test_filtering_by_analyze_test(self):
-        ""
-        pass  # magic: not done
-
     def assert_flags(self, vrun, testname,
                            flag_baseline, flag_analyze, flag_analysis_only,
                            log='execute.log' ):
@@ -113,6 +112,60 @@ class suite( vtu.vvtestTestCase ):
             self.assertTrue( b if flag_analyze else not b )
             b = eval( toks[3].split('is_analysis_only=')[1] )
             self.assertTrue( b if flag_analysis_only else not b )
+
+
+class filter( vtu.vvtestTestCase ):
+
+    def test_analyze_filter_in_RuntimeConfig(self):
+        ""
+        rtconfig = RuntimeConfig()
+
+        self.assertTrue( rtconfig.evaluate_analyze_test( True ) )
+        self.assertTrue( rtconfig.evaluate_analyze_test( False ) )
+
+        rtconfig.setAnalyzeTestFilter( False, False )
+        self.assertTrue( rtconfig.evaluate_analyze_test( True ) )
+        self.assertTrue( rtconfig.evaluate_analyze_test( False ) )
+
+        rtconfig.setAnalyzeTestFilter( True, False )
+        self.assertTrue( rtconfig.evaluate_analyze_test( True ) )
+        self.assertFalse( rtconfig.evaluate_analyze_test( False ) )
+
+        rtconfig.setAnalyzeTestFilter( False, True )
+        self.assertFalse( rtconfig.evaluate_analyze_test( True ) )
+        self.assertTrue( rtconfig.evaluate_analyze_test( False ) )
+
+        # this case should never occur (should be caught in command line parsing)
+        self.assertRaises( Exception, rtconfig.setAnalyzeTestFilter, True, True )
+
+    def test_filtering_by_analyze_test(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: parameterize : A = 1 2
+            #VVT: analyze : --analyze
+            #VVT: baseline : --baseline
+            import vvtest_util as vvt
+            """ )
+
+        vrun = vtu.runvvtest()
+        vrun.assertCounts( total=3, npass=3 )
+        self.assertEqual( sorted(vrun.getTestIds()), ['atest','atest.A=1','atest.A=2'] )
+
+        vrun = vtu.runvvtest( '-z -R' )
+        vrun.assertCounts( total=1, npass=1 )
+        self.assertEqual( sorted(vrun.getTestIds()), ['atest'] )
+
+        vrun = vtu.runvvtest( '-Z -R' )
+        vrun.assertCounts( total=2, npass=2 )
+        self.assertEqual( sorted(vrun.getTestIds()), ['atest.A=1','atest.A=2'] )
+
+        vrun = vtu.runvvtest( '-i -vv' )
+        vrun.assertCounts( total=3, npass=3 )
+        self.assertEqual( sorted(vrun.getTestIds()), ['atest','atest.A=1','atest.A=2'] )
+
+        vrun = vtu.runvvtest( '-B -z' )
+        vrun.assertCounts( total=1, npass=1 )
+        self.assertEqual( sorted(vrun.getTestIds()), ['atest'] )
 
 
 ########################################################################

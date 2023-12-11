@@ -530,7 +530,10 @@ def parse_test_ids( vvtest_output ):
     tlist = []
     for line in extract_testlines( vvtest_output ):
 
-        s = line.strip().split()[-1]
+        toks = line.strip().split()
+        if toks[0] == 'skip':
+            toks = line.split('skip_reason=')[0].strip().split()
+        s = toks[-1]
         if s.startswith( 'stage=' ):
             s = ' '.join( line.strip().split()[-2:] )
 

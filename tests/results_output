@@ -10,10 +10,12 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
-from os.path import abspath
+from os.path import abspath, join as pjoin, dirname
 import time
 from os.path import getsize as getfsize
 import glob
+import tempfile
+import shutil
 
 import vvtestutils as vtu
 import testutils as util
@@ -23,6 +25,10 @@ import libvvtest.listwriter as listwriter
 from libvvtest.testlist import TestList
 import libvvtest.fmtresults as fmtresults
 from libvvtest.location import Locator
+
+from vvtestutils import windows, not_windows
+
+vvtroot = fmtresults.VVTEST_ROOT_FILENAME
 
 
 class misc_tests( vtu.vvtestTestCase ):
@@ -133,6 +139,120 @@ class html_output_format_tests( vtu.vvtestTestCase ):
 
 
 class save_results_output( vtu.vvtestTestCase ):
+
+    def test_path_identification_by_repo(self):
+        ""
+        # shorten the function names
+        func = fmtresults.get_path_list_by_git_or_svn_repo
+        rp = os.path.realpath
+
+        # these checks call get_path_list_by_git_or_svn_repo() directly just in
+        # case a vvtest root marker file exists in a parent directory somehow
+        for cm in ['.git','.svn']:
+
+            if os.path.exists('top'):
+                util.fault_tolerant_remove( 'top' )
+
+            util.writefile( 'top/'+cm+'/config', '' )
+            util.writefile( 'top/baz.vvt', '' )
+            util.writefile( 'top/foo/bar.vvt', '' )
+            util.writefile( 'top/foo/sub/bar.vvt', '' )
+            self.assertEqual( func( rp('top/foo') ), ['foo'] )
+            self.assertEqual( func( rp('top') ), [] )
+            self.assertEqual( func( rp('top/foo/sub') ), ['foo','sub'] )
+
+        # when the file is not in a repo, None should be returned
+        idr = fmtresults.TestPathIdentification()
+        tmpd = tempfile.mkdtemp('','_vvt_tmpdir')
+        try:
+            subd = pjoin(tmpd,'sub1','sub2')
+            fn = pjoin(subd,'foo.vvt')
+            util.writefile( fn, '' )
+            self.assertTrue( idr.get_path_id(fn) is None )
+            with util.change_directory( subd ):
+                self.assertTrue( idr.get_path_id('foo.vvt') is None )
+        finally:
+            shutil.rmtree( tmpd )
+
+        if not_windows:
+            # soft links are removed from the id path (by using os.path.realpath)
+            idr = fmtresults.TestPathIdentification()
+            tmpd = tempfile.mkdtemp('','_vvt_tmpdir')
+            try:
+                util.writefile( tmpd+'/top1/.git/config', '' )
+                util.writefile( tmpd+'/top1/sub/foo.vvt', '' )
+                util.writefile( tmpd+'/top2/.git/config', '' )
+                util.writefile( tmpd+'/top2/here/bar.vvt', '' )
+                os.symlink( '../top2/here', tmpd+'/top1/seeya' )
+
+                fn = tmpd+'/top1/seeya/bar.vvt'
+                self.assertEqual( idr.get_path_id(fn), 'here/bar.vvt' )
+                with util.change_directory( tmpd+'/top1' ):
+                    self.assertEqual( idr.get_path_id('seeya/bar.vvt'), 'here/bar.vvt' )
+            finally:
+                shutil.rmtree( tmpd )
+
+    def test_path_identification_by_vvtest_root_file(self):
+        ""
+        idr = fmtresults.TestPathIdentification()
+        util.writefile( 'top/'+vvtroot, '' )
+        util.writefile( 'top/foo.vvt', '' )
+        util.writefile( 'top/sub/bar.vvt', '' )
+        self.assertEqual( idr.get_path_id( 'top/foo.vvt' ), 'foo.vvt' )
+        self.assertEqual( idr.get_path_id( 'top/sub/bar.vvt' ), 'sub/bar.vvt' )
+        with util.change_directory( 'top' ):
+            self.assertEqual( idr.get_path_id( 'sub/bar.vvt' ), 'sub/bar.vvt' )
+        with util.change_directory( 'top/sub' ):
+            self.assertEqual( idr.get_path_id( 'bar.vvt' ), 'sub/bar.vvt' )
+
+        for val in [ 'ROOTPATH=cool',
+                     '  ROOTPATH = cool',
+                     '# comment then\nROOTPATH =cool\n' ]:
+
+            util.fault_tolerant_remove( 'top' )
+
+            idr = fmtresults.TestPathIdentification()
+            util.writefile( 'top/'+vvtroot, val )
+            util.writefile( 'top/foo.vvt', '' )
+            util.writefile( 'top/sub/bar.vvt', '' )
+            self.assertEqual( idr.get_path_id( 'top/foo.vvt' ), 'cool/foo.vvt' )
+            self.assertEqual( idr.get_path_id( 'top/sub/bar.vvt' ), 'cool/sub/bar.vvt' )
+
+        util.fault_tolerant_remove( 'top' )
+
+        # a nested vvtest root file
+        idr = fmtresults.TestPathIdentification()
+        util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
+        util.writefile( 'top/sub/foo.vvt', '' )
+        util.writefile( 'top/sub/two/tri/bar.vvt', '' )
+        util.writefile( 'top/sub/two/'+vvtroot, 'ROOTPATH=cool/sub/two' )
+        self.assertEqual( idr.get_path_id( 'top/sub/foo.vvt' ), 'cool/sub/foo.vvt' )
+        self.assertEqual( idr.get_path_id( 'top/sub/two/tri/bar.vvt' ), 'cool/sub/two/tri/bar.vvt' )
+        with util.change_directory( 'top/sub/two/tri' ):
+            self.assertEqual( idr.get_path_id( 'bar.vvt' ), 'cool/sub/two/tri/bar.vvt' )
+
+    def test_path_identification_by_vvtest_root_file_and_git(self):
+        ""
+        # a vvtest root file takes precedence
+        idr = fmtresults.TestPathIdentification()
+        util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
+        util.writefile( 'top/sub/.git/config', '' )
+        util.writefile( 'top/sub/two/foo.vvt', '' )
+        self.assertEqual( idr.get_path_id( 'top/sub/two/foo.vvt' ), 'cool/sub/two/foo.vvt' )
+
+    def test_path_identification_caches_by_directory(self):
+        ""
+        idr = fmtresults.TestPathIdentification()
+        util.writefile( 'top/'+vvtroot, '' )
+        util.writefile( 'top/sub/foo.vvt', '' )
+        util.writefile( 'top/sub/two/bar.vvt', '' )
+        util.writefile( 'top/sub/two/baz.vvt', '' )
+        self.assertEqual( idr.get_path_id( 'top/sub/foo.vvt' ), 'sub/foo.vvt' )
+        self.assertEqual( idr.get_path_id( 'top/sub/two/bar.vvt' ), 'sub/two/bar.vvt' )
+        # second time
+        self.assertEqual( idr.get_path_id( 'top/sub/foo.vvt' ), 'sub/foo.vvt' )
+        self.assertEqual( idr.get_path_id( 'top/sub/two/bar.vvt' ), 'sub/two/bar.vvt' )
+        self.assertEqual( idr.get_path_id( 'top/sub/two/baz.vvt' ), 'sub/two/baz.vvt' )
 
     def test_methods_for_specifying_the_save_results_directory(self):
         ""

@@ -41,14 +41,12 @@ class ListWriter:
     def initialize(self, rtinfo,
                          destination,
                          datestamp=None,
-                         onopts=[],
                          name_tag=None,
                          scpexe='scp' ):
         ""
         self.rtinfo = rtinfo
         self.outdir = destination
         self.datestamp = datestamp
-        self.onopts = onopts
         self.ftag = name_tag
         self.scpexe = scpexe
 
@@ -70,17 +68,9 @@ class ListWriter:
         datestamp = self.rtinfo.get( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp )
 
-        if is_target_like_scp( self.outdir ):
-            todir = self.rtinfo['rundir']
-        else:
-            todir = self.outdir
-
         fname = self.makeFilename( datestr )
 
-        self._write_results_to_file( atestlist, inprogress, todir, fname )
-
-        if todir != self.outdir:
-            scp_file_to_remote( self.scpexe, todir, fname, self.outdir )
+        self._write_results_to_file( atestlist, inprogress, self.outdir, fname )
 
     def _write_results_to_file(self, atestlist, inprogress, todir, fname):
         ""
@@ -101,13 +91,14 @@ class ListWriter:
         ""
         pname = self.rtinfo.get( 'platform' )
         cplr = self.rtinfo.get( 'compiler' )
+        onopts = self.rtinfo.get( 'onopts' )
 
         if cplr:
             opL = [ cplr ]
         else:
             opL = []
 
-        for op in self.onopts:
+        for op in onopts:
             if op != cplr:
                 opL.append( op )
         optag = '+'.join( opL )
@@ -135,33 +126,3 @@ class ListWriter:
         mach = os.uname()[1]
 
         tr.writeResults( filename, pname, cplr, mach, self.rtinfo['rundir'], inprogress )
-
-
-def is_target_like_scp( tdir ):
-    ""
-    sL = tdir.split( ':', 1 )
-    if len(sL) == 2:
-        if os.pathsep not in sL[0] and '/' not in sL[0]:
-            return True
-
-    return False
-
-
-def scp_file_to_remote( scpexe, fromdir, fname, destdir ):
-    ""
-    import subprocess
-    import pipes
-
-    fromfile = os.path.join( fromdir, fname )
-    tofile = os.path.join( destdir, fname )
-
-    cmd = scpexe + ' -p '+pipes.quote(fromfile)+' '+pipes.quote(tofile)
-
-    logger.info( cmd )
-    sys.stdout.flush() ; sys.stderr.flush()
-
-    x = subprocess.call( cmd, shell=True )
-
-    if x != 0:
-        sys.stdout.flush() ; sys.stderr.flush()
-        logger.warn( '\n*** vvtest warning: scp seems to have failed\n' )

@@ -18,8 +18,6 @@ import shutil
 import vvtestutils as vtu
 import testutils as util
 
-import results_util as ru
-
 
 class tdd_tests( vtu.vvtestTestCase ):
 
@@ -144,7 +142,7 @@ class tdd_tests( vtu.vvtestTestCase ):
         tdir = vrun.resultsDir()
 
         resultsfname = util.globfile( 'vvtresults.*' )
-        _,tL = ru.read_results_file( resultsfname )
+        _,tL = vtu.read_results_file( resultsfname )
         assert len(tL) == 2
         assert tL[0]['TDD']
         assert 'TDD' not in tL[1]

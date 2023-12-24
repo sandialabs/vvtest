@@ -16,8 +16,6 @@ import glob
 import vvtestutils as vtu
 import testutils as util
 
-import results_util as ru
-
 import libvvtest.runtimes as runtimes
 
 

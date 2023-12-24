@@ -14,6 +14,7 @@ import subprocess
 import unittest
 import shutil
 import platform
+import json
 try:
     from shlex import quote
 except Exception:
@@ -1032,3 +1033,24 @@ def make_fake_PermissionSetter():
         def recurse(self, path): pass
 
     return DummyPermissionSetter()
+
+
+def read_results_file( fname ):
+    ""
+    fileinfo = None
+    testinfo = []
+
+    i = 0
+    with open( fname, 'rt' ) as fp:
+        for line in fp:
+            if not line.strip().startswith('#'):
+                i += 1
+                if i == 1:
+                    fileinfo = json.loads( line.strip() )
+                else:
+                    D = json.loads( line.strip() )
+                    testinfo.append( (D['testid'],D) )
+
+    testinfo.sort()
+
+    return fileinfo, [ tup[1] for tup in testinfo ]

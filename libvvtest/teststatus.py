@@ -278,6 +278,19 @@ class TestStatus:
         ""
         self.attrs['xtime'] = num_seconds
 
+    def getTimeout(self, *default):
+        ""
+        tm = self.attrs.get( 'timeout', None )
+        if tm is None or tm < 0:
+            if len( default ) > 0:
+                return default[0]
+            raise KeyError( "timeout attribute not set" )
+        return tm
+
+    def setTimeout(self, timeout_seconds):
+        ""
+        self.attrs['timeout'] = timeout_seconds
+
     def markDone(self, exit_status):
         ""
         tzero = self.getStartDate()

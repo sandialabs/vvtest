@@ -29,7 +29,7 @@ from libvvtest.location import Locator
 from testutils import windows
 np = os.path.normpath  # for windows testing, use normpath to compare paths
 
-vvtroot = fmtresults.VVTEST_ROOT_FILENAME
+vvtroot = listwriter.VVTEST_ROOT_FILENAME
 
 
 class misc_tests( vtu.vvtestTestCase ):
@@ -40,7 +40,7 @@ class misc_tests( vtu.vvtestTestCase ):
         tm1 = tm0 - 600
 
         s = outpututils.make_date_stamp( tm0, None )
-        assert s == '2018_10_11'
+        assert s == '2018_10_11_13h_20m_58s'
 
         s = outpututils.make_date_stamp( tm0, None, "%Y-%m-%d_%H:%M:%S" )
         assert s == '2018-10-11_13:20:58'
@@ -144,7 +144,7 @@ class save_results_output( vtu.vvtestTestCase ):
     def test_path_identification_by_repo(self):
         ""
         # shorten the function names
-        func = fmtresults.get_path_list_by_git_or_svn_repo
+        func = listwriter.get_path_list_by_git_or_svn_repo
         rp = os.path.realpath
 
         # these checks call get_path_list_by_git_or_svn_repo() directly just in
@@ -163,8 +163,8 @@ class save_results_output( vtu.vvtestTestCase ):
             self.assertEqual( func( rp('top/foo/sub') ), ['foo','sub'] )
 
         # when the file is not in a repo, None should be returned
-        idr = fmtresults.TestPathIdentification()
-        tmpd = tempfile.mkdtemp('','_vvt_tmpdir')
+        idr = listwriter.TestPathIdentification()
+        tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
         try:
             subd = pjoin(tmpd,'sub1','sub2')
             fn = pjoin(subd,'foo.vvt')
@@ -177,8 +177,8 @@ class save_results_output( vtu.vvtestTestCase ):
 
         if not windows:
             # soft links are removed from the id path (by using os.path.realpath)
-            idr = fmtresults.TestPathIdentification()
-            tmpd = tempfile.mkdtemp('','_vvt_tmpdir')
+            idr = listwriter.TestPathIdentification()
+            tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
             try:
                 util.writefile( tmpd+'/top1/.git/config', '' )
                 util.writefile( tmpd+'/top1/sub/foo.vvt', '' )
@@ -195,7 +195,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
     def test_path_identification_by_vvtest_root_file(self):
         ""
-        idr = fmtresults.TestPathIdentification()
+        idr = listwriter.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, '' )
         util.writefile( 'top/foo.vvt', '' )
         util.writefile( 'top/sub/bar.vvt', '' )
@@ -212,7 +212,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
             util.fault_tolerant_remove( 'top' )
 
-            idr = fmtresults.TestPathIdentification()
+            idr = listwriter.TestPathIdentification()
             util.writefile( 'top/'+vvtroot, val )
             util.writefile( 'top/foo.vvt', '' )
             util.writefile( 'top/sub/bar.vvt', '' )
@@ -222,7 +222,7 @@ class save_results_output( vtu.vvtestTestCase ):
         util.fault_tolerant_remove( 'top' )
 
         # a nested vvtest root file
-        idr = fmtresults.TestPathIdentification()
+        idr = listwriter.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
         util.writefile( 'top/sub/foo.vvt', '' )
         util.writefile( 'top/sub/two/tri/bar.vvt', '' )
@@ -235,7 +235,7 @@ class save_results_output( vtu.vvtestTestCase ):
     def test_path_identification_by_vvtest_root_file_and_git(self):
         ""
         # a vvtest root file takes precedence
-        idr = fmtresults.TestPathIdentification()
+        idr = listwriter.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
         util.writefile( 'top/sub/.git/config', '' )
         util.writefile( 'top/sub/two/foo.vvt', '' )
@@ -243,7 +243,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
     def test_path_identification_caches_by_directory(self):
         ""
-        idr = fmtresults.TestPathIdentification()
+        idr = listwriter.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, '' )
         util.writefile( 'top/sub/foo.vvt', '' )
         util.writefile( 'top/sub/two/bar.vvt', '' )
@@ -281,28 +281,17 @@ class save_results_output( vtu.vvtestTestCase ):
             assert 'vvtest error' in vrun.out
 
             vrun = vtu.runvvtest( '-i --save-results --config '+abspath('adir') )
-            assert len( glob.glob( 'plugout/results.*' ) ) == 1
+            assert len( glob.glob( 'plugout/vvtresults.*' ) ) == 1
 
             assert len( glob.glob( 'envout/*' ) ) == 0
             os.environ['TESTING_DIRECTORY'] = abspath('envout')
             vrun = vtu.runvvtest( '-i --save-results --config '+abspath('adir') )
-            assert len( glob.glob( 'envout/results.*' ) ) == 1
+            assert len( glob.glob( 'envout/vvtresults.*' ) ) == 1
 
             assert len( glob.glob( 'cmdout/*' ) ) == 0
             vrun = vtu.runvvtest( '-i --save-results='+abspath('cmdout'),
                                   '--config '+abspath('adir') )
-            assert len( glob.glob( 'cmdout/results.*' ) ) == 1
-
-    def test_getting_relative_root_path_with_marker_file(self):
-        ""
-        tcase = make_fake_test_in_subdir( 'adir' )
-
-        rel = fmtresults.determine_rootrel( abspath('adir/sdir'), {} )
-        assert not rel
-
-        add_runtimes_marker_file( 'adir' )
-        rel = fmtresults.determine_rootrel( abspath('adir/sdir'), {} )
-        assert rel == 'adir/sdir'
+            assert len( glob.glob( 'cmdout/vvtresults.*' ) ) == 1
 
     def prep_testlist(self, subdir):
         ""
@@ -328,7 +317,7 @@ class save_results_output( vtu.vvtestTestCase ):
         lwr.initialize( rtinfo, 'odir' )
 
         lwr.writeList( tlist )
-        fL = util.grepfiles( 'adir/sdir/atest.np=4', 'odir/results.*' )
+        fL = util.grepfiles( 'adir/sdir/atest.vvt', 'odir/vvtresults.*' )
         assert len(fL) == 1
 
 
@@ -344,8 +333,9 @@ def make_fake_test_in_subdir( subdir ):
 
 def add_runtimes_marker_file( rootdir ):
     ""
-    tr = fmtresults.TestResults()
-    tr.writeRuntimes( abspath(rootdir), None )
+    fn = pjoin(rootdir,vvtroot)
+    with open( fn, 'wt' ) as fp:
+        fp.write( 'ROOTPATH=adir\n' )
 
 
 class MockPermissionSetter:

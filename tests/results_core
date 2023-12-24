@@ -13,140 +13,51 @@ import os
 import re
 import time
 import glob
+import tempfile
+import shutil
+import json
 
 import vvtestutils as vtu
 import testutils as util
-
-import libvvtest.results as results
 
 import results_util as ru
 
 import libvvtest.fmtresults as fmtresults
 import libvvtest.testcase as testcase
 
-timesfname = fmtresults.runtimes_filename
-multifname = fmtresults.multiruntimes_filename
-
-
-class unit_tests( vtu.vvtestTestCase ):
-
-    def test_make_and_parse_test_attributes(self):
-        ""
-        aD = { 'xdate':int(time.time()),
-               'xtime':23, 'state':'done', 'result':'pass' }
-        s = fmtresults.make_attr_string( aD )
-        D2 = fmtresults.read_attrs( s.split() )
-        assert aD == D2, str(aD) + ' != ' + str(D2)
-
-        aD = { 'xdate':int(time.time()), 'state':'notdone' }
-        s = fmtresults.make_attr_string( aD )
-        D2 = fmtresults.read_attrs( s.split() )
-        assert aD == D2, str(aD) + ' != ' + str(D2)
-
-        aD = { 'state':'notrun' }
-        s = fmtresults.make_attr_string( aD )
-        D2 = fmtresults.read_attrs( s.split() )
-        assert aD == D2, str(aD) + ' != ' + str(D2)
-
-    def test_results_date_range(self):
-        ""
-        tr = fmtresults.TestResults()
-
-        mn,mx = tr.dateRange()
-        assert mn == None and mx == None
-
-        now = time.time()
-
-        t1 = make_testcase_started_at_time( 'atest', 10 )
-        tr.addTest( t1, 'myroot' )
-        mn,mx = tr.dateRange()
-        assert abs( now-10*60 - mn ) < 5
-        assert abs( now-10*60 - mx ) < 5
-
-        t2 = make_testcase_started_at_time( 'btest', 20 )
-        tr.addTest( t2, 'myroot' )
-        mn,mx = tr.dateRange()
-        assert abs( now-20*60 - mn ) < 5
-        assert abs( now-10*60 - mx ) < 5
-
-        t3 = make_testcase_started_at_time( 'ctest', 15 )
-        tr.addTest( t3, 'myroot' )
-        mn,mx = tr.dateRange()
-        assert abs( now-20*60 - mn ) < 5
-        assert abs( now-10*60 - mx ) < 5
-
-
-def make_testcase_started_at_time( name='atest', minutes_ago=10 ):
-    ""
-    tc = testcase.TestCase( vtu.make_fake_TestSpec( name ) )
-    tc.getStat().resetResults()
-    tc.getStat().markStarted( time.time() - minutes_ago*60 )
-    tc.getStat().markDone( 0 )
-
-    return tc
-
 
 class integration_tests( vtu.vvtestTestCase ):
 
     def test_saving_results_when_the_root_cannot_be_determined(self):
         ""
-        ru.write_tests_cat_dog_circle()
-        time.sleep(1)
+        # use /tmp dir to avoid accidental .git repository being in path
+        tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
+        try:
+            ru.write_tests_cat_dog_circle( tmpd )
 
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=3, npass=3 )
-        tdir = vrun.resultsDir()
+            vrun = vtu.runvvtest( tmpd, '--save-results' )
+            vrun.assertCounts( total=3, npass=3 )
 
-        vtu.runvvtest( '-i --save-results' )
-        resultsfname = util.globfile('results.*')
+            resultsfname = util.globfile('vvtresults.*')
+            fileinfo,testinfo = ru.read_results_file( resultsfname )
+            self.assertEqual( len(testinfo), 3 )
+            for testD in testinfo:
+                self.assertTrue( testD['pathid'] is None )
 
-        ru.assert_empty_testresults_file( resultsfname )
+        finally:
+            shutil.rmtree( tmpd )
 
-        tr = fmtresults.TestResults( resultsfname )
-        assert ru.results_write_creates_the_same_file( resultsfname, tr )
-
-    def test_nominal_uses_of_TestResults_class(self):
+    def test_timings_are_saved_in_results_file(self):
         ""
         ru.write_tests_cat_dog_circle()
-        time.sleep(1)
 
-        vrun = vtu.runvvtest()
+        vrun = vtu.runvvtest( '--save-results' )
         vrun.assertCounts( total=3, npass=3 )
         tdir = vrun.resultsDir()
 
-        resultsfname = ru.create_runtimes_and_results_file( tdir )
+        ru.assert_cat_dog_circle_testresults_contents( util.globfile('vvtresults.*') )
 
-        tr = fmtresults.TestResults( resultsfname )
-        assert tr.testdir() == tdir
-
-        topdir = os.path.basename( os.getcwd() )
-        ru.assert_cat_dog_circle_testresults_contents( tr, topdir )
-
-        assert ru.results_write_creates_the_same_file( resultsfname, tr )
-
-        # write empty runtimes files in the subdirectories
-        os.remove( timesfname )
-        util.runcmd( vtu.resultspy + ' save', chdir='one' )
-        util.runcmd( vtu.resultspy + ' save', chdir='two' )
-
-        ru.assert_empty_testresults_file( 'one/runtimes' )
-        ru.assert_empty_testresults_file( 'two/runtimes' )
-
-        # saving results this time will produce different root-relative paths
-        vtu.runvvtest( '-i --save-results' )
-        tr = fmtresults.TestResults( resultsfname )
-        ru.assert_cat_dog_circle_testresults_contents( tr )
-
-        # saving runtimes again to the subdirectories should populate the
-        # runtimes but only include tests at or below the root
-        fn = os.path.abspath( resultsfname )
-        util.runcmd( vtu.resultspy + ' save ' + fn, chdir='one' )
-        util.runcmd( vtu.resultspy + ' save ' + fn, chdir='two' )
-
-        ru.assert_cat_dog_runtimes( 'one' )
-        ru.assert_circle_runtimes( 'two' )
-
-    def test_save_results_with_multiple_parameterize(self):
+    def test_save_results_with_tests_having_multiple_parameters(self):
         ""
         util.writefile( "cat.vvt", """
             #VVT: parameterize : direction = front rear
@@ -155,16 +66,15 @@ class integration_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=4, npass=4 )
-        tdir = vrun.resultsDir()
 
-        resultsfname = ru.create_runtimes_and_results_file( tdir )
+        resultsfname = ru.create_runtimes_and_results_file( vrun.resultsDir() )
 
         ru.assert_results_file_has_tests(
                 resultsfname,
-                'cat.direction=front.side=left',
-                'cat.direction=front.side=right',
-                'cat.direction=rear.side=left',
-                'cat.direction=rear.side=right' )
+                ('cat.vvt','direction=front','side=left'),
+                ('cat.vvt','direction=front','side=right'),
+                ('cat.vvt','direction=rear','side=left'),
+                ('cat.vvt','direction=rear','side=right') )
 
     def test_save_results_with_multiple_parameterize_and_an_analyze(self):
         ""
@@ -177,17 +87,16 @@ class integration_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=5, npass=5 )
-        tdir = vrun.resultsDir()
 
-        resultsfname = ru.create_runtimes_and_results_file( tdir )
+        resultsfname = ru.create_runtimes_and_results_file( vrun.resultsDir() )
 
         ru.assert_results_file_has_tests(
                 resultsfname,
-                'cat',
-                'cat.direction=front.side=left',
-                'cat.direction=front.side=right',
-                'cat.direction=rear.side=left',
-                'cat.direction=rear.side=right' )
+                ('cat.vvt',),
+                ('cat.vvt','direction=front','side=left'),
+                ('cat.vvt','direction=front','side=right'),
+                ('cat.vvt','direction=rear','side=left'),
+                ('cat.vvt','direction=rear','side=right') )
 
     def test_save_results_with_zipped_parameterize_and_an_analyze(self):
         ""
@@ -199,90 +108,14 @@ class integration_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=3, npass=3 )
-        tdir = vrun.resultsDir()
 
-        resultsfname = ru.create_runtimes_and_results_file( tdir )
-
-        assert len( util.grepfiles( "cat", resultsfname ) ) == 3
-        assert len( util.grepfiles( "cat.direction=front.side=left", resultsfname ) ) == 1
-        assert len( util.grepfiles( "cat.direction=rear.side=right", resultsfname ) ) == 1
+        resultsfname = ru.create_runtimes_and_results_file( vrun.resultsDir() )
 
         ru.assert_results_file_has_tests(
                 resultsfname,
-                'cat',
-                'cat.direction=front.side=left',
-                'cat.direction=rear.side=right' )
-
-    def test_nominal_use_of_MultiResults_class(self):
-        ""
-        ru.write_tests_cat_dog_circle()
-        time.sleep(1)
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=3, npass=3 )
-        tdir = vrun.resultsDir()
-
-        # bootstrap with runtimes files then save the test results
-        util.runcmd( vtu.resultspy + ' save', chdir='one' )
-        util.runcmd( vtu.resultspy + ' save', chdir='two' )
-        vtu.runvvtest( '-i --save-results' )
-
-        resultsfname = util.globfile('results.*')
-        tr = fmtresults.TestResults( resultsfname )
-        platname,cplrname = tr.platform(), tr.compiler()
-        if cplrname:
-            platid = platname+'/'+cplrname
-        else:
-            platid = platname
-
-        util.runcmd( vtu.resultspy + ' merge ' + resultsfname )
-
-        ru.assert_multi_results_file_has_tests(
-                multifname,
-                1,
-                'one/cat',
-                'one/dog',
-                'two/circle' )
-
-        t1 = ru.get_multi_results_test_time( multifname, 'one/dog' )
-        assert t1 > 0 and t1 < 4
-
-        # create a second results file with a different platform/compiler name
-        tr = fmtresults.TestResults( resultsfname )
-        resultsfname2 = 'results2'
-        tr.writeResults( resultsfname2, 'Plat2', 'Cplr2', 'sparky', tdir )
-
-        # merge a second platform/compiler file into first
-        util.runcmd( vtu.resultspy + ' merge -x '+resultsfname2 )
-
-        ru.assert_multi_results_file_has_tests(
-                multifname,
-                2,
-                'one/cat',
-                'one/dog',
-                'two/circle' )
-
-        # increase the run time of one test and run vvtest again
-        util.writefile( "one/dog.vvt", """
-            import time
-            time.sleep(4)
-            """ )
-        time.sleep(1)
-
-        vrun = vtu.runvvtest( '-w' )
-        vrun.assertCounts( total=3, npass=3 )
-
-        # merge over the top of the multi platform file
-        vtu.runvvtest( '-i --save-results' )
-        util.runcmd( vtu.resultspy + ' merge -x '+resultsfname )
-
-        # check the 'dog' test time increased
-        t2 = ru.get_multi_results_test_time( multifname, 'one/dog', platid )
-        assert t2 > t1
-
-        # check that the other 'dog' time did not get overwritten
-        t3 = ru.get_multi_results_test_time( multifname, 'one/dog', 'Plat2/Cplr2' )
-        assert t2 > t3
+                ('cat.vvt',),
+                ('cat.vvt', 'direction=front','side=left'),
+                ('cat.vvt', 'direction=rear', 'side=right') )
 
 
 ############################################################################

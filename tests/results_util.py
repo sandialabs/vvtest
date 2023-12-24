@@ -9,6 +9,7 @@ import time
 import filecmp
 import glob
 import datetime
+import json
 
 import vvtestutils as vtu
 import testutils as util
@@ -58,20 +59,17 @@ def write_test_circle():
         """ )
 
 
-def assert_cat_dog_circle_testresults_contents( testresults_obj, topdir=None ):
+def assert_cat_dog_circle_testresults_contents( resultsfname ):
     ""
-    if topdir:
-        topdir += '/'
-    else:
-        topdir = ''
+    fileinfo,testinfo = read_results_file( resultsfname )
 
-    assert len( testresults_obj.dirList() ) == 2
-    assert testresults_obj.dirList() == [ topdir+'one', topdir+'two' ]
-    assert testresults_obj.testList(topdir+'one') == ['cat','dog']
-    assert testresults_obj.testList(topdir+'two') == ['circle']
-    assert testresults_obj.testAttrs(topdir+'one','cat')['xtime'] >= 1
-    assert testresults_obj.testAttrs(topdir+'one','dog')['xtime'] >= 2
-    assert testresults_obj.testAttrs(topdir+'two','circle')['xtime'] >= 3
+    assert len(testinfo) == 3
+    assert list( testinfo[0]['testid'] ) == ['one/cat.vvt', 'cat']
+    assert testinfo[0]['runtime'] >= 1
+    assert list( testinfo[1]['testid'] ) == ['one/dog.vvt', 'dog']
+    assert testinfo[1]['runtime'] >= 2
+    assert list( testinfo[2]['testid'] ) == ['two/circle.vvt', 'circle']
+    assert testinfo[2]['runtime'] >= 3
 
 
 def assert_cat_dog_runtimes( runtimes_dir ):
@@ -98,16 +96,11 @@ def assert_circle_runtimes( runtimes_dir ):
 
 def create_runtimes_and_results_file( testresults_dir, testsrcdir=None ):
     """
-    Write an empty runtimes file in the 'testsrcdir' (as a marker file to
-    determine the testing root), then write a results file in the
-    TESTING_DIRECTORY.
+    Save test results from the 'testresults_dir' to the TESTING_DIRECTORY
+    and return the results filename.
     """
-    util.runcmd( vtu.resultspy + ' save', chdir=testsrcdir )
-
     vtu.runvvtest( '-i --save-results', chdir=testresults_dir )
-
     resultsfname = get_latest_results_filename()
-
     return resultsfname
 
 
@@ -132,15 +125,20 @@ def assert_empty_testresults_file( filename ):
 
 def assert_results_file_has_tests( filename, *tests, **kwargs ):
     ""
-    tr = fmtresults.TestResults( filename )
+    fileinfo,testinfo = read_results_file( filename )
 
-    topdir = kwargs.pop( 'topdir', None )
-    if topdir == None:
-        topdir = os.path.basename( os.getcwd() )
+    # tr = fmtresults.TestResults( filename )
 
-    for tst in tests:
-        rootrel,testkey = os.path.split( topdir+'/'+tst )
-        assert len( tr.testAttrs( rootrel, testkey ) ) > 0
+    # topdir = kwargs.pop( 'topdir', None )
+    # if topdir == None:
+    #     topdir = os.path.basename( os.getcwd() )
+
+    for i,tst in enumerate(tests):
+        tD = testinfo[i]
+        tid = list( tD['testid'] )
+        tstL = list( tst )
+        assert tid[0] == tstL[0]
+        assert tid[2:] == tstL[1:], 'test params not equal: '+str(tid[2:])+' != '+str(tstL[1:])
 
 
 def assert_results_file_does_not_have_tests( filename, *tests, **kwargs ):
@@ -246,7 +244,7 @@ def get_latest_results_filename():
         testingdir += '/'
 
     fnL = []
-    for fn in glob.glob( testingdir+'results.*' ):
+    for fn in glob.glob( testingdir+'vvtresults.*' ):
         fnL.append( ( os.path.getmtime(fn), fn ) )
 
     fnL.sort()
@@ -289,3 +287,25 @@ def copy_results_file_with_new_platid( filename, newfilename, newplatid=None,
         plat,cplr = tr.platform(), tr.compiler()
 
     tr.writeResults( newfilename, plat, cplr, mach, tdir )
+
+
+def read_results_file( fname ):
+    ""
+    fileinfo = None
+    testinfo = []
+
+    i = 0
+    with open( fname, 'rt' ) as fp:
+        for line in fp:
+            if not line.strip().startswith('#'):
+                i += 1
+                if i == 1:
+                    fileinfo = json.loads( line.strip() )
+                else:
+                    D = json.loads( line.strip() )
+                    testinfo.append( (D['testid'],D) )
+
+    testinfo.sort()
+
+    return fileinfo, [ tup[1] for tup in testinfo ]
+

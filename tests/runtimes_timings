@@ -11,6 +11,7 @@ sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
 import time
+import glob
 
 import vvtestutils as vtu
 import testutils as util
@@ -36,52 +37,33 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
             import time
             time.sleep(3)
             """)
+        util.writefile( "tests/.git/config", "" )  # for results 'pathid'
 
         platname = vtu.core_platform_name()
         tests = os.path.abspath( 'tests' )
 
-        vrun = vtu.runvvtest( tests )
+        vrun = vtu.runvvtest( '--save-results tests' )
         vrun.assertCounts( total=3, npass=3 )
-        tdir = vrun.resultsDir()
 
-        ru.create_runtimes_and_results_file( tdir, 'tests' )
+        cache = fmtresults.LookupCache( {'platform':platname}, '.' )
+        cache.load()
 
-        # even though a rootrel directory could be determined, no runtime is available
         tL = vtu.creator().fromFile( 'dir1/one.vvt', tests )
         tst = tL[0]
-        cache = fmtresults.LookupCache( platname, 'cplr' )
-        cache.load()
         tm,tv = cache.getRunTime( tst )
-        assert tm == None
+        assert tm is not None and tm >= 1
 
-        # re-save the testing results (this time the test rootrel can be
-        # determined) and create a multiplatform results file
-        os.mkdir('testing')
-        time.sleep(1)
-        os.environ['TESTING_DIRECTORY'] = os.path.abspath( 'testing' )
-
-        resultsfname = ru.create_runtimes_and_results_file( tdir, 'tests' )
-
-        plat,cplr = get_platform_compiler( resultsfname )
-        util.runcmd( vtu.resultspy + ' merge '+resultsfname, chdir='testing' )
-
-        # leave the source tree runtimes file empty and use the
-        # multiplatform results
-        cache = fmtresults.LookupCache( plat, cplr, os.path.abspath('testing') )
-        cache.load()
+        tL = vtu.creator().fromFile( 'dir1/two.vvt', tests )
+        tst = tL[0]
         tm,tv = cache.getRunTime( tst )
-        assert tm != None and tm > 0 and tm < 10
+        assert tm is not None and tm >= 2
 
-        # populate the test source tree runtimes file
-        tr = fmtresults.TestResults()
-        tr.readResults( resultsfname )
-        tr.writeRuntimes( 'tests', None )
-
-        # a time for the test should be found from the source tree runtimes file
-        cache = fmtresults.LookupCache( platname, 'cplr' )
-        cache.load()
+        tL = vtu.creator().fromFile( 'dir2/three.vvt', tests )
+        tst = tL[0]
         tm,tv = cache.getRunTime( tst )
-        assert tm != None and tm > 0 and tm < 10
+        assert tm is not None and tm >= 3
+
+        # magic: lot more tests needed to exercise the LookupCache machinery
 
     def test_that_longest_runtimes_are_run_first(self):
         ""
@@ -139,42 +121,43 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
             import os, sys, time
             time.sleep(7)
             """ )
+        util.writefile( "tests/.git/config", "" )  # for results 'pathid'
 
         for batch in [False,True]:
 
             vtu.remove_results()
-
-            if os.path.exists( 'timings' ):
-                os.remove( 'timings' )
+            for fn in glob.glob( 'vvtresults.*' ):
+                util.fault_tolerant_remove( fn )
 
             # without a runtimes available, all tests should run
-            vrun = vtu.runvvtest( '--tmax 6 tests', batch=batch )
+            vrun = vtu.runvvtest( '--save-results --tmax 6 tests', batch=batch )
             vrun.assertCounts( total=3, npass=3 )
-
-            tdir = vrun.resultsDir()
-
-            # create a timings file
-            util.runcmd( vtu.resultspy + ' save', chdir='tests', verbose=2 )
-            vtu.runvvtest( '-i --save-results', chdir=tdir )
-            resultsfname = util.globfile('results.*')
-            util.runcmd( vtu.resultspy + ' merge -x '+resultsfname, verbose=2 )
 
             # select tests based on the timings file
             vtu.remove_results()
             vrun = vtu.runvvtest( '--tmax 6 tests', batch=batch )
             vrun.assertCounts( total=2, npass=2 )
-            assert vrun.getTestIds() == ['AA','BB']
+            self.assertEqual( vrun.getTestIds(), ['AA','BB'] )
 
+    def test_runtimes_work_in_a_subdirectory(self):
+        ""
+        util.write_py_script( "tests/AA.vvt", """
+            import os, sys, time
+            time.sleep(1)
+            """ )
+        util.write_py_script( "tests/sub/BB.vvt", """
+            import os, sys, time
+            time.sleep(4)
+            """ )
+        util.writefile( "tests/.git/config", "" )  # for results 'pathid'
 
-########################################################################
+        vrun = vtu.runvvtest( '--save-results tests' )
+        vrun.assertCounts( total=2, npass=2 )
 
-def get_platform_compiler( resultsfname ):
-    """
-    """
-    fmt,vers,hdr,nskip = fmtresults.read_file_header( resultsfname )
-    pn = hdr['PLATFORM']
-    cp = hdr['COMPILER']
-    return pn,cp
+        vtu.remove_results()
+        vrun = vtu.runvvtest( '-vv --tmax 3 tests/sub' )
+        vrun.assertCounts( total=1, skip=1 )
+        self.assertEqual( vrun.getTestIds(), ['BB'] )
 
 
 ########################################################################

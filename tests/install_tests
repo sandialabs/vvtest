@@ -60,38 +60,6 @@ class the_tests( vtu.vvtestTestCase ):
                 cntD = vtu.parse_vvtest_counts( out )
                 assert cntD['total'] == 2 and cntD['npass'] == 2
 
-    def test_results_plugin_is_used_if_given(self):
-        ""
-        util.writefile( 'config/results_plugin.py',
-            'print ( "hello from plugin" )' )
-        time.sleep(1)
-
-        x,out = util.runcmd( vtu.resultspy+' report' )
-        assert x == 0
-        assert 'hello from plugin' not in out
-
-        cmd = vtu.resultspy+' report --config '+abspath('config')
-        x,out = util.runcmd( cmd )
-        assert x == 0
-        assert 'hello from plugin' in out
-
-        with util.set_environ( VVTEST_CONFIGDIR=abspath('config') ):
-            x,out = util.runcmd( vtu.resultspy+' report' )
-            assert x == 0
-            assert 'hello from plugin' in out
-
-        os.symlink( vtu.resultspy, 'results.py' )
-        time.sleep(1)
-
-        cmd = sys.executable + ' results.py report --config '+abspath('config')
-        x,out = util.runcmd( cmd )
-        assert x == 0
-        assert 'hello from plugin' in out
-
-        x,out = util.runcmd( sys.executable + ' results.py report' )
-        assert x == 0
-        assert 'hello from plugin' in out
-
 
 ############################################################################
 

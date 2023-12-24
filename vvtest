@@ -417,7 +417,13 @@ def construct_test_time_handler( rtdata, opts ):
 
     maxtmo = get_max_timeout( opts.max_timeout )
 
-    tcache = construct_runtime_lookup_cache( rtdata.plat )
+    # magic:
+    #   - construct lookup cache with rdtata.rtinfo
+    #   - lookup cache scans for files in testing directory
+    #   - write function in listwriter.py to down select results files
+    #   - lookup cache holds possibly multiple results files
+    #   - maybe the function methods of LookupCache do not have to change (?)
+    tcache = construct_runtime_lookup_cache( rtdata.rtinfo, opts, rtdata.plat )
 
     hnd = timehandler.TimeHandler( rtdata.plugin, tmo, mult, maxtmo, tcache )
 
@@ -446,15 +452,15 @@ def get_total_timeout( value ):
     return totaltime
 
 
-def construct_runtime_lookup_cache( plat ):
+def construct_runtime_lookup_cache( rtinfo, opts, platobj ):
     ""
     from libvvtest.fmtresults import LookupCache
 
-    pname = plat.getName()
-    cplr = plat.getCompiler()
-    tdir = plat.testingDirectory()
+    # tdir = plat.testingDirectory()  # magic: need this still ??
 
-    cache = LookupCache( pname, cplr, tdir )
+    resultsdir = get_testing_directory( opts, platobj )
+
+    cache = LookupCache( rtinfo, resultsdir )
 
     return cache
 
@@ -680,6 +686,7 @@ class TestListManager:
         fin = prev_tlist.getFinishDate()
         if fin != None:
             attrs['finishepoch'] = fin
+            attrs['finishdate'] = time.ctime(fin)
 
         self.tlist.addTestsWithoutOverwrite( prev_tlist.getTests() )
         self.tlist.copyTestResults( prev_tlist.getTests() )

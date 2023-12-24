@@ -101,9 +101,9 @@ def file_read_with_limit( filename, max_KB ):
     return buf
 
 
-def make_date_stamp( testdate, optrdate, timefmt="%Y_%m_%d" ):
+def make_date_stamp( testdate, optrdate, timefmt="%Y_%m_%d_%Hh_%Mm_%Ss" ):
     ""
-    if optrdate != None:
+    if optrdate is not None:
         if type( optrdate ) == type(''):
             datestr = optrdate
         else:

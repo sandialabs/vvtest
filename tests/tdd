@@ -141,53 +141,15 @@ class tdd_tests( vtu.vvtestTestCase ):
             time.sleep(1)
             """ )
 
-        vrun = vtu.runvvtest( '--include-tdd' )
+        vrun = vtu.runvvtest( '--include-tdd --save-results=.' )
         vrun.assertCounts( total=2, npass=2 )
         tdir = vrun.resultsDir()
 
-        resultsfname = ru.create_runtimes_and_results_file( tdir )
-
-        assert len( util.grepfiles( "testthree*pass", resultsfname ) ) == 1
-        assert len( util.grepfiles( "testthree*TDD",  resultsfname ) ) == 0
-        assert len( util.grepfiles( "testfour*TDD",   resultsfname ) ) == 1
-
-    def test_that_tests_marked_TDD_are_distinguished_in_reporting(self):
-        ""
-        os.mkdir( 'config' )  # force the test to use default plat & cplr
-
-        util.write_py_script( 'testthree.vvt', """
-            #VVT: keywords = pink
-            import time
-            time.sleep(1)
-            """ )
-        util.write_py_script( 'testfour.vvt', """
-            #VVT: keywords = blue TDD
-            import time
-            time.sleep(1)
-            """ )
-
-        vrun = vtu.runvvtest( '--include-tdd --config config' )
-        vrun.assertCounts( total=2, npass=2 )
-        tdir = vrun.resultsDir()
-
-        rf1 = ru.create_runtimes_and_results_file( tdir )
-
-        rf2 = '.'.join( rf1.split('.')[:2] + [ 'Fake', 'gcc' ] )
-        ru.copy_results_file_with_new_platid( rf1, rf2, 'Fake/gcc', '/fake/path' )
-
-        x,out = util.runcmd( vtu.resultspy + ' report ' + rf1 + ' ' + rf2, verbose=2 )
-
-        assert len( util.greplines( 'Fake.gcc', out ) ) == 1
-        assert len( util.greplines( 'pass=1 ', out ) ) == 2
-        assert len( util.greplines( 'diff= ', out ) ) == 0
-        assert len( util.greplines( 'fail= ', out ) ) == 0
-
-        # excercise this, but verifying the values is hard without just
-        # bringing up a browser
-        ok = util.run_redirect(
-                vtu.resultspy + ' report --html . ' + rf1 + ' ' + rf2,
-                           'short.html' )
-        assert ok
+        resultsfname = util.globfile( 'vvtresults.*' )
+        _,tL = ru.read_results_file( resultsfname )
+        assert len(tL) == 2
+        assert tL[0]['TDD']
+        assert 'TDD' not in tL[1]
 
 
 ############################################################################

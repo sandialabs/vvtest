@@ -10,6 +10,7 @@ import time
 import glob
 
 from . import listwriter
+from . import pathid
 
 
 class LookupCache:
@@ -21,7 +22,7 @@ class LookupCache:
 
         # magic: save results from file reads for fast lookup and on-demand
         self.tinfo = None
-        self.pathcache = listwriter.TestPathIdentification()
+        self.pathcache = pathid.TestPathIdentification()
 
     def load(self):
         ""

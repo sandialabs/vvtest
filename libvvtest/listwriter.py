@@ -185,7 +185,7 @@ def get_test_info( tcase ):
     if stat.skipTest():
         D['skip'] = stat.getReasonForSkipTest()
 
-    tm = stat.getTimeout( None )
+    tm = stat.getTimeoutValue( None )
     if tm is not None:
         D['timeout'] = tm
 

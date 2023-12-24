@@ -49,11 +49,11 @@ class TestExec:
         ""
         return self.rundir
 
-    def setTimeout(self, value):
+    def setExecTimeout(self, value):
         ""
         self.timeout = value
 
-    def getTimeout(self):
+    def getExecTimeout(self):
         ""
         return self.timeout
 

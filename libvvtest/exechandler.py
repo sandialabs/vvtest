@@ -57,7 +57,7 @@ class ExecutionHandler:
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
 
-        texec.setTimeout( tstat.getAttr( 'timeout', 0 ) )
+        texec.setExecTimeout( tstat.getAttr( 'timeout', 0 ) )
 
         xdir = tspec.getExecuteDirectory()
         wdir = pjoin( self.loc.getTestingDirectory(), xdir )
@@ -211,7 +211,7 @@ class ExecutionHandler:
         rundir = texec.getRunDirectory()
         self.write_script_utils( tcase, rundir, baseline )
 
-        tm = texec.getTimeout()
+        tm = texec.getExecTimeout()
         self.set_timeout_environ_variable( tm )
 
         self.check_run_preclean( tcase, baseline )

@@ -75,7 +75,7 @@ class TimeHandler:
 
             tout = self._apply_timeout_options( tout )
 
-            tstat.setTimeout( tout )
+            tstat.setTimeoutValue( tout )
 
     def _timeout_if_test_timed_out(self, tspec, runtime):
         ""

@@ -454,7 +454,7 @@ def get_total_timeout( value ):
 
 def construct_runtime_lookup_cache( rtinfo, opts, platobj ):
     ""
-    from libvvtest.fmtresults import LookupCache
+    from libvvtest.runtimes import LookupCache
 
     # tdir = plat.testingDirectory()  # magic: need this still ??
 

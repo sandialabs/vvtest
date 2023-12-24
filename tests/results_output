@@ -21,15 +21,15 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.outpututils as outpututils
-import libvvtest.listwriter as listwriter
+from libvvtest.listwriter import ListWriter
+import libvvtest.pathid as pathid
 from libvvtest.testlist import TestList
-import libvvtest.fmtresults as fmtresults
 from libvvtest.location import Locator
 
 from testutils import windows
 np = os.path.normpath  # for windows testing, use normpath to compare paths
 
-vvtroot = listwriter.VVTEST_ROOT_FILENAME
+vvtroot = pathid.VVTEST_ROOT_FILENAME
 
 
 class misc_tests( vtu.vvtestTestCase ):
@@ -144,7 +144,7 @@ class save_results_output( vtu.vvtestTestCase ):
     def test_path_identification_by_repo(self):
         ""
         # shorten the function names
-        func = listwriter.get_path_list_by_git_or_svn_repo
+        func = pathid.get_path_list_by_git_or_svn_repo
         rp = os.path.realpath
 
         # these checks call get_path_list_by_git_or_svn_repo() directly just in
@@ -163,7 +163,7 @@ class save_results_output( vtu.vvtestTestCase ):
             self.assertEqual( func( rp('top/foo/sub') ), ['foo','sub'] )
 
         # when the file is not in a repo, None should be returned
-        idr = listwriter.TestPathIdentification()
+        idr = pathid.TestPathIdentification()
         tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
         try:
             subd = pjoin(tmpd,'sub1','sub2')
@@ -177,7 +177,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
         if not windows:
             # soft links are removed from the id path (by using os.path.realpath)
-            idr = listwriter.TestPathIdentification()
+            idr = pathid.TestPathIdentification()
             tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
             try:
                 util.writefile( tmpd+'/top1/.git/config', '' )
@@ -195,7 +195,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
     def test_path_identification_by_vvtest_root_file(self):
         ""
-        idr = listwriter.TestPathIdentification()
+        idr = pathid.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, '' )
         util.writefile( 'top/foo.vvt', '' )
         util.writefile( 'top/sub/bar.vvt', '' )
@@ -212,7 +212,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
             util.fault_tolerant_remove( 'top' )
 
-            idr = listwriter.TestPathIdentification()
+            idr = pathid.TestPathIdentification()
             util.writefile( 'top/'+vvtroot, val )
             util.writefile( 'top/foo.vvt', '' )
             util.writefile( 'top/sub/bar.vvt', '' )
@@ -222,7 +222,7 @@ class save_results_output( vtu.vvtestTestCase ):
         util.fault_tolerant_remove( 'top' )
 
         # a nested vvtest root file
-        idr = listwriter.TestPathIdentification()
+        idr = pathid.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
         util.writefile( 'top/sub/foo.vvt', '' )
         util.writefile( 'top/sub/two/tri/bar.vvt', '' )
@@ -235,7 +235,7 @@ class save_results_output( vtu.vvtestTestCase ):
     def test_path_identification_by_vvtest_root_file_and_git(self):
         ""
         # a vvtest root file takes precedence
-        idr = listwriter.TestPathIdentification()
+        idr = pathid.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
         util.writefile( 'top/sub/.git/config', '' )
         util.writefile( 'top/sub/two/foo.vvt', '' )
@@ -243,7 +243,7 @@ class save_results_output( vtu.vvtestTestCase ):
 
     def test_path_identification_caches_by_directory(self):
         ""
-        idr = listwriter.TestPathIdentification()
+        idr = pathid.TestPathIdentification()
         util.writefile( 'top/'+vvtroot, '' )
         util.writefile( 'top/sub/foo.vvt', '' )
         util.writefile( 'top/sub/two/bar.vvt', '' )
@@ -313,7 +313,7 @@ class save_results_output( vtu.vvtestTestCase ):
                    'compiler':'gcc',
                    'onopts':[] }
 
-        lwr = listwriter.ListWriter( Locator(os.getcwd()), perm )
+        lwr = ListWriter( Locator(os.getcwd()), perm )
         lwr.initialize( rtinfo, 'odir' )
 
         lwr.writeList( tlist )

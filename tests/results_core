@@ -22,7 +22,6 @@ import testutils as util
 
 import results_util as ru
 
-import libvvtest.fmtresults as fmtresults
 import libvvtest.testcase as testcase
 
 

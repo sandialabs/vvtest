@@ -23,7 +23,7 @@ from libvvtest.timehandler import (
     parse_max_time,
     TimeHandler,
 )
-from libvvtest.fmtresults import LookupCache
+from libvvtest.runtimes import LookupCache
 import libvvtest.testcreator as testcreator
 
 

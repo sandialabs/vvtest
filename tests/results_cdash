@@ -53,8 +53,7 @@ class unit_tests( vtu.vvtestTestCase ):
         ""
         tm = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
-        rtinfo = { 'startepoch':tm,
-                   'rundir':'/path/to/testresultsdir' }
+        rtinfo = { 'rundir':'/path/to/testresultsdir' }
         wr = make_CDashWriter( 'file.xml', rtinfo=rtinfo )
 
         testlist = TestList( TestCaseFactory() )
@@ -356,10 +355,11 @@ class unit_tests( vtu.vvtestTestCase ):
         rdate  = 1512812080.2058824  # Sat Dec  9 02:34:40 2017 MDT
         tstart = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
-        rtinfo = { 'startepoch':tstart, 'rundir':os.getcwd() }
+        rtinfo = { 'rundir':os.getcwd() }
         wr = make_CDashWriter( 'file.xml', datestamp=rdate, rtinfo=rtinfo )
 
         testlist = TestList( TestCaseFactory() )
+        testlist.setResultsDate( tstart )
         wr.postrun( testlist )
 
         xml = util.read_xml_file( 'file.xml' )

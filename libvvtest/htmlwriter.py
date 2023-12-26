@@ -34,9 +34,8 @@ class HTMLWriter:
         """
         Opens and writes an HTML summary file in the test directory.
         """
-        datestamp = self.rtinfo.get( 'startepoch', time.time() )
-        datestr = outpututils.make_date_stamp( datestamp, None,
-                                               "%Y-%m-%d %H:%M:%S" )
+        tm = tlist.getResultsDate() or time.time()
+        datestr = outpututils.make_date_stamp( tm, None, "%Y-%m-%d %H:%M:%S" )
 
         tcaseL = tlist.getActiveTests()
 

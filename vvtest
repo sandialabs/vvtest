@@ -246,12 +246,9 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
 def construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch ):
     ""
     rtdata.rtinfo = {
-        'startepoch' : start_epoch,
-        'startdate'  : time.ctime(start_epoch),
         'cmdline'    : rtdata.cmdargv,
         'vvtestdir'  : vvtestdir,
         'curdir'     : rtdata.curdir,
-
         'onopts'     : optD['onopts'],
         'offopts'    : optD['offopts'],
         'testargs'   : rtdata.rtconfig.getAttr( 'testargs', [] ),
@@ -1145,9 +1142,6 @@ def run_test_exec_list( opts, optD, rtdata ):
         xstat = tlrun.run()
 
     logger.info()
-    if 'finishepoch' not in rtdata.rtinfo:
-        rtdata.rtinfo['finishepoch'] = time.time()
-    rtdata.rtinfo['finishdate'] = time.ctime( rtdata.rtinfo['finishepoch'] )
     rtdata.results_writer.postrun( tlist )
 
     return xstat

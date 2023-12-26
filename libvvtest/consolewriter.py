@@ -38,7 +38,7 @@ class ConsoleWriter:
             self._write_test_list_results( atestlist, level )
             self._write_summary( atestlist, 'Summary:' )
 
-        logger.info( make_finish_info_string( self.rtinfo ) )
+        logger.info( make_finish_info_string( self.rtinfo, atestlist ) )
 
     def info(self, atestlist):
         ""
@@ -197,17 +197,16 @@ class ConsoleWriter:
         logger.info( astr )
 
 
-def make_finish_info_string( rtinfo ):
+def make_finish_info_string( rtinfo, tlist ):
     ""
     s = '\n'
 
-    fin = rtinfo.get( 'finishepoch', None )
-    if fin != None:
-        fdate = time.ctime( fin )
-        s += 'Finish date: '+fdate
+    fin = tlist.getFinishDate()
+    if fin is not None:
+        s += 'Finish date: '+time.ctime( fin )
 
-        start = rtinfo.get( 'startepoch', None )
-        if start != None:
+        start = tlist.getResultsDate()
+        if start is not None:
             dt = fin - start
             elapsed = outpututils.pretty_time( dt )
             s += ' (elapsed time '+elapsed+')'

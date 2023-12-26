@@ -234,9 +234,7 @@ class consolue_output_tests( vtu.vvtestTestCase ):
         tlist = MockTestList( self.getFakeTestList() )
 
         tm = time.time()
-        rtinfo = { 'rundir':os.getcwd(),
-                   'startepoch':tm,
-                   'finishepoch':tm-10 }
+        rtinfo = { 'rundir':os.getcwd() }
 
         conwr = make_ConsoleWriter( rtinfo=rtinfo )
         rtn,out1,err = util.call_capture_output( conwr.postrun, tlist )

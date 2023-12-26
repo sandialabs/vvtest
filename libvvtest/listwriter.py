@@ -75,9 +75,11 @@ class ListWriter:
 
     def writeList(self, atestlist, finished=False):
         ""
-        # print('magic: write rtinfo',self.rtinfo)
-        datestamp = self.rtinfo.get( 'startepoch', time.time() )
-        datestr = outpututils.make_date_stamp( datestamp, self.datestamp )
+        resdate = atestlist.getResultsDate()
+        if resdate is None:
+            resdate = time.time()
+
+        datestr = outpututils.make_date_stamp( resdate, self.datestamp )
 
         fname = make_filename( self.rtinfo, datestr, self.ftag )
 

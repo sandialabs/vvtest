@@ -255,11 +255,12 @@ class DestinationSpecs:
 
 def set_global_data( fmtr, dspecs, rtinfo, tlist ):
     ""
+    t0 = tlist.getResultsDate()
     if dspecs.date:
         bdate = dspecs.date
-        tstart = rtinfo.get( 'startepoch', bdate )
+        tstart = bdate if t0 is None else t0
     else:
-        bdate = rtinfo.get( 'startepoch', time.time() )
+        bdate = time.time() if t0 is None else t0
         tstart = bdate
 
     if dspecs.group:

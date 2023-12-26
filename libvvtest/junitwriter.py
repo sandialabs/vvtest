@@ -51,8 +51,8 @@ class JUnitWriter:
             https://github.com/jenkinsci/junit-plugin/
                         tree/master/src/test/resources/hudson/tasks/junit
         """
-        datestamp = self.rtinfo.get( 'startepoch', time.time() )
-        datestr = outpututils.make_date_stamp( datestamp, self.datestamp,
+        tm = atestlist.getResultsDate() or time.time()
+        datestr = outpututils.make_date_stamp( tm, self.datestamp,
                                                "%Y-%m-%dT%H:%M:%S" )
 
         tcaseL = atestlist.getActiveTests()

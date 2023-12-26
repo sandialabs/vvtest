@@ -113,9 +113,6 @@ class BatchRunner( TestListRunner ):
 
         self.info.printBatchRemainders( jobstats, nrL )
 
-        self.rtinfo['returncode'] = rtn
-        self.rtinfo['finishepoch'] = finish_time
-
         return rtn
 
     def sleep_with_info_check(self):
@@ -186,9 +183,6 @@ class DirectRunner( TestListRunner ):
             self.tlist.writeFinished( finish_time, rtn )
 
         self.info.printRemainders( nrL )
-
-        self.rtinfo['returncode'] = rtn
-        self.rtinfo['finishepoch'] = finish_time
 
         return rtn
 

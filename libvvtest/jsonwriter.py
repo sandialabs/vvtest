@@ -55,6 +55,7 @@ class JsonWriter:
         top["command"] = " ".join(quote(_) for _ in top.pop("cmdline", []))
         tm = atestlist.getResultsDate()
         top["starttime"] = -1 if tm is None else tm
+        top["startdate"] = None if tm is None else time.ctime(tm)
         tm = atestlist.getFinishDate()
         top["endtime"] = -1 if tm is None else tm
         top["enddate"] = None if tm is None else time.ctime(tm)

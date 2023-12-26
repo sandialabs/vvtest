@@ -55,19 +55,20 @@ class TestSpec_to_and_from_string( vtu.vvtestTestCase ):
 
 class test_list_file_read_write( vtu.vvtestTestCase ):
 
-    def test_the_start_and_end_dates_are_written_into_the_file(self):
+    def test_the_end_date_is_written_into_the_file(self):
         ""
         tlw = tio.TestListWriter( 'tests.out' )
-        tlw.start()
+        tm = time.time()
+        tlw.start( tm )
         time.sleep(2)
         tlw.finish()
 
         tlr = tio.TestListReader( TestCaseFactory(), 'tests.out' )
         tlr.read()
-        d1 = tlr.getStartDate()
+        assert abs(tm-tlr.getStartDate()) < 1.e-4
         d2 = tlr.getFinishDate()
-        assert d2-d1 > 1 and d2-d1 < 5
-        assert time.time() - d1 < 10
+        assert d2-tm > 1 and d2-tm < 5
+        assert time.time() - tm < 10
 
     def test_write_then_read_test_list_attributes(self):
         ""
@@ -108,7 +109,7 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
         tcase = vtu.make_fake_TestCase( result='pass', name='atest' )
 
         tlw = tio.TestListWriter( 'tests.out' )
-        tlw.start()
+        tlw.start( time.time() )
         tlw.append( tcase )
         # an "unfinished" file does not have tlw.finish() called
 
@@ -123,13 +124,13 @@ class test_list_file_read_write( vtu.vvtestTestCase ):
 
     def write_with_include_file(self, tcase, skip_completed_mark=False):
         ""
+        tstart = time.time()
+
         tlw = tio.TestListWriter( 'tests.out' )
-        tlw.start()
+        tlw.start( tstart )
 
         tlw.addIncludeFile( 'tests.0' )
         tlw.append( tcase )
-
-        tstart = time.time()
 
         write_test_sequence_to_file( 'tests.0', tcase )
 
@@ -369,10 +370,11 @@ class TestList_results_file( vtu.vvtestTestCase ):
         tlsub.readTestList()
         write_TestList_fake_results( tlsub )
 
-        tl.writeFinished()
+        tl.writeFinished( time.time(), 7 )
 
         # should be able to read comprehensive results file
-        read_TestList_and_check_fake_test()
+        tl2 = read_TestList_and_check_fake_test()
+        self.assertEqual( tl2.getFinishCode(), 7 )
 
     def test_read_an_unfinished_test_list_file(self):
         ""
@@ -381,17 +383,17 @@ class TestList_results_file( vtu.vvtestTestCase ):
         tl = testlist.TestList( TestCaseFactory() )
         tl.addTest( tcase )
         tl.stringFileWrite()
-        tl.setResultsDate()
+        t0 = time.time()
+        tl.setResultsDate( t0 )
         rfile = tl.initializeResultsFile()
         tl.appendTestResult( tcase )
 
         time.sleep(1)
 
         tl = testlist.TestList( TestCaseFactory() )
-        tl.readTestResults()
+        fattrs = tl.readTestResults()
 
-        tm = tl.getDateStamp()
-        assert tm is not None and time.time() - tm < 10
+        assert time.time() - t0 < 10
         assert not tl.getFinishDate()
         assert not tl.resultsFileIsMarkedFinished()
 
@@ -449,73 +451,32 @@ class format_versions( vtu.vvtestTestCase ):
 
         tlr = tio.TestListReader( TestCaseFactory(), 'testlist' )
         tlr.read()
-        assert tlr.getFileVersion() == 35
+        assert tlr.getFileVersion() == 36
 
-    @unittest.skip("unnecessary test, but keep as an example")
-    def test_read_version_33_testlist_with_includes(self):
-        ""
-        util.writefile( 'testlist', example_testlist_with_include_33 )
-        util.writefile( 'testlist.0', example_include_0_version_33 )
-        util.writefile( 'testlist.1', example_include_1_version_33 )
-        util.writefile( 'testlist.2', example_include_2_version_33 )
-
-        tlr = tio.TestListReader( TestCaseFactory(), 'testlist.1' )
-        tlr.read()
-        assert tlr.getFileVersion() == 33
-        assert len( tlr.getTests() ) == 1
-        tcase = list( tlr.getTests().values() )[0]
-        assert tcase.getStat().getResultStatus() == 'pass'
+    def test_read_version_35_testlist(self):
+        """
+        In version 35 the Finish line did not have the finish code.
+        """
+        util.writefile( 'testlist', example_testlist_35 )
 
         tlr = tio.TestListReader( TestCaseFactory(), 'testlist' )
         tlr.read()
-        assert tlr.getFileVersion() == 33
-        assert len( tlr.getTests() ) == 3
-        for tcase in tlr.getTests().values():
-            assert tcase.getStat().getResultStatus() == 'pass'
+        assert tlr.getFileVersion() == 35
+        assert len( tlr.getTests() ) == 1
+        tcase = list(tlr.getTests().values())[0]
+        assert tcase.getStat().getResultStatus() == 'pass'
+        assert abs( tlr.getFinishDate() - 1703512526.304881 ) < 1.e-4
 
 
-# a batch test list before the includes were inlined (like a crash occurred)
-example_testlist_with_include_33 = """\
-#VVT: Version = 33
-#VVT: Start = ['Mon Feb  3 19:25:27 2020', 1580783127.5386069]
-#VVT: Attrs = {}
+example_testlist_35 = """\
+#VVT: Version = 35
+#VVT: Start = ['Mon Dec 25 06:55:25 2023', 1703512525.297547]
+#VVT: Attrs = {'startdate': 'Mon Dec 25 06:55:24 2023', 'hostname': 'hpws212.sandia.gov', 'cmdline': ['/ascldap/users/rrdrake/Projects/vvtest/vvtest/vvtest'], 'python': '/usr/bin/python', 'PYTHONPATH': '', 'LOADEDMODULES': '', 'platform': 'ceelan', 'curdir': '/home/rrdrake/Projects/vvtest/prob', 'startepoch': 1703512524.373221, 'PATH': '/usr/lib64/qt-3.3/bin:/ascldap/users/rrdrake/perl5/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin', 'rundir': '/home/rrdrake/Projects/vvtest/prob/TestResults.ceelan', 'vvtestdir': '/home/rrdrake/Projects/vvtest/vvtest'}
 
-#VVT: Include = testlist.0
-#VVT: Include = testlist.1
-#VVT: Include = testlist.2
-"""
+{'name': 'atest', 'params': {}, 'attrs': {'xdate': 1703512525.29, 'state': 'notdone', 'timeout': 3600, 'xtime': -1}, 'keywords': [], 'path': 'atest.vvt', 'root': '.'}
+{'name': 'atest', 'params': {}, 'attrs': {'xdate': 1703512525.29, 'state': 'done', 'xvalue': 0, 'timeout': 3600, 'xtime': 1, 'result': 'pass'}, 'keywords': [], 'path': 'atest.vvt', 'root': '.'}
 
-example_include_0_version_33 = """\
-#VVT: Version = 33
-#VVT: Start = ['Mon Feb  3 19:25:34 2020', 1580783134.7756951]
-#VVT: Attrs = {}
-
-{'name': 'at', 'attrs': {'xdate': 1580783134.77, 'state': 'notdone', 'timeout': 3600, 'xtime': -1}, 'keywords': ['foo', 'bar'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze', 'paramset': {('np',): [['1'], ['2']]}}
-{'name': 'at', 'attrs': {'xdate': 1580783134.77, 'state': 'done', 'timeout': 3600, 'xtime': 1, 'result': 'pass'}, 'keywords': ['foo', 'bar'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze', 'paramset': {('np',): [['1'], ['2']]}}
-
-#VVT: Finish = ['Mon Feb  3 19:25:35 2020', 1580783135.7790179]
-"""
-
-example_include_1_version_33 = """\
-#VVT: Version = 33
-#VVT: Start = ['Mon Feb  3 19:25:27 2020', 1580783127.7365699]
-#VVT: Attrs = {}
-
-{'name': 'at', 'params': {'np': '2'}, 'attrs': {'xdate': 1580783127.73, 'state': 'notdone', 'timeout': 3600, 'xtime': -1}, 'keywords': ['foo', 'bar'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-{'name': 'at', 'params': {'np': '2'}, 'attrs': {'xdate': 1580783127.73, 'state': 'done', 'timeout': 3600, 'xtime': 1, 'result': 'pass'}, 'keywords': ['foo', 'bar'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-
-#VVT: Finish = ['Mon Feb  3 19:25:28 2020', 1580783128.73911]
-"""
-
-example_include_2_version_33 = """\
-#VVT: Version = 33
-#VVT: Start = ['Mon Feb  3 19:25:27 2020', 1580783127.7323301]
-#VVT: Attrs = {}
-
-{'name': 'at', 'params': {'np': '1'}, 'attrs': {'xdate': 1580783127.73, 'state': 'notdone', 'timeout': 3600, 'xtime': -1}, 'keywords': ['foo', 'bar'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-{'name': 'at', 'params': {'np': '1'}, 'attrs': {'xdate': 1580783127.73, 'state': 'done', 'timeout': 3600, 'xtime': 1, 'result': 'pass'}, 'keywords': ['foo', 'bar'], 'path': 'at.vvt', 'root': '/scratch/rrdrake/temp/prob/analyze'}
-
-#VVT: Finish = ['Mon Feb  3 19:25:28 2020', 1580783128.7356429]
+#VVT: Finish = ['Mon Dec 25 06:55:26 2023', 1703512526.304881]
 """
 
 
@@ -610,7 +571,7 @@ def write_test_list_with_include( testfile, inclpath, finish=True ):
         time.sleep(1)
 
     tlw = tio.TestListWriter( testfile )
-    tlw.start()
+    tlw.start( time.time() )
     tlw.addIncludeFile( inclpath )
 
     write_test_list_with_fake_test( inclpath )
@@ -690,6 +651,8 @@ def read_TestList_and_check_fake_test():
     tL = list( tl.getTests() )
     assert len(tL) == 1
     assert_TestCase_same_as_fake( tL[0] )
+
+    return tl
 
 
 ############################################################################

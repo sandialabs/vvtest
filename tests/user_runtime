@@ -17,7 +17,7 @@ import testutils as util
 
 import libvvtest.testcreator as testcreator
 import libvvtest.timehandler as timehandler
-from libvvtest.runtimes import LookupCache
+from libvvtest.runtimes import RuntimesLookup
 
 
 class plugin_tests( vtu.vvtestTestCase ):
@@ -84,7 +84,7 @@ class handler_tests( vtu.vvtestTestCase ):
 
 #####################################################################
 
-class MockLookupCache:
+class MockRuntimesLookup:
 
     def load(self):
         ""
@@ -97,7 +97,7 @@ class MockLookupCache:
 
 def make_time_handler( plug ):
     ""
-    cache = MockLookupCache()
+    cache = MockRuntimesLookup()
 
     th = timehandler.TimeHandler( plug, None, None, None, cache )
 

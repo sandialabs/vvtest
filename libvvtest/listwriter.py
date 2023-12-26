@@ -62,26 +62,27 @@ class ListWriter:
 
     def prerun(self, atestlist, verbosity):
         ""
-        self.writeList( atestlist, inprogress=True )
+        self.writeList( atestlist )
 
     def postrun(self, atestlist):
         ""
-        self.writeList( atestlist )
+        self.writeList( atestlist, finished=True )
 
     def info(self, atestlist):
         ""
         self.writeList( atestlist )
 
-    def writeList(self, atestlist, inprogress=False):
+    def writeList(self, atestlist, finished=False):
         ""
+        # print('magic: write rtinfo',self.rtinfo)
         datestamp = self.rtinfo.get( 'startepoch', time.time() )
         datestr = outpututils.make_date_stamp( datestamp, self.datestamp )
 
         fname = make_filename( self.rtinfo, datestr, self.ftag )
 
-        self._write_results_to_file( atestlist, inprogress, self.outdir, fname )
+        self._write_results_to_file( atestlist, finished, self.outdir, fname )
 
-    def _write_results_to_file(self, atestlist, inprogress, todir, fname):
+    def _write_results_to_file(self, atestlist, finished, todir, fname):
         ""
         if not os.path.isdir( todir ):
             os.mkdir( todir )
@@ -92,7 +93,7 @@ class ListWriter:
         try:
             logger.info( "Writing test results to", tofile )
 
-            hdr = get_header_info( self.rtinfo )
+            hdr = make_header_info( self.rtinfo, atestlist, finished )
 
             with open( tofile, 'wt' ) as fp:
                 fp.write( json.dumps(hdr)+'\n' )
@@ -138,26 +139,36 @@ def make_option_list( rti ):
         return sorted( rti.get('onopts',[] ) )
 
 
-def get_header_info( rti ):
+def make_header_info( rti, tlist, finished ):
     ""
-    t0 = rti.get('startepoch',-1)
-    t1 = rti.get('finishepoch',-1)
+    t0 = tlist.getResultsDate()
+    t1 = tlist.getFinishDate()
+    xcode = tlist.getFinishCode()
+    if finished and t1 is None and xcode is None:
+        t1 = time.time()
+        xcode = 0
+
     hdr = {
         "command": ' '.join(quote(s) for s in rti.get("cmdline", [])),
         'platform': rti.get('platform',None),
-        'compiler': rti.get('compiler',None),
         "onopts": ','.join( rti.get("onopts",[]) ),
         "offopts": ','.join( rti.get("offopts",[]) ),
         'python': sys.executable,
         'sys.platform':sys.platform,
         'hostname':os.uname()[1],
         'starttime': t0,
-        'startdate': rti.get('startdate',''),
         'endtime': t1,
-        'enddate': rti.get('finishdate',''),
-        'returncode': rti.get('returncode',-1),
+        'returncode': xcode,
     }
-    if t0 > 0 and t1 > 0:
+
+    cplr = rti.get('compiler',None)
+    if cplr:
+        hdr['compiler'] = cplr
+    if t0:
+        hdr['startdate'] = time.ctime(t0)
+    if t1:
+        hdr['enddate'] = time.ctime(t1)
+    if t0 and t1:
         hdr['duration'] = t1-t0
 
     # magic: include num tests pass, fail, skip, etc

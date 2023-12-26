@@ -57,7 +57,7 @@ class CDashWriter:
         ""
         logger.info('\nComposing CDash submission data...')
 
-        set_global_data( self.fmtr, self.dspecs, self.rtinfo )
+        set_global_data( self.fmtr, self.dspecs, self.rtinfo, atestlist )
         set_test_list( self.fmtr, self.dspecs, atestlist, self.rtinfo['rundir'] )
 
     def _write_data(self, fmtr):
@@ -252,7 +252,7 @@ class DestinationSpecs:
         self.method = None
 
 
-def set_global_data( fmtr, dspecs, rtinfo ):
+def set_global_data( fmtr, dspecs, rtinfo, tlist ):
     ""
     if dspecs.date:
         bdate = dspecs.date
@@ -284,7 +284,7 @@ def set_global_data( fmtr, dspecs, rtinfo ):
                      site_name=site,
                      build_name=bname )
 
-    fmtr.setTime( tstart, rtinfo.get( 'finishepoch', None ) )
+    fmtr.setTime( tstart, tlist.getFinishDate() )
 
 
 def set_test_list( fmtr, dspecs, atestlist, testdir ):

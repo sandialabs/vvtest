@@ -54,11 +54,14 @@ class unit_tests( vtu.vvtestTestCase ):
 
         rtinfo = { 'startepoch':tm,
                    'hostname':'sparky',
-                   'rundir':'/path/to/testresultsdir',
-                   'finishepoch':tm+73 }
+                   'rundir':'/path/to/testresultsdir' }
         wr = make_CDashWriter( 'file.xml', rtinfo=rtinfo )
 
         testlist = TestList( TestCaseFactory() )
+        testlist.setFilename( 'foo.txt' )
+        testlist.setResultsDate( tm )
+        testlist.initializeResultsFile()
+        testlist.writeFinished( tm+73, 0 )
 
         wr.postrun( testlist )
 

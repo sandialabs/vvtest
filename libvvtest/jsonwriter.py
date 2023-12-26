@@ -10,6 +10,7 @@ import os
 import sys
 import zlib
 import io
+import time
 
 try:
     from shlex import quote
@@ -54,14 +55,17 @@ class JsonWriter:
         top.pop( "hostname", None )
         top.pop( "python", None )
         top["command"] = " ".join(quote(_) for _ in top.pop("cmdline", []))
-        top["starttime"] = top.pop("startepoch", -1)
-        top["endtime"] = top.pop("finishepoch", -1)
-        top["enddate"] = top.pop("finishdate", None)
+        tm = atestlist.getResultsDate()
+        top["starttime"] = -1 if tm is None else tm
+        tm = atestlist.getFinishDate()
+        top["endtime"] = -1 if tm is None else tm
+        top["enddate"] = None if tm is None else time.ctime(tm)
         if top["starttime"] > 0 and top["endtime"] > 0:
             top["duration"] = top["endtime"] - top["starttime"]
         else:
-            top["duration"] = -1
-        top["returncode"] = top.pop("returncode",-1)
+            top["duration"] = -1.0
+        x = atestlist.getFinishCode()
+        top["returncode"] = -1 if x is None else x
         data.update(top)
 
         data["onopts"] = ' '.join( self.rtinfo["onopts"] )

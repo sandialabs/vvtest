@@ -43,7 +43,7 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest( '--save-results tests' )
         vrun.assertCounts( total=3, npass=3 )
 
-        cache = runtimes.LookupCache( {'platform':platname}, '.' )
+        cache = runtimes.RuntimesLookup( {'platform':platname}, '.' )
         cache.load()
 
         tL = vtu.creator().fromFile( 'dir1/one.vvt', tests )
@@ -61,7 +61,7 @@ class runtimes_and_timings( vtu.vvtestTestCase ):
         tm,tv = cache.getRunTime( tst )
         assert tm is not None and tm >= 3
 
-        # magic: lot more tests needed to exercise the LookupCache machinery
+        # magic: lot more tests needed to exercise the RuntimesLookup machinery
 
     def test_that_longest_runtimes_are_run_first(self):
         ""

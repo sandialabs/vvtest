@@ -422,7 +422,7 @@ def construct_test_time_handler( rtdata, opts ):
     #   - lookup cache scans for files in testing directory
     #   - write function in listwriter.py to down select results files
     #   - lookup cache holds possibly multiple results files
-    #   - maybe the function methods of LookupCache do not have to change (?)
+    #   - maybe the function methods of RuntimesLookup do not have to change (?)
     tcache = construct_runtime_lookup_cache( rtdata.rtinfo, opts, rtdata.plat )
 
     hnd = timehandler.TimeHandler( rtdata.plugin, tmo, mult, maxtmo, tcache )
@@ -454,13 +454,13 @@ def get_total_timeout( value ):
 
 def construct_runtime_lookup_cache( rtinfo, opts, platobj ):
     ""
-    from libvvtest.runtimes import LookupCache
+    from libvvtest.runtimes import RuntimesLookup
 
     # tdir = plat.testingDirectory()  # magic: need this still ??
 
     resultsdir = get_testing_directory( opts, platobj )
 
-    cache = LookupCache( rtinfo, resultsdir )
+    cache = RuntimesLookup( rtinfo, resultsdir )
 
     return cache
 
@@ -676,22 +676,22 @@ class TestListManager:
         ""
         self.tlist.readTestList()
 
+    def readPreviouslyRunTests(self):
+        ""
+        fn = self.namer.getFilePath()
+        self.tlist.setFilename( fn )
+        attrs = self.tlist.readTestResults()
+
+        return attrs
+
     def readAndMergePreviouslyRunTests(self):
         ""
         fn = self.namer.getFilePath()
         prev_tlist = testlist.TestList( self.tcasefactory, fn )
-
-        attrs = prev_tlist.readTestResults()
-
-        fin = prev_tlist.getFinishDate()
-        if fin != None:
-            attrs['finishepoch'] = fin
-            attrs['finishdate'] = time.ctime(fin)
+        prev_tlist.readTestResults()
 
         self.tlist.addTestsWithoutOverwrite( prev_tlist.getTests() )
         self.tlist.copyTestResults( prev_tlist.getTests() )
-
-        return attrs
 
     def writeTestList(self):
         ""
@@ -889,7 +889,7 @@ def information_output( opts, optD, rtdata ):
         adjust_filter_settings_for_restart( opts, rtdata.rtconfig )
 
         rtdata.tlm.readTestList()
-        attrs = rtdata.tlm.readAndMergePreviouslyRunTests()
+        attrs = rtdata.tlm.readPreviouslyRunTests()
         rtdata.rtinfo.update( attrs )
 
     else:
@@ -921,20 +921,19 @@ def output_timings( opts, optD, rtdata ):
     if not rtdata.isrestart:
 
         rtdata.scanner.scanPaths( tlist )
-        rtdata.tlm.readAndMergePreviouslyRunTests()
+        rtdata.tlm.readPreviouslyRunTests()
         rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
         rtdata.selector.applyPermanentFilters( tlist )
 
     else:
         adjust_filter_settings_for_restart( opts, rtdata.rtconfig )
 
-        rtdata.tlm.readAndMergePreviouslyRunTests()
+        rtdata.tlm.readPreviouslyRunTests()
         rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
 
     rtdata.selector.applyRuntimeFilters( tlist )
     rtdata.scanner.completeTestParsing( tlist )
     rtdata.timehandler.setTimeouts( tlist.getTests() )
-    tlist.setResultsDate()
 
     cwriter = construct_console_writer( rtdata, opts, optD )
     cwriter.timings( tlist )
@@ -1150,9 +1149,9 @@ def run_test_exec_list( opts, optD, rtdata ):
         xstat = tlrun.run()
 
     logger.info()
-    tm = time.time()
-    rtdata.rtinfo['finishepoch'] = tm
-    rtdata.rtinfo['finishdate'] = time.ctime(tm)
+    if 'finishepoch' not in rtdata.rtinfo:
+        rtdata.rtinfo['finishepoch'] = time.time()
+    rtdata.rtinfo['finishdate'] = time.ctime( rtdata.rtinfo['finishepoch'] )
     rtdata.results_writer.postrun( tlist )
 
     return xstat

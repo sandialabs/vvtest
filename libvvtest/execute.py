@@ -106,12 +106,15 @@ class BatchRunner( TestListRunner ):
             jobstats, nrL = self.batch.flush()
 
         finally:
+            finish_time = time.time()
             self.batch.shutdown()
+            rtn = encode_integer_warning( self.tlist )
+            self.tlist.writeFinished( finish_time, rtn )
 
         self.info.printBatchRemainders( jobstats, nrL )
 
-        rtn = encode_integer_warning( self.tlist )
         self.rtinfo['returncode'] = rtn
+        self.rtinfo['finishepoch'] = finish_time
 
         return rtn
 
@@ -178,12 +181,14 @@ class DirectRunner( TestListRunner ):
             nrL = self.xlist.popRemaining()  # these tests cannot be run
 
         finally:
-            self.tlist.writeFinished()
+            finish_time = time.time()
+            rtn = encode_integer_warning( self.tlist )
+            self.tlist.writeFinished( finish_time, rtn )
 
         self.info.printRemainders( nrL )
 
-        rtn = encode_integer_warning( self.tlist )
         self.rtinfo['returncode'] = rtn
+        self.rtinfo['finishepoch'] = finish_time
 
         return rtn
 

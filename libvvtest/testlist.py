@@ -31,8 +31,8 @@ class TestList:
         self.setFilename( filename )
 
         self.rundate = None
-        self.startdate = None
         self.finishdate = None
+        self.finishcode = None
 
         self.tlistwriter = None
         self.groups = None  # a ParameterizeAnalyzeGroups class instance
@@ -49,10 +49,10 @@ class TestList:
         ""
         return self.filename
 
-    def setResultsDate(self, epochtime=None):
+    def setResultsDate(self, starttime=None):
         ""
-        if epochtime is not None:
-            self.rundate = int( float( epochtime ) + 0.5 )
+        if starttime is not None:
+            self.rundate = int( float( starttime ) + 0.5 )
         else:
             self.rundate = int( float( time.time() ) + 0.5 )
 
@@ -76,7 +76,7 @@ class TestList:
 
         tlw = testlistio.TestListWriter( self.filename )
 
-        tlw.start( rundate=self.rundate, **file_attrs )
+        tlw.start( self.rundate, **file_attrs )
 
         for tcase in self.tcasemap.values():
             tlw.append( tcase, extended=extended )
@@ -89,7 +89,7 @@ class TestList:
         ""
         rfile = self.getResultsFilename()
         self.tlistwriter = testlistio.TestListWriter( rfile )
-        self.tlistwriter.start( **file_attrs )
+        self.tlistwriter.start( self.rundate, **file_attrs )
 
         return rfile
 
@@ -110,12 +110,14 @@ class TestList:
         """
         self.tlistwriter.append( tcase )
 
-    def writeFinished(self):
+    def writeFinished(self, finishepoch=None, finishcode=None):
         """
-        Appends the results file with a finish marker that contains the
-        current date.
+        Appends the results file with a finish marker that contains the given
+        date (or the current date if not given) and return code.
         """
-        self.tlistwriter.finish()
+        self.tlistwriter.finish( finishepoch, finishcode )
+        self.finishdate = finishepoch
+        self.finishcode = finishcode
 
     def readTestList(self, root_path_prefix=None):
         """
@@ -136,7 +138,7 @@ class TestList:
                         rp = normpath( pjoin( root_path_prefix, rp ) )
                         tcase.getSpec().setRootpath( rp )
 
-            rd = tlr.getAttr( 'rundate', None )
+            rd = tlr.getStartDate()
             if rd is not None:
                 self.rundate = rd
 
@@ -150,10 +152,10 @@ class TestList:
         by rundate, replacing tests in this object.
         """
         fL = glob_results_files( self.filename )
-        file_attrs = self._read_file_list( fL )
+        file_attrs = self._read_results_files( fL )
         return file_attrs
 
-    def _read_file_list(self, files):
+    def _read_results_files(self, files):
         ""
         file_attrs = {}
 
@@ -162,8 +164,9 @@ class TestList:
             tlr = testlistio.TestListReader( self.fact, fn )
             tlr.read()
 
-            self.startdate = tlr.getStartDate()
+            self.rundate = tlr.getStartDate()
             self.finishdate = tlr.getFinishDate()
+            self.finishcode = tlr.getFinishCode()
 
             file_attrs.clear()
             file_attrs.update( tlr.getAttrs() )
@@ -200,19 +203,20 @@ class TestList:
 
         return finished
 
-    def getDateStamp(self):
-        """
-        Return the start date contained in the last test results file (set
-        by readTestResults()). Or None if no read was done.
-        """
-        return self.startdate
-
     def getFinishDate(self):
         """
         Return the finish date as marked in the last test results file (set by
         readTestResults()). Or None if the last results file did not finish.
         """
         return self.finishdate
+
+    def getFinishCode(self):
+        """
+        Return the exit/return code as marked in the last test results file
+        (set by readTestResults()). Or None if the last results file did not
+        finish.
+        """
+        return self.finishcode
 
     def getTests(self):
         """

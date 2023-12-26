@@ -10,6 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+from os.path import basename
 import re
 import time
 import glob
@@ -50,7 +51,6 @@ class integration_tests( vtu.vvtestTestCase ):
 
         vrun = vtu.runvvtest( '--save-results' )
         vrun.assertCounts( total=3, npass=3 )
-        tdir = vrun.resultsDir()
 
         assert_cat_dog_circle_testresults_contents( util.globfile('vvtresults.*') )
 
@@ -114,6 +114,42 @@ class integration_tests( vtu.vvtestTestCase ):
                 ('cat.vvt', 'direction=front','side=left'),
                 ('cat.vvt', 'direction=rear', 'side=right') )
 
+    def test_a_subsequent_save_results_will_replicate_attributes(self):
+        ""
+        util.writefile( "cat.vvt", '' )
+        util.writefile( 'sub/junk.txt', '' )
+
+        vrun = vtu.runvvtest( '--save-results' )
+        vrun.assertCounts( total=1, npass=1 )
+
+        fn1 = util.globfile('vvtresults.*')
+        f1info,_ = vtu.read_results_file( fn1 )
+        time.sleep(1)
+
+        vtu.runvvtest( '-i --save-results=sub' )
+        fn2 = util.globfile('sub/vvtresults.*')
+        f2info,_ = vtu.read_results_file( fn2 )
+
+        self.assertEqual( fn1, basename(fn2) )
+        self.assertEqual( sorted(f1info.keys()), sorted(f2info.keys()) )
+        self.assertEqual( f1info, f2info )
+
+    def test_nothing_to_run_produces_a_complete_results_file(self):
+        ""
+        util.writefile( 'sub/foo.txt', '' )
+        util.writefile( 'tests/junk.txt', '' )
+
+        vrun = vtu.runvvtest( '--save-results' )
+        vrun.assertCounts( total=0 )
+
+        fn1 = util.globfile('vvtresults.*')
+        finfo,_ = vtu.read_results_file( fn1 )
+        assert finfo['starttime'] > 0 and finfo['endtime'] > 0
+        assert finfo['returncode'] == 0
+
+        # running this currently does not replicate the start & finish dates
+        # because a testlist results file is never written to contain them
+        vrun = vtu.runvvtest( '-i --save-results=sub' )
 
 
 def write_tests_cat_dog_circle( in_subdir=None ):

@@ -13,7 +13,7 @@ from . import listwriter
 from . import pathid
 
 
-class LookupCache:
+class RuntimesLookup:
 
     def __init__(self, rtinfo, resultsdir):
         ""
@@ -39,19 +39,7 @@ class LookupCache:
 
     def getRunTime(self, testspec):
         """
-        Looks in the testing directory and the test source tree for files that
-        contain a runtime for the given test.  If an entry is not found then
-        None,None is returned.
-
-        The 'cache' must be a LookupCache instance and should be the same instance
-        for a set of tests (which helps performance).  Also, this same cache
-        should be given/used by any approximate execution time algorithms if this
-        function fails to find a runtime for the test.
-
-        The algorithm looks for the test in this order:
-
-          1. The TESTING_DIRECTORY directory multiplatform results file
-          2. A test source tree runtimes file
+        TODO
         """
         if self.tinfo:
             pathid = self.pathcache.get_path_id( testspec.getFilename() )

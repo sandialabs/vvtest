@@ -51,6 +51,7 @@ from libvvtest.wordexpr import WordExpression
 from libvvtest.depend import connect_dependency
 from libvvtest.tcfactory import TestCaseFactory
 from libvvtest.location import Locator
+import libvvtest.listwriter as listwriter
 
 
 ##########################################################################
@@ -1037,20 +1038,12 @@ def make_fake_PermissionSetter():
 
 def read_results_file( fname ):
     ""
-    fileinfo = None
-    testinfo = []
+    finfo,tinfo = listwriter.read_results_file( fname )
 
-    i = 0
-    with open( fname, 'rt' ) as fp:
-        for line in fp:
-            if not line.strip().startswith('#'):
-                i += 1
-                if i == 1:
-                    fileinfo = json.loads( line.strip() )
-                else:
-                    D = json.loads( line.strip() )
-                    testinfo.append( (D['testid'],D) )
+    tL = []
+    for tD in tinfo:
+        tL.append( (tD['testid'],tD) )
 
-    testinfo.sort()
+    tL.sort()
 
-    return fileinfo, [ tup[1] for tup in testinfo ]
+    return finfo, [ T[1] for T in tL ]

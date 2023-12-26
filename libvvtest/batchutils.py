@@ -138,7 +138,6 @@ class Batcher:
     def shutdown(self):
         ""
         self.jobhandler.cancelStartedJobs()
-        self.results.finalize()
 
     #####################################################################
 
@@ -403,10 +402,6 @@ class ResultsHandler:
             if tcase.isBlocked():
                 return True
         return False
-
-    def finalize(self):
-        ""
-        self.tlist.writeFinished()
 
 
 def get_relative_results_filename( tlist_from, to_bjob ):

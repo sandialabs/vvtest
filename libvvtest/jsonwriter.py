@@ -52,8 +52,6 @@ class JsonWriter:
         data = {}
         top = dict( self.rtinfo )
         top["vvplatform"] = top.pop( "platform", None )
-        top.pop( "hostname", None )
-        top.pop( "python", None )
         top["command"] = " ".join(quote(_) for _ in top.pop("cmdline", []))
         tm = atestlist.getResultsDate()
         top["starttime"] = -1 if tm is None else tm

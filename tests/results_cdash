@@ -10,6 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
+import platform
 from os.path import basename, abspath
 from os.path import join as pjoin
 import time
@@ -53,7 +54,6 @@ class unit_tests( vtu.vvtestTestCase ):
         tm = 1584832080.0295939  # Sat Mar 21 17:08:00 2020 MDT
 
         rtinfo = { 'startepoch':tm,
-                   'hostname':'sparky',
                    'rundir':'/path/to/testresultsdir' }
         wr = make_CDashWriter( 'file.xml', rtinfo=rtinfo )
 
@@ -67,7 +67,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
         xml = util.read_xml_file( 'file.xml' )
 
-        assert extract_site_name( xml ) == 'sparky'
+        assert extract_site_name( xml ) == platform.uname()[1]
         assert extract_build_name( xml ) == 'testresultsdir'
 
         assert abs( extract_start_time( xml ) - tm ) <= 2

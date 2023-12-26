@@ -8,6 +8,7 @@ import os, sys
 from os.path import dirname, join as pjoin, basename
 import time
 import json
+import platform
 
 try:
     from shlex import quote
@@ -149,16 +150,16 @@ def make_header_info( rti, tlist, finished ):
         xcode = 0
 
     hdr = {
-        "command": ' '.join(quote(s) for s in rti.get("cmdline", [])),
-        'platform': rti.get('platform',None),
-        "onopts": ','.join( rti.get("onopts",[]) ),
-        "offopts": ','.join( rti.get("offopts",[]) ),
-        'python': sys.executable,
-        'sys.platform':sys.platform,
-        'hostname':os.uname()[1],
-        'starttime': t0,
-        'endtime': t1,
-        'returncode': xcode,
+        "command"      : ' '.join(quote(s) for s in rti.get("cmdline", [])),
+        'platform'     : rti.get('platform',None),
+        "onopts"       : ','.join( rti.get("onopts",[]) ),
+        "offopts"      : ','.join( rti.get("offopts",[]) ),
+        'python'       : sys.executable,
+        'sys.platform' : sys.platform,
+        'hostname'     : platform.uname()[1],
+        'starttime'    : t0,
+        'endtime'      : t1,
+        'returncode'   : xcode,
     }
 
     cplr = rti.get('compiler',None)

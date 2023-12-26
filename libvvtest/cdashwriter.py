@@ -9,6 +9,7 @@ import time
 from os.path import join as pjoin
 from os.path import basename
 import stat
+import platform
 
 from . import logger
 from . import outpututils
@@ -269,7 +270,7 @@ def set_global_data( fmtr, dspecs, rtinfo, tlist ):
     if dspecs.site:
         site = dspecs.site
     else:
-        site = rtinfo.get( 'hostname', None )
+        site = platform.uname()[1]
 
     if dspecs.name:
         bname = dspecs.name
@@ -342,7 +343,7 @@ def get_test_output( testdir, tspec, file_max_KB ):
 
     out = '\n'
     out += 'CURTIME : ' + time.ctime() + '\n'
-    out += 'HOSTNAME: ' + os.uname()[1] + '\n'
+    out += 'HOSTNAME: ' + platform.uname()[1] + '\n'
     out += 'TESTDIR : ' + tdir + '\n'
     out += 'TEST ID : ' + displ + '\n'
 

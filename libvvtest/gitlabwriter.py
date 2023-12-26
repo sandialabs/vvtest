@@ -7,6 +7,7 @@
 import os, sys
 import time
 from os.path import join as pjoin
+import platform
 
 from . import logger
 from . import outpututils
@@ -227,7 +228,10 @@ class GitLabMarkDownConverter:
 
 def write_run_attributes( fp, rtinfo ):
     ""
-    nvL = list( rtinfo.items() )
+    D = dict( rtinfo )
+    D['hostname'] = platform.uname()[1]
+    D['python'] = sys.executable
+    nvL = list( D.items() )
     nvL.sort()
     for name,value in nvL:
         fp.write( '* '+name+' = '+str(value)+'\n' )

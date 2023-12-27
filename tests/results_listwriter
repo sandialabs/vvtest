@@ -52,18 +52,20 @@ class unit_tests( vtu.vvtestTestCase ):
 
 class integration_tests( vtu.vvtestTestCase ):
 
-    def test_saving_results_when_the_root_cannot_be_determined(self):
+    def test_saving_results_when_pathid_root_cannot_be_determined(self):
         ""
-        # use /tmp dir to avoid accidental .git repository being in dir tree
+        # use /tmp dir to avoid case where .git repository is in current dir path
         tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
         try:
-            write_tests_cat_dog_circle( tmpd )
+            util.writefile( tmpd+"/one/cat.vvt", "pass\n" )
+            util.writefile( tmpd+"/one/dog.vvt", "pass\n" )
+            util.writefile( tmpd+"/two/circle.vvt", "pass\n" )
 
             vrun = vtu.runvvtest( tmpd, '--save-results' )
             vrun.assertCounts( total=3, npass=3 )
 
             resultsfname = util.globfile('vvtresults.*')
-            fileinfo,testinfo = vtu.read_results_file( resultsfname )
+            _,testinfo = vtu.read_results_file( resultsfname )
             self.assertEqual( len(testinfo), 3 )
             for testD in testinfo:
                 self.assertTrue( testD['pathid'] is None )
@@ -73,66 +75,60 @@ class integration_tests( vtu.vvtestTestCase ):
 
     def test_timings_are_saved_in_results_file(self):
         ""
-        write_tests_cat_dog_circle()
-
-        vrun = vtu.runvvtest( '--save-results' )
-        vrun.assertCounts( total=3, npass=3 )
-
-        assert_cat_dog_circle_testresults_contents( util.globfile('vvtresults.*') )
-
-    def test_save_results_with_tests_having_multiple_parameters(self):
-        ""
-        util.writefile( "cat.vvt", """
-            #VVT: parameterize : direction = front rear
-            #VVT: parameterize : side = left right
+        util.writefile( "tests/one/cat.vvt", """
+            import time
+            time.sleep(1)
+            """ )
+        util.writefile( "tests/one/dog.vvt", """
+            import time
+            time.sleep(2)
+            """ )
+        util.writefile( "tests/two/circle.vvt", """
+            import time
+            time.sleep(3)
             """ )
 
-        vrun = vtu.runvvtest( '--save-results' )
-        vrun.assertCounts( total=4, npass=4 )
+        for batch in [False,True]:
 
-        assert_results_file_has_tests(
-                util.globfile('vvtresults.*'),
-                ('cat.vvt','direction=front','side=left'),
-                ('cat.vvt','direction=front','side=right'),
-                ('cat.vvt','direction=rear','side=left'),
-                ('cat.vvt','direction=rear','side=right') )
+            vtu.remove_results()
 
-    def test_save_results_with_multiple_parameterize_and_an_analyze(self):
+            # this also tests that the results directory will be created if necessary
+            resdir = 'batch' if batch else 'direct'
+            vrun = vtu.runvvtest( '--save-results='+resdir+' tests', batch=batch )
+            vrun.assertCounts( total=3, npass=3 )
+
+            fn = util.globfile( resdir+'/vvtresults.*' )
+            fileinfo,testinfo = vtu.read_results_file( fn )
+
+            assert fileinfo['duration'] >= 3
+
+            self.assertEqual( len(testinfo), 3 )
+            self.assertEqual( list( testinfo[0]['testid'] ), ['one/cat.vvt', 'cat'] )
+            assert testinfo[0]['runtime'] >= 1
+            self.assertEqual( list( testinfo[1]['testid'] ), ['one/dog.vvt', 'dog'] )
+            assert testinfo[1]['runtime'] >= 2
+            self.assertEqual( list( testinfo[2]['testid'] ), ['two/circle.vvt', 'circle'] )
+            assert testinfo[2]['runtime'] >= 3
+
+    def test_save_results_on_parameterize_analyze_tests(self):
         ""
-        util.writefile( "cat.vvt", """
-            #VVT: parameterize: direction = front rear
-            #VVT: parameterize: side = left right
-            #VVT: analyze: -a
-            pass
+        util.writefile( "seat.vvt", """
+            #VVT: parameterize : direction = front rear
+            #VVT: parameterize : side = left right
+            #VVT: analyze: --anything
             """ )
 
         vrun = vtu.runvvtest( '--save-results' )
         vrun.assertCounts( total=5, npass=5 )
 
-        assert_results_file_has_tests(
-                util.globfile('vvtresults.*'),
-                ('cat.vvt',),
-                ('cat.vvt','direction=front','side=left'),
-                ('cat.vvt','direction=front','side=right'),
-                ('cat.vvt','direction=rear','side=left'),
-                ('cat.vvt','direction=rear','side=right') )
+        _,tL = vtu.read_results_file( util.globfile('vvtresults.*') )
 
-    def test_save_results_with_zipped_parameterize_and_an_analyze(self):
-        ""
-        util.writefile( "cat.vvt", """
-            #VVT: parameterize : direction,side = front,left rear,right
-            #VVT: analyze : --analyze
-            pass
-            """ )
-
-        vrun = vtu.runvvtest( '--save-results' )
-        vrun.assertCounts( total=3, npass=3 )
-
-        assert_results_file_has_tests(
-                util.globfile('vvtresults.*'),
-                ('cat.vvt',),
-                ('cat.vvt', 'direction=front','side=left'),
-                ('cat.vvt', 'direction=rear', 'side=right') )
+        self.assertEqual( len(tL), 5 )
+        self.assertEqual( list( tL[0]['testid'] ), ['seat.vvt', 'seat'] )
+        self.assertEqual( list( tL[1]['testid'] ), ['seat.vvt', 'seat', 'direction=front', 'side=left'] )
+        self.assertEqual( list( tL[2]['testid'] ), ['seat.vvt', 'seat', 'direction=front', 'side=right'] )
+        self.assertEqual( list( tL[3]['testid'] ), ['seat.vvt', 'seat', 'direction=rear', 'side=left'] )
+        self.assertEqual( list( tL[4]['testid'] ), ['seat.vvt', 'seat', 'direction=rear', 'side=right'] )
 
     def test_a_subsequent_save_results_will_replicate_attributes(self):
         ""
@@ -170,73 +166,6 @@ class integration_tests( vtu.vvtestTestCase ):
         # running this currently does not replicate the start & finish dates
         # because a testlist results file is never written to contain them
         vrun = vtu.runvvtest( '-i --save-results=sub' )
-
-
-def write_tests_cat_dog_circle( in_subdir=None ):
-    ""
-    cwd = os.getcwd()
-
-    if in_subdir:
-        if not os.path.exists( in_subdir ):
-            os.mkdir( in_subdir )
-            time.sleep(1)
-
-        os.chdir( in_subdir )
-
-    try:
-        write_test_cat()
-        write_test_dog()
-        write_test_circle()
-
-    finally:
-        if in_subdir:
-            os.chdir( cwd )
-
-def write_test_cat( sleep_time=1 ):
-    ""
-    util.writefile( "one/cat.vvt", """
-        import time
-        time.sleep("""+str(sleep_time)+""")
-        """ )
-
-def write_test_dog( sleep_time=2 ):
-    ""
-    util.writefile( "one/dog.vvt", """
-        import time
-        time.sleep("""+str(sleep_time)+""")
-        """ )
-
-def write_test_circle():
-    ""
-    util.writefile( "two/circle.vvt", """
-        import time
-        time.sleep(3)
-        """ )
-
-
-def assert_cat_dog_circle_testresults_contents( resultsfname ):
-    ""
-    fileinfo,testinfo = vtu.read_results_file( resultsfname )
-
-    assert len(testinfo) == 3
-    assert list( testinfo[0]['testid'] ) == ['one/cat.vvt', 'cat']
-    assert testinfo[0]['runtime'] >= 1
-    assert list( testinfo[1]['testid'] ) == ['one/dog.vvt', 'dog']
-    assert testinfo[1]['runtime'] >= 2
-    assert list( testinfo[2]['testid'] ) == ['two/circle.vvt', 'circle']
-    assert testinfo[2]['runtime'] >= 3
-
-
-def assert_results_file_has_tests( filename, *tests, **kwargs ):
-    ""
-    fileinfo,testinfo = vtu.read_results_file( filename )
-
-    for i,tst in enumerate(tests):
-        tD = testinfo[i]
-        tid = list( tD['testid'] )
-        tstL = list( tst )
-        assert tid[0] == tstL[0]
-        assert tid[2:] == tstL[1:], 'test params not equal: '+str(tid[2:])+' != '+str(tstL[1:])
 
 
 ############################################################################

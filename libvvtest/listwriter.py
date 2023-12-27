@@ -44,38 +44,33 @@ class ListWriter:
     is given on the vvtest command line, then that date is used instead.
     """
 
-    def __init__(self, loc, permsetter):
+    def __init__(self, testlist, loc, permsetter):
         ""
+        self.tlist = testlist
         self.loc = loc
         self.permsetter = permsetter
 
     def initialize(self, rtinfo,
                          destination,
                          datestamp=None,
-                         name_tag=None,
-                         scpexe='scp' ):
+                         name_tag=None ):
         ""
         self.rtinfo = rtinfo
         self.outdir = destination
         self.datestamp = datestamp
         self.ftag = name_tag
-        self.scpexe = scpexe
 
-    def prerun(self, atestlist, verbosity):
+    def postrun(self):
         ""
-        self.writeList( atestlist )
+        self.writeList( finished=True )
 
-    def postrun(self, atestlist):
+    def info(self):
         ""
-        self.writeList( atestlist, finished=True )
+        self.writeList()
 
-    def info(self, atestlist):
+    def writeList(self, finished=False):
         ""
-        self.writeList( atestlist )
-
-    def writeList(self, atestlist, finished=False):
-        ""
-        resdate = atestlist.getResultsDate()
+        resdate = self.tlist.getResultsDate()
         if resdate is None:
             resdate = time.time()
 
@@ -83,9 +78,9 @@ class ListWriter:
 
         fname = make_filename( self.rtinfo, datestr, self.ftag )
 
-        self._write_results_to_file( atestlist, finished, self.outdir, fname )
+        self._write_results_to_file( finished, self.outdir, fname )
 
-    def _write_results_to_file(self, atestlist, finished, todir, fname):
+    def _write_results_to_file(self, finished, todir, fname):
         ""
         if not os.path.isdir( todir ):
             os.mkdir( todir )
@@ -96,11 +91,11 @@ class ListWriter:
         try:
             logger.info( "Writing test results to", tofile )
 
-            hdr = make_header_info( self.rtinfo, atestlist, finished )
+            hdr = make_header_info( self.rtinfo, self.tlist, finished )
 
             with open( tofile, 'wt' ) as fp:
                 fp.write( json.dumps(hdr)+'\n' )
-                tests = list( atestlist.getTestMap().items() )
+                tests = list( self.tlist.getTestMap().items() )
                 tests.sort()
                 for tid,tcase in tests:
                     # magic: need to move pathid object into this function

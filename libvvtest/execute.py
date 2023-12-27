@@ -95,7 +95,7 @@ class BatchRunner( TestListRunner ):
 
                 uthook.check( self.batch.numInProgress(), self.batch.numPastQueue() )
 
-                self.results_writer.midrun( self.tlist )
+                self.results_writer.midrun()
 
                 self.info.printProgress( len(doneL) )
 
@@ -168,7 +168,7 @@ class DirectRunner( TestListRunner ):
 
                 uthook.check( self.xlist.numRunning(), self.xlist.numDone() )
 
-                self.results_writer.midrun( self.tlist )
+                self.results_writer.midrun()
 
                 self.info.printProgress( len(doneL) )
 

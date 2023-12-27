@@ -25,7 +25,7 @@ class TestList:
     to a file.
     """
 
-    def __init__(self, tcasefactory, filename=None):
+    def __init__(self, tcasefactory=None, filename=None):
         ""
         self.fact = tcasefactory
         self.setFilename( filename )
@@ -125,6 +125,7 @@ class TestList:
         file will be prefixed with the given path.
         """
         assert self.filename
+        assert self.fact is not None, "set test case factory first"
 
         if os.path.exists( self.filename ):
 
@@ -157,6 +158,8 @@ class TestList:
 
     def _read_results_files(self, files):
         ""
+        assert self.fact is not None, "set test case factory first"
+
         file_attrs = {}
 
         for fn in files:
@@ -305,6 +308,10 @@ class TestList:
             self.groups.rebuild( self.tcasemap )
 
         return self.groups
+
+    def setTestCaseFactory(self, factory):
+        ""
+        self.fact = factory
 
     def getTestCaseFactory(self):
         ""

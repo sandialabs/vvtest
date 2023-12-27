@@ -13,8 +13,9 @@ from . import outpututils
 
 class HTMLWriter:
 
-    def __init__(self, permsetter):
+    def __init__(self, testlist, permsetter):
         ""
+        self.tlist = testlist
         self.permsetter = permsetter
 
     def initialize(self, rtinfo, output_filename):
@@ -22,22 +23,22 @@ class HTMLWriter:
         self.rtinfo = rtinfo
         self.filename = os.path.normpath( os.path.abspath( output_filename ) )
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
-        self.writeDocument( atestlist )
+        self.writeDocument()
 
-    def info(self, atestlist):
+    def info(self):
         ""
-        self.writeDocument( atestlist )
+        self.writeDocument()
 
-    def writeDocument(self, tlist):
+    def writeDocument(self):
         """
         Opens and writes an HTML summary file in the test directory.
         """
-        tm = tlist.getResultsDate() or time.time()
+        tm = self.tlist.getResultsDate() or time.time()
         datestr = outpututils.make_date_stamp( tm, None, "%Y-%m-%d %H:%M:%S" )
 
-        tcaseL = tlist.getActiveTests()
+        tcaseL = self.tlist.getActiveTests()
 
         parts = outpututils.partition_tests_by_result( tcaseL )
 

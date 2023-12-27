@@ -56,6 +56,7 @@ class RuntimeData:
         self.plugin         = None   # UserPluginBridge object
         self.isrestart      = False  # True if inside a test results tree
         self.perms          = None   # Permissions object
+        self.tlist          = None   # TestList object
         self.results_writer = None   # ResultsWriters object
         self.tcasefactory   = None   # TestCaseFactory object
         self.creator        = None   # TestCreator object
@@ -91,6 +92,7 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     construct_platform( rtdata, opts, optD )
     compute_testing_directory( rtdata, opts, optD )
     construct_permission_setter( rtdata, opts )
+    rtdata.tlist = testlist.TestList()
     construct_results_writers( rtdata, opts, optD )
     construct_testcase_factory( rtdata )
     construct_testcase_creator( rtdata, opts, optD )
@@ -463,7 +465,8 @@ def construct_test_list_manager( rtdata ):
     from batch.namer import BatchFileNamer
     namer = BatchFileNamer( rtdata.testdir )
 
-    rtdata.tlm = TestListManager( namer=namer,
+    rtdata.tlm = TestListManager( tlist=rtdata.tlist,
+                                  namer=namer,
                                   tcasefactory=rtdata.tcasefactory,
                                   rtinfo=rtdata.rtinfo,
                                   perms=rtdata.perms )
@@ -529,7 +532,7 @@ def construct_console_writer( rtdata, opts, optD ):
 
     verb = get_output_verbosity_integer( opts.dash_v )
 
-    conobj = consolewriter.ConsoleWriter()
+    conobj = consolewriter.ConsoleWriter( rtdata.tlist )
     conobj.initialize( rtdata.rtinfo, verb, optD['sort_letters'] )
 
     return conobj
@@ -539,7 +542,7 @@ def construct_html_writer( rtdata, opts, optD ):
     ""
     import libvvtest.htmlwriter as htmlwriter
 
-    htmlobj = htmlwriter.HTMLWriter( rtdata.perms )
+    htmlobj = htmlwriter.HTMLWriter( rtdata.tlist, rtdata.perms )
     htmlobj.initialize( rtdata.rtinfo, opts.html )
 
     return htmlobj
@@ -549,7 +552,7 @@ def construct_junit_writer( rtdata, opts, optD ):
     ""
     import libvvtest.junitwriter as junitwriter
 
-    junitobj = junitwriter.JUnitWriter( rtdata.perms )
+    junitobj = junitwriter.JUnitWriter( rtdata.tlist, rtdata.perms )
     junitobj.initialize( rtdata.rtinfo, opts.junit, opts.results_date )
 
     return junitobj
@@ -559,7 +562,7 @@ def construct_json_writer( rtdata, opts, optD ):
     ""
     import libvvtest.jsonwriter as jsonwriter
 
-    jsonobj = jsonwriter.JsonWriter( rtdata.perms )
+    jsonobj = jsonwriter.JsonWriter( rtdata.tlist, rtdata.perms )
     jsonobj.initialize( rtdata.rtinfo, opts.json, opts.results_date )
 
     return jsonobj
@@ -569,7 +572,7 @@ def construct_gitlab_writer( rtdata, opts, optD ):
     ""
     import libvvtest.gitlabwriter as gitlabwriter
 
-    gitlabobj = gitlabwriter.GitLabWriter( rtdata.perms )
+    gitlabobj = gitlabwriter.GitLabWriter( rtdata.tlist, rtdata.perms )
 
     gitlabobj.initialize( rtdata.rtinfo,
                           opts.gitlab,
@@ -586,7 +589,8 @@ def construct_cdash_writer( rtdata, opts, optD ):
     import libvvtest.cdashwriter as cdashwriter
     import libvvtest.cdashutil as cdashutil
 
-    cdashobj = cdashwriter.CDashWriter( rtdata.perms,
+    cdashobj = cdashwriter.CDashWriter( rtdata.tlist,
+                                        rtdata.perms,
                                         cdashutil.TestResultsFormatter(),
                                         cdashutil.FileSubmitter() )
 
@@ -614,7 +618,7 @@ def construct_testlist_writer( rtdata, opts, optD ):
 
     todir = get_testing_directory( opts, platobj )
 
-    wlistobj = listwriter.ListWriter( rtdata.loc, rtdata.perms )
+    wlistobj = listwriter.ListWriter( rtdata.tlist, rtdata.loc, rtdata.perms )
 
     wlistobj.initialize( rtinfo, todir,
                          opts.results_date,
@@ -640,9 +644,9 @@ def get_testing_directory( opts, platobj ):
 
 class TestListManager:
 
-    def __init__(self, namer, tcasefactory, rtinfo, perms):
+    def __init__(self, tlist, namer, tcasefactory, rtinfo, perms):
         ""
-        self.tlist = None
+        self.tlist = tlist
 
         self.namer = namer
         self.tcasefactory = tcasefactory
@@ -657,11 +661,11 @@ class TestListManager:
         ""
         return self.tlist
 
-    def makeTestList(self, batchid=None):
+    def initializeTestList(self, batchid=None):
         ""
+        self.tlist.setTestCaseFactory( self.tcasefactory )
         fn = self.namer.getFilePath( batchid )
-
-        self.tlist = testlist.TestList( self.tcasefactory, fn )
+        self.tlist.setFilename( fn )
 
         return self.tlist
 
@@ -705,7 +709,7 @@ class TestListManager:
 
 def generate_test_list( opts, optD, rtdata ):
     ""
-    tlist = rtdata.tlm.makeTestList()
+    tlist = rtdata.tlm.initializeTestList()
 
     rtdata.scanner.scanPaths( tlist )
     rtdata.timehandler.loadExternalRuntimes( tlist.getTests() )
@@ -731,7 +735,7 @@ def generate_test_list( opts, optD, rtdata ):
 
         rtdata.tlm.writeTestList()
 
-        rtdata.results_writer.prerun( tlist, verbosity=1 )
+        rtdata.results_writer.prerun( verbosity=1 )
         logger.info()
 
         handler = ExecutionHandler( rtdata.perms, rtdata.rtconfig,
@@ -755,7 +759,7 @@ def extract_test_files( param_dict, target_dir, rtdata ):
     """
     import libvvtest.extract as extract
 
-    tlist = rtdata.tlm.makeTestList()
+    tlist = rtdata.tlm.initializeTestList()
 
     rtdata.scanner.scanPaths( tlist )
     rtdata.tlm.readTestList()
@@ -769,7 +773,7 @@ def run_tests( opts, optD, rtdata ):
     ""
     rtdata.plugin.callPrologue( rtdata.cmdargv )
 
-    tlist = rtdata.tlm.makeTestList()
+    tlist = rtdata.tlm.initializeTestList()
 
     check_for_currently_running_vvtest( tlist, opts.force )
 
@@ -804,7 +808,7 @@ def restart_tests( opts, optD, rtdata ):
 
     adjust_filter_settings_for_restart( opts, rtdata.rtconfig )
 
-    tlist = rtdata.tlm.makeTestList( batchid )
+    tlist = rtdata.tlm.initializeTestList( batchid )
 
     check_for_currently_running_vvtest( tlist, opts.force )
 
@@ -832,7 +836,7 @@ def restart_tests( opts, optD, rtdata ):
 
 def baseline_tests( opts, optD, rtdata ):
     ""
-    tlist = rtdata.tlm.makeTestList()
+    tlist = rtdata.tlm.initializeTestList()
 
     rtdata.tlm.readAndMergePreviouslyRunTests()
 
@@ -846,7 +850,7 @@ def baseline_tests( opts, optD, rtdata ):
     rtdata.selector.applyBaselineFilter( tlist )
     tlist.connectDependencies( check_dependencies=False )
 
-    rtdata.results_writer.prerun( tlist, verbosity=1 )
+    rtdata.results_writer.prerun( verbosity=1 )
     logger.info()
 
     if tlist.numActive() > 0:
@@ -868,7 +872,7 @@ def information_output( opts, optD, rtdata ):
     ""
     exitcode = 0
 
-    tlist = rtdata.tlm.makeTestList()
+    tlist = rtdata.tlm.initializeTestList()
 
     have_cache = ( rtdata.isrestart or os.path.exists( rtdata.testdir ) )
 
@@ -899,7 +903,7 @@ def information_output( opts, optD, rtdata ):
         print_test_files( tlist )
 
     else:
-        rtdata.results_writer.info( tlist )
+        rtdata.results_writer.info()
         exitcode = execute.encode_integer_warning( tlist )
         rtdata.plugin.callEpilogue( rtdata.testdir, tlist.getTests() )
 
@@ -909,7 +913,7 @@ def information_output( opts, optD, rtdata ):
 def output_timings( opts, optD, rtdata ):
     ""
     rtdata.plugin.callPrologue( rtdata.cmdargv )
-    tlist = rtdata.tlm.makeTestList()
+    tlist = rtdata.tlm.initializeTestList()
 
     if not rtdata.isrestart:
 
@@ -929,7 +933,7 @@ def output_timings( opts, optD, rtdata ):
     rtdata.timehandler.setTimeouts( tlist.getTests() )
 
     cwriter = construct_console_writer( rtdata, opts, optD )
-    cwriter.timings( tlist )
+    cwriter.timings()
 
 
 def adjust_filter_settings_for_restart( opts, rtconfig ):
@@ -1109,7 +1113,7 @@ def run_test_exec_list( opts, optD, rtdata ):
 
     tlist.connectDependencies( check_dependencies=(opts.batch_id is None) )
 
-    rtdata.results_writer.prerun( tlist, verbosity=0 )
+    rtdata.results_writer.prerun( verbosity=0 )
     logger.info()
 
     xstat = 0
@@ -1142,7 +1146,7 @@ def run_test_exec_list( opts, optD, rtdata ):
         xstat = tlrun.run()
 
     logger.info()
-    rtdata.results_writer.postrun( tlist )
+    rtdata.results_writer.postrun()
 
     return xstat
 

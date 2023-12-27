@@ -313,7 +313,7 @@ class save_results_output( vtu.vvtestTestCase ):
                    'compiler':'gcc',
                    'onopts':[] }
 
-        lwr = ListWriter( Locator(os.getcwd()), perm )
+        lwr = ListWriter( tlist, Locator(os.getcwd()), perm )
         lwr.initialize( rtinfo, 'odir' )
 
         lwr.writeList( tlist )

@@ -17,8 +17,9 @@ from . import outpututils
 
 class CDashWriter:
 
-    def __init__(self, permsetter, formatter, submitter):
+    def __init__(self, testlist, permsetter, formatter, submitter):
         ""
+        self.tlist = testlist
         self.permsetter = permsetter
         self.fmtr = formatter
         self.subm = submitter
@@ -44,22 +45,22 @@ class CDashWriter:
 
         return err
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
-        self._create_and_fill_formatter( atestlist )
+        self._create_and_fill_formatter()
         self._write_data( self.fmtr )
 
-    def info(self, atestlist):
+    def info(self):
         ""
-        self._create_and_fill_formatter( atestlist )
+        self._create_and_fill_formatter()
         self._write_data( self.fmtr )
 
-    def _create_and_fill_formatter(self, atestlist):
+    def _create_and_fill_formatter(self):
         ""
         logger.info('\nComposing CDash submission data...')
 
-        set_global_data( self.fmtr, self.dspecs, self.rtinfo, atestlist )
-        set_test_list( self.fmtr, self.dspecs, atestlist, self.rtinfo['rundir'] )
+        set_global_data( self.fmtr, self.dspecs, self.rtinfo, self.tlist )
+        set_test_list( self.fmtr, self.dspecs, self.tlist, self.rtinfo['rundir'] )
 
     def _write_data(self, fmtr):
         ""
@@ -289,12 +290,12 @@ def set_global_data( fmtr, dspecs, rtinfo, tlist ):
     fmtr.setTime( tstart, tlist.getFinishDate() )
 
 
-def set_test_list( fmtr, dspecs, atestlist, testdir ):
+def set_test_list( fmtr, dspecs, tlist, testdir ):
     ""
     fspec = dspecs.files
     max_KB = dspecs.filemax
 
-    for tcase in atestlist.getActiveTests():
+    for tcase in tlist.getActiveTests():
 
         tspec = tcase.getSpec()
         tstat = tcase.getStat()

@@ -14,8 +14,9 @@ from . import outpututils
 
 class JUnitWriter:
 
-    def __init__(self, permsetter):
+    def __init__(self, testlist, permsetter):
         ""
+        self.tlist = testlist
         self.permsetter = permsetter
 
     def initialize(self, rtinfo, output_filename, datestamp):
@@ -24,15 +25,15 @@ class JUnitWriter:
         self.filename = os.path.normpath( os.path.abspath( output_filename ) )
         self.datestamp = datestamp
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
-        self.writeFile( atestlist )
+        self.writeFile()
 
-    def info(self, atestlist):
+    def info(self):
         ""
-        self.writeFile( atestlist )
+        self.writeFile()
 
-    def writeFile(self, atestlist):
+    def writeFile(self):
         """
         This collects information from the given test list (a python list of
         TestExec objects), then writes a file in the format of JUnit XML files.
@@ -51,11 +52,11 @@ class JUnitWriter:
             https://github.com/jenkinsci/junit-plugin/
                         tree/master/src/test/resources/hudson/tasks/junit
         """
-        tm = atestlist.getResultsDate() or time.time()
+        tm = self.tlist.getResultsDate() or time.time()
         datestr = outpututils.make_date_stamp( tm, self.datestamp,
                                                "%Y-%m-%dT%H:%M:%S" )
 
-        tcaseL = atestlist.getActiveTests()
+        tcaseL = self.tlist.getActiveTests()
 
         logger.info( "Writing", len(tcaseL), "tests to JUnit file", self.filename )
 

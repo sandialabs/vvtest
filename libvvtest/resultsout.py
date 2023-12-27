@@ -15,26 +15,26 @@ class ResultsWriters:
         ""
         self.writers.append( writer )
 
-    def prerun(self, atestlist, verbosity):
+    def prerun(self, verbosity):
         ""
         for wr in self.writers:
             if hasattr( wr, 'prerun' ):
-                wr.prerun( atestlist, verbosity )
+                wr.prerun( verbosity )
 
-    def midrun(self, atestlist):
+    def midrun(self):
         ""
         for wr in self.writers:
             if hasattr( wr, 'midrun' ):
-                wr.midrun( atestlist )
+                wr.midrun()
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
         for wr in self.writers:
             if hasattr( wr, 'postrun' ):
-                wr.postrun( atestlist )
+                wr.postrun()
 
-    def info(self, atestlist):
+    def info(self):
         ""
         for wr in self.writers:
             if hasattr( wr, 'info' ):
-                wr.info( atestlist )
+                wr.info()

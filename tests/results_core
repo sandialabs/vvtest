@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
-from os.path import abspath, join as pjoin, dirname
+from os.path import abspath, join as pjoin
 import time
 from os.path import getsize as getfsize
 import glob
@@ -98,48 +98,7 @@ class misc_tests( vtu.vvtestTestCase ):
                         'middle of this file has been removed', buf ) ) == 1
 
 
-class html_output_format_tests( vtu.vvtestTestCase ):
-
-    def test_producing_an_HTML_results_file(self):
-        ""
-        write_three_test_files()
-
-        vrun = vtu.runvvtest()
-        vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
-
-        vrun = vtu.runvvtest( '-i --html=../tr.htm', chdir=vrun.resultsDir() )
-
-        doc = util.read_xml_file( 'tr.htm' )
-        lines = get_status_lines_from_html( doc )
-        self.assert_tests_in_html( lines )
-
-    def assert_tests_in_html(self, lines):
-        ""
-        assert len( lines ) == 5
-        linestr = '\n'.join(lines)
-        assert len( util.greplines( 'FailTest', linestr ) ) == 1
-        assert len( util.greplines( 'DiffTest.np=1', linestr ) ) == 1
-        assert len( util.greplines( 'DiffTest.np=2', linestr ) ) == 1
-        assert len( util.greplines( 'subdir/param.hello=mars', linestr ) ) == 1
-        assert len( util.greplines( 'subdir/param.hello=world', linestr ) ) == 1
-
-    def test_producing_an_HTML_results_file_as_part_of_execution(self):
-        ""
-        write_three_test_files()
-
-        for batch in [False,True]:
-
-            vtu.remove_results()
-
-            vrun = vtu.runvvtest( '--html tr.html' )
-            vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
-
-            doc = util.read_xml_file( 'tr.html' )
-            lines = get_status_lines_from_html( doc )
-            self.assert_tests_in_html( lines )
-
-
-class save_results_output( vtu.vvtestTestCase ):
+class pathid_tests( vtu.vvtestTestCase ):
 
     def test_path_identification_by_repo(self):
         ""
@@ -255,6 +214,9 @@ class save_results_output( vtu.vvtestTestCase ):
         self.assertEqual( idr.get_path_id( 'top/sub/two/bar.vvt' ), np('sub/two/bar.vvt') )
         self.assertEqual( idr.get_path_id( 'top/sub/two/baz.vvt' ), np('sub/two/baz.vvt') )
 
+
+class save_results_output( vtu.vvtestTestCase ):
+
     def test_methods_for_specifying_the_save_results_directory(self):
         ""
         os.mkdir( 'plugout' )
@@ -292,97 +254,6 @@ class save_results_output( vtu.vvtestTestCase ):
             vrun = vtu.runvvtest( '-i --save-results='+abspath('cmdout'),
                                   '--config '+abspath('adir') )
             assert len( glob.glob( 'cmdout/vvtresults.*' ) ) == 1
-
-    def prep_testlist(self, subdir):
-        ""
-        tcase = make_fake_test_in_subdir( 'adir' )
-        add_runtimes_marker_file( 'adir' )
-
-        tlist = TestList( 'testlist' )
-        tlist.addTest( tcase )
-
-        return tcase, tlist
-
-    def test_writing_testlist_results_file(self):
-        ""
-        tcase,tlist = self.prep_testlist( 'adir' )
-
-        perm = MockPermissionSetter()
-        rtinfo = { 'rundir':abspath('tdir'),
-                   'platform':'Xbox',
-                   'compiler':'gcc',
-                   'onopts':[] }
-
-        lwr = ListWriter( tlist, Locator(os.getcwd()), perm )
-        lwr.initialize( rtinfo, 'odir' )
-
-        lwr.writeList( tlist )
-        fL = util.grepfiles( 'adir/sdir/atest.vvt', 'odir/vvtresults.*' )
-        assert len(fL) == 1
-
-
-def make_fake_test_in_subdir( subdir ):
-    ""
-    os.makedirs( subdir+'/sdir' )
-
-    with util.change_directory( subdir ):
-        tcase = vtu.make_fake_TestCase()
-
-    return tcase
-
-
-def add_runtimes_marker_file( rootdir ):
-    ""
-    fn = pjoin(rootdir,vvtroot)
-    with open( fn, 'wt' ) as fp:
-        fp.write( 'ROOTPATH=adir\n' )
-
-
-class MockPermissionSetter:
-    def __init__(self): pass
-    def apply(self, path): pass
-    def recurse(self, path): pass
-
-
-def write_three_test_files():
-    ""
-    util.writefile( "subdir/param.vvt", """
-        #VVT: parameterize : hello = world mars
-        import time
-        time.sleep(1)
-        """ )
-    util.writefile( "FailTest.vvt", """
-        import os, sys, time
-        import vvtest_util as vvt
-        time.sleep(2)
-        raise Exception( 'pitch a fake exception' )
-        """)
-    util.writefile( "DiffTest.vvt", """
-        #VVT: parameterize : np = 1 2
-        import sys, time
-        import vvtest_util as vvt
-        time.sleep(3)
-        print ( "fake difference of 29" )
-        sys.exit( vvt.diff_exit_status )
-        """ )
-
-
-def get_status_lines_from_html( htmldoc ):
-    ""
-    lines = []
-
-    for nd in recurse_status_list_items( htmldoc ):
-        txt = util.get_sub_text_from_xml_node( nd )
-        lines.append( txt )
-
-    return lines
-
-
-def recurse_status_list_items( xmlnode ):
-    ""
-    for nd in util.recursive_find_xml_element( xmlnode, 'li' ):
-        if nd.text and nd.text.strip().startswith( 'Status:' ):
-            yield nd
 
 
 ############################################################################

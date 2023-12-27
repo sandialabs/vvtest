@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
-from os.path import basename
+from os.path import basename, join as pjoin, abspath
 import re
 import time
 import glob
@@ -22,13 +22,39 @@ import vvtestutils as vtu
 import testutils as util
 
 import libvvtest.testcase as testcase
+import libvvtest.pathid as pathid
+import libvvtest.listwriter as listwriter
+from libvvtest.location import Locator
+
+vvtroot = pathid.VVTEST_ROOT_FILENAME
+
+
+class unit_tests( vtu.vvtestTestCase ):
+
+    def test_writing_testlist_results_file(self):
+        ""
+        util.writefile( 'adir/sdir/atest.vvt', 'pass\n' )
+        util.writefile( pjoin('adir',vvtroot), 'ROOTPATH=adir\n' )
+
+        tlist = vtu.scan_to_make_TestList( 'adir' )
+
+        perm = vtu.make_fake_PermissionSetter()
+        lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+        rtinfo = { 'rundir':abspath('tdir'), 'platform':'Xbox' }
+        lw.initialize( rtinfo, 'odir' )
+
+        lw.writeList( tlist )
+        fL = util.grepfiles( 'adir/sdir/atest.vvt', 'odir/vvtresults.*' )
+        assert len(fL) == 1
+
+        # magic: add rundir to listwriter file header
 
 
 class integration_tests( vtu.vvtestTestCase ):
 
     def test_saving_results_when_the_root_cannot_be_determined(self):
         ""
-        # use /tmp dir to avoid accidental .git repository being in path
+        # use /tmp dir to avoid accidental .git repository being in dir tree
         tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
         try:
             write_tests_cat_dog_circle( tmpd )
@@ -61,13 +87,11 @@ class integration_tests( vtu.vvtestTestCase ):
             #VVT: parameterize : side = left right
             """ )
 
-        vrun = vtu.runvvtest()
+        vrun = vtu.runvvtest( '--save-results' )
         vrun.assertCounts( total=4, npass=4 )
 
-        resultsfname = create_runtimes_and_results_file( vrun.resultsDir() )
-
         assert_results_file_has_tests(
-                resultsfname,
+                util.globfile('vvtresults.*'),
                 ('cat.vvt','direction=front','side=left'),
                 ('cat.vvt','direction=front','side=right'),
                 ('cat.vvt','direction=rear','side=left'),
@@ -82,13 +106,11 @@ class integration_tests( vtu.vvtestTestCase ):
             pass
             """ )
 
-        vrun = vtu.runvvtest()
+        vrun = vtu.runvvtest( '--save-results' )
         vrun.assertCounts( total=5, npass=5 )
 
-        resultsfname = create_runtimes_and_results_file( vrun.resultsDir() )
-
         assert_results_file_has_tests(
-                resultsfname,
+                util.globfile('vvtresults.*'),
                 ('cat.vvt',),
                 ('cat.vvt','direction=front','side=left'),
                 ('cat.vvt','direction=front','side=right'),
@@ -103,13 +125,11 @@ class integration_tests( vtu.vvtestTestCase ):
             pass
             """ )
 
-        vrun = vtu.runvvtest()
+        vrun = vtu.runvvtest( '--save-results' )
         vrun.assertCounts( total=3, npass=3 )
 
-        resultsfname = create_runtimes_and_results_file( vrun.resultsDir() )
-
         assert_results_file_has_tests(
-                resultsfname,
+                util.globfile('vvtresults.*'),
                 ('cat.vvt',),
                 ('cat.vvt', 'direction=front','side=left'),
                 ('cat.vvt', 'direction=rear', 'side=right') )
@@ -207,16 +227,6 @@ def assert_cat_dog_circle_testresults_contents( resultsfname ):
     assert testinfo[2]['runtime'] >= 3
 
 
-def create_runtimes_and_results_file( testresults_dir, testsrcdir=None ):
-    """
-    Save test results from the 'testresults_dir' to the TESTING_DIRECTORY
-    and return the results filename.
-    """
-    vtu.runvvtest( '-i --save-results', chdir=testresults_dir )
-    resultsfname = get_latest_results_filename()
-    return resultsfname
-
-
 def assert_results_file_has_tests( filename, *tests, **kwargs ):
     ""
     fileinfo,testinfo = vtu.read_results_file( filename )
@@ -227,23 +237,6 @@ def assert_results_file_has_tests( filename, *tests, **kwargs ):
         tstL = list( tst )
         assert tid[0] == tstL[0]
         assert tid[2:] == tstL[1:], 'test params not equal: '+str(tid[2:])+' != '+str(tstL[1:])
-
-
-def get_latest_results_filename():
-    ""
-    testingdir = os.environ['TESTING_DIRECTORY']
-    if os.path.samefile( os.getcwd(), testingdir ):
-        testingdir = ''
-    else:
-        testingdir += '/'
-
-    fnL = []
-    for fn in glob.glob( testingdir+'vvtresults.*' ):
-        fnL.append( ( os.path.getmtime(fn), fn ) )
-
-    fnL.sort()
-
-    return fnL[-1][1]
 
 
 ############################################################################

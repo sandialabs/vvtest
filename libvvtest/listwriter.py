@@ -98,7 +98,6 @@ class ListWriter:
                 tests = list( self.tlist.getTestMap().items() )
                 tests.sort()
                 for tid,tcase in tests:
-                    # magic: need to move pathid object into this function
                     testdict = get_test_info( tcase )
                     fp.write( json.dumps(testdict)+'\n' )
 
@@ -183,11 +182,9 @@ def get_test_info( tcase ):
 
     res = stat.getResultStatus()
 
-    D = {
-        'testid':spec.getID(),
-        'pathid': pidr.get_path_id( spec.getFilename() ),
-        'result': res,
-    }
+    D = { 'testid':spec.getID(),
+          'pathid': pidr.get_path_id( spec.getFilename() ),
+          'result': res, }
 
     if 'TDD' in spec.getKeywords():
         D['TDD'] = True

@@ -23,13 +23,172 @@ import testutils as util
 
 import libvvtest.testcase as testcase
 import libvvtest.pathid as pathid
+from libvvtest.testlist import TestList
 import libvvtest.listwriter as listwriter
 from libvvtest.location import Locator
+import libvvtest.teststatus as teststatus
+
+from libvvtest.listwriter import (
+    make_filename,
+    make_filename_glob_pattern,
+    make_header_info,
+    get_test_info,
+)
 
 vvtroot = pathid.VVTEST_ROOT_FILENAME
 
 
 class unit_tests( vtu.vvtestTestCase ):
+
+    def test_making_the_filename(self):
+        ""
+        # the 'platform' attribute is required
+        self.assertRaises( Exception, make_filename, {}, 'date', None )
+
+        rti = {'platform':'XBox'}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox' )
+
+        rti = {'platform':'XBox', 'compiler':'gcc'}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.gcc' )
+        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.gcc*' )
+
+        rti = {'platform':'XBox', 'onopts':['dbg']}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.dbg' )
+        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.dbg*' )
+
+        rti = {'platform':'XBox', 'onopts':['intel','dbg']}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.dbg.intel' )
+        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.dbg.intel*' )
+
+        rti = {'platform':'XBox', 'onopts':['dbg'], 'compiler':'gcc'}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.gcc.dbg' )
+        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.gcc.dbg*' )
+
+        rti = {'platform':'XBox', 'onopts':['dbg']}
+        self.assertEqual( make_filename( rti, 'date', 'atag' ), 'vvtresults.date.XBox.dbg.atag' )
+        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.dbg*' )
+
+    def make_test_list(self, start_time, end_time, returncode):
+        ""
+        tl = TestList()
+        tl.setFilename( 'foo' )
+        tl.setResultsDate( start_time )
+        if end_time is not None:
+            tl.initializeResultsFile()
+            # have to write the file in order to get the end time & code set
+            tl.writeFinished( end_time, returncode )
+        return tl
+
+    def test_file_header_creation(self):
+        ""
+        # the start and finish times are obtained from a TestList instance
+
+        tm0 = int( time.time() + 0.5 )
+        tl1 = self.make_test_list( tm0, tm0+10, 0 )
+        tl2 = self.make_test_list( tm0, None, None )
+
+        rti = { 'rundir':'/a/path' }
+        D = make_header_info( rti, tl1, False )
+        assert D['platform'] is None
+        assert D['rundir'] == '/a/path'
+        assert D['starttime'] == tm0 and D['endtime'] == tm0+10 and D['returncode'] == 0
+        assert abs(D['duration']-10) < 1
+
+        rti = {'platform':'XBox', 'onopts':['gcc','dbg'],'rundir':'foobar'}
+        D = make_header_info( rti, tl1, False )
+        assert D['platform'] == 'XBox' and D['onopts'] == 'dbg,gcc'
+        assert D['rundir'] == 'foobar'
+
+        # the finish time can be forced
+        D = make_header_info( {'rundir':'foo'}, tl2, False )
+        assert D['endtime'] is None and D['returncode'] is None
+        D = make_header_info( {'rundir':'foo'}, tl2, True )
+        assert abs(D['endtime']-time.time()) < 1 and D['returncode'] == 0
+
+    def mark_testcase_with_result(self, tcase, res, start_time=None, end_time=None):
+        ""
+        if res == 'skip':
+            tcase.getStat().markSkipByPlatform()
+        elif res == 'notrun':
+            tcase.getStat().resetResults()
+        elif res == 'running':
+            tcase.getStat().resetResults()
+            tcase.getStat().markStarted( start_time )
+        elif res == 'runskip':
+            tcase.getStat().resetResults()
+            tcase.getStat().markStarted( start_time )
+            tcase.getStat().markDone( teststatus.SKIP_EXIT_STATUS, end_time )
+        elif res == 'pass':
+            tcase.getStat().resetResults()
+            tcase.getStat().markStarted( start_time )
+            tcase.getStat().markDone( 0, end_time )
+        elif res == 'fail':
+            tcase.getStat().resetResults()
+            tcase.getStat().markStarted( start_time )
+            tcase.getStat().markDone( 5, end_time )
+        elif res == 'diff':
+            tcase.getStat().resetResults()
+            tcase.getStat().markStarted( start_time )
+            tcase.getStat().markDone( teststatus.DIFF_EXIT_STATUS, end_time )
+        elif res == 'timeout':
+            tcase.getStat().resetResults()
+            tcase.getStat().markStarted( start_time )
+            tcase.getStat().markTimedOut( end_time )
+
+    def test_result_counts(self):
+        ""
+        for res in [ 'skip', 'notrun', 'running', 'runskip',
+                     'pass', 'fail', 'diff', 'timeout' ]:
+
+            tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+            tl = TestList()
+            tl.addTest( tcase )
+
+            self.mark_testcase_with_result( tcase, res, time.time() )
+
+            D = make_header_info( {'rundir':'foo'}, tl, False )
+
+            assert D['num_'+res] == 1, 'num_'+res+' is != 1'
+            total_num = 0
+            for k,v in D.items():
+                if k.startswith('num_'):
+                    total_num += v
+            self.assertEqual( total_num, 1 )
+
+            tD = get_test_info( tcase )
+            self.assertEqual( tD['result'], res )
+
+    def test_result_attributes(self):
+        ""
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        self.mark_testcase_with_result( tcase, 'skip' )
+        D = get_test_info( tcase )
+        assert D['skip'] == 'excluded by platform expression'
+        assert 'runtime' not in D and 'startdate' not in D
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        self.mark_testcase_with_result( tcase, 'notrun' )
+        D = get_test_info( tcase )
+        assert 'runtime' not in D and 'startdate' not in D
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        self.mark_testcase_with_result( tcase, 'running', t0 )
+        D = get_test_info( tcase )
+        assert abs(D['startdate']-t0) < 1 and 'runtime' not in D
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        self.mark_testcase_with_result( tcase, 'pass', t0, t0+10 )
+        D = get_test_info( tcase )
+        assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-10) < 1
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        self.mark_testcase_with_result( tcase, 'runskip', t0, t0+5 )
+        D = get_test_info( tcase )
+        assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-5) < 1
 
     def test_writing_testlist_results_file(self):
         ""
@@ -37,17 +196,11 @@ class unit_tests( vtu.vvtestTestCase ):
         util.writefile( pjoin('adir',vvtroot), 'ROOTPATH=adir\n' )
 
         tlist = vtu.scan_to_make_TestList( 'adir' )
-
-        perm = vtu.make_fake_PermissionSetter()
-        lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
-        rtinfo = { 'rundir':abspath('tdir'), 'platform':'Xbox' }
-        lw.initialize( rtinfo, 'odir' )
+        lw = make_list_writer( tlist, 'odir' )
 
         lw.writeList( tlist )
         fL = util.grepfiles( 'adir/sdir/atest.vvt', 'odir/vvtresults.*' )
         assert len(fL) == 1
-
-        # magic: add rundir to listwriter file header
 
 
 class integration_tests( vtu.vvtestTestCase ):
@@ -166,6 +319,16 @@ class integration_tests( vtu.vvtestTestCase ):
         # running this currently does not replicate the start & finish dates
         # because a testlist results file is never written to contain them
         vrun = vtu.runvvtest( '-i --save-results=sub' )
+
+
+def make_list_writer( tlist, destdir ):
+    ""
+    perm = vtu.make_fake_PermissionSetter()
+    lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+    rtinfo = { 'rundir':abspath('tdir'), 'platform':'Xbox' }
+    lw.initialize( rtinfo, destdir )
+
+    return lw
 
 
 ############################################################################

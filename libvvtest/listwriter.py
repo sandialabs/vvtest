@@ -105,10 +105,18 @@ class ListWriter:
             self.permsetter.apply( tofile )
 
 
-def make_filename( rti, datestr, ftag ):
-    ""
-    L = [ 'vvtresults', datestr, rti['platform'] ]
-    L.extend( make_option_list(rti) )
+def make_filename( rtinfo, datestr, ftag ):
+    """
+    Requires 'platform' to be defined in the rtinfo dict and optionally
+    'compiler' (a string) and 'onopts' (a list of strings).  The format is
+
+        vvtestresults.<datestr>.<platform>.<compiler>.<options>.<ftag>
+
+    but compiler, options, and ftag may not be included.  If given, the
+    onopts are alphabetically ordered.
+    """
+    L = [ 'vvtresults', datestr, rtinfo['platform'] ]
+    L.extend( make_option_list(rtinfo) )
 
     if ftag:
         L.append( ftag )
@@ -116,10 +124,13 @@ def make_filename( rti, datestr, ftag ):
     return '.'.join( L )
 
 
-def make_filename_glob_pattern( rti ):
-    ""
-    L = [ 'vvtresults', '*', rti['platform'] ]
-    L.extend( make_option_list(rti) )
+def make_filename_glob_pattern( rtinfo ):
+    """
+    Returns a shell-style glob pattern matching vvtresults filenames with
+    any date and ftag.
+    """
+    L = [ 'vvtresults', '*', rtinfo['platform'] ]
+    L.extend( make_option_list(rtinfo) )
     return '.'.join(L)+'*'
 
 
@@ -148,8 +159,9 @@ def make_header_info( rti, tlist, finished ):
     hdr = {
         "command"      : ' '.join(quote(s) for s in rti.get("cmdline", [])),
         'platform'     : rti.get('platform',None),
-        "onopts"       : ','.join( rti.get("onopts",[]) ),
-        "offopts"      : ','.join( rti.get("offopts",[]) ),
+        "onopts"       : ','.join( sorted(rti.get("onopts",[])) ),
+        "offopts"      : ','.join( sorted(rti.get("offopts",[])) ),
+        'rundir'       : rti['rundir'],
         'python'       : sys.executable,
         'sys.platform' : sys.platform,
         'hostname'     : platform.uname()[1],
@@ -168,7 +180,17 @@ def make_header_info( rti, tlist, finished ):
     if t0 and t1:
         hdr['duration'] = t1-t0
 
-    # magic: include num tests pass, fail, skip, etc
+    hdr['num_skip'] = 0
+    hdr['num_notrun'] = 0
+    hdr['num_running'] = 0
+    hdr['num_runskip'] = 0
+    hdr['num_pass'] = 0
+    hdr['num_fail'] = 0
+    hdr['num_diff'] = 0
+    hdr['num_timeout'] = 0
+    for tcase in tlist.getTests():
+        res = outpututils.get_test_result_string( tcase.getStat() )
+        hdr['num_'+res] += 1
 
     return hdr
 
@@ -180,7 +202,7 @@ def get_test_info( tcase ):
     spec = tcase.getSpec()
     stat = tcase.getStat()
 
-    res = stat.getResultStatus()
+    res = outpututils.get_test_result_string( stat )
 
     D = { 'testid':spec.getID(),
           'pathid': pidr.get_path_id( spec.getFilename() ),
@@ -215,7 +237,7 @@ def read_results_file( fname ):
     i = 0
     with open( fname, 'rt' ) as fp:
         for line in fp:
-            if not line.strip().startswith('#'):
+            if line.strip() and not line.strip().startswith('#'):
                 i += 1
                 if i == 1:
                     fileinfo = json.loads( line.strip() )

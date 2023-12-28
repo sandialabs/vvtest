@@ -5,6 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
+import time
 import shutil
 import glob
 import fnmatch
@@ -171,9 +172,9 @@ class ExecutionHandler:
         exit_status, timedout = texec.getExitInfo()
 
         if timedout is None:
-            tstat.markDone( exit_status )
+            tstat.markDone( exit_status, time.time() )
         else:
-            tstat.markTimedOut()
+            tstat.markTimedOut( time.time() )
 
         rundir = texec.getRunDirectory()
         self.perms.recurse( rundir )

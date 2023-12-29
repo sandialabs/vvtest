@@ -26,22 +26,20 @@ VVTEST_ROOT_FILENAME = '.vvtest.root'
 
 class ListWriter:
     """
-    Option is
+    Writes test results to a file format consisting of a file header followed
+    by a list of tests.  To support multiple test tree roots, a pathid is
+    computed and stored with each test.
 
-      --save-results
+    The writer is engaged with command line option --save-results and the
+    directory to save results is determined by
 
-    which writes to the platform config testing directory (which looks first at
-    the TESTING_DIRECTORY env var).  Can add
+        1) --save-results=<path>       : 
+        2) vvtest_plugin.py
+               def results_directory() : 
+        3) TESTING_DIRECTORY           : 
 
-      --results-tag <string>
-
-    which is appended to the results file name.  A date string is embedded in
-    the file name, which is obtained from the date of the first test that
-    ran.  But if the option
-
-      --results-date <number or string>
-
-    is given on the vvtest command line, then that date is used instead.
+    The filename contains the vvtest run start date (or --results-date value)
+    and may be appended with optional tag given with --results-tag <string>.
     """
 
     def __init__(self, testlist, loc, permsetter):

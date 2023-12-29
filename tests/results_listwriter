@@ -105,36 +105,6 @@ class unit_tests( vtu.vvtestTestCase ):
         D = make_header_info( {'rundir':'foo'}, tl2, True )
         assert abs(D['endtime']-time.time()) < 1 and D['returncode'] == 0
 
-    def mark_testcase_with_result(self, tcase, res, start_time=None, end_time=None):
-        ""
-        if res == 'skip':
-            tcase.getStat().markSkipByPlatform()
-        elif res == 'notrun':
-            tcase.getStat().resetResults()
-        elif res == 'running':
-            tcase.getStat().resetResults()
-            tcase.getStat().markStarted( start_time )
-        elif res == 'runskip':
-            tcase.getStat().resetResults()
-            tcase.getStat().markStarted( start_time )
-            tcase.getStat().markDone( teststatus.SKIP_EXIT_STATUS, end_time )
-        elif res == 'pass':
-            tcase.getStat().resetResults()
-            tcase.getStat().markStarted( start_time )
-            tcase.getStat().markDone( 0, end_time )
-        elif res == 'fail':
-            tcase.getStat().resetResults()
-            tcase.getStat().markStarted( start_time )
-            tcase.getStat().markDone( 5, end_time )
-        elif res == 'diff':
-            tcase.getStat().resetResults()
-            tcase.getStat().markStarted( start_time )
-            tcase.getStat().markDone( teststatus.DIFF_EXIT_STATUS, end_time )
-        elif res == 'timeout':
-            tcase.getStat().resetResults()
-            tcase.getStat().markStarted( start_time )
-            tcase.getStat().markTimedOut( end_time )
-
     def test_result_counts(self):
         ""
         for res in [ 'skip', 'notrun', 'running', 'runskip',
@@ -144,7 +114,7 @@ class unit_tests( vtu.vvtestTestCase ):
             tl = TestList()
             tl.addTest( tcase )
 
-            self.mark_testcase_with_result( tcase, res, time.time() )
+            vtu.mark_testcase_with_result( tcase, res, time.time() )
 
             D = make_header_info( {'rundir':'foo'}, tl, False )
 
@@ -161,32 +131,32 @@ class unit_tests( vtu.vvtestTestCase ):
     def test_result_attributes(self):
         ""
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
-        self.mark_testcase_with_result( tcase, 'skip' )
+        vtu.mark_testcase_with_result( tcase, 'skip' )
         D = get_test_info( tcase )
         assert D['skip'] == 'excluded by platform expression'
         assert 'runtime' not in D and 'startdate' not in D
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
-        self.mark_testcase_with_result( tcase, 'notrun' )
+        vtu.mark_testcase_with_result( tcase, 'notrun' )
         D = get_test_info( tcase )
         assert 'runtime' not in D and 'startdate' not in D
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
-        self.mark_testcase_with_result( tcase, 'running', t0 )
+        vtu.mark_testcase_with_result( tcase, 'running', t0 )
         D = get_test_info( tcase )
         assert abs(D['startdate']-t0) < 1 and 'runtime' not in D
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
-        self.mark_testcase_with_result( tcase, 'pass', t0, t0+10 )
+        vtu.mark_testcase_with_result( tcase, 'pass', t0, t0+10 )
         D = get_test_info( tcase )
         assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-10) < 1
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
-        self.mark_testcase_with_result( tcase, 'runskip', t0, t0+5 )
+        vtu.mark_testcase_with_result( tcase, 'runskip', t0, t0+5 )
         D = get_test_info( tcase )
         assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-5) < 1
 

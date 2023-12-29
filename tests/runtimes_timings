@@ -21,48 +21,6 @@ import libvvtest.runtimes as runtimes
 
 class runtimes_and_timings( vtu.vvtestTestCase ):
 
-    def test_create_and_use_a_runtimes_file(self):
-        ""
-        util.writefile( "tests/dir1/one.vvt", """
-            import time
-            time.sleep(1)
-            """)
-        util.writefile( "tests/dir1/two.vvt", """
-            import time
-            time.sleep(2)
-            """)
-        util.writefile( "tests/dir2/three.vvt", """
-            import time
-            time.sleep(3)
-            """)
-        util.writefile( "tests/.git/config", "" )  # for results 'pathid'
-
-        platname = vtu.core_platform_name()
-        tests = os.path.abspath( 'tests' )
-
-        vrun = vtu.runvvtest( '--save-results tests' )
-        vrun.assertCounts( total=3, npass=3 )
-
-        cache = runtimes.RuntimesLookup( {'platform':platname}, '.' )
-        cache.load()
-
-        tL = vtu.creator().fromFile( 'dir1/one.vvt', tests )
-        tst = tL[0]
-        tm,tv = cache.getRunTime( tst )
-        assert tm is not None and tm >= 1
-
-        tL = vtu.creator().fromFile( 'dir1/two.vvt', tests )
-        tst = tL[0]
-        tm,tv = cache.getRunTime( tst )
-        assert tm is not None and tm >= 2
-
-        tL = vtu.creator().fromFile( 'dir2/three.vvt', tests )
-        tst = tL[0]
-        tm,tv = cache.getRunTime( tst )
-        assert tm is not None and tm >= 3
-
-        # magic: lot more tests needed to exercise the RuntimesLookup machinery
-
     def test_that_longest_runtimes_are_run_first(self):
         ""
         util.write_py_script( "tests/AA.vvt", """

@@ -496,7 +496,6 @@ class construction( vtu.vvtestTestCase ):
                   'walltime':'2:34',           'maxprocs':'23',
                   'maxdevices':'33',           'maxqtime':'3600',
                   'maxsubs':'11',              'QoS':'long',
-                  'testingdir':'/path',        'extra_flags':'--foo=bar',
                 }
         popts = attrtab.normalize_group( popts )
         self.assertEqual( popts,
@@ -506,7 +505,6 @@ class construction( vtu.vvtestTestCase ):
                   'walltime':'2:34',           'maxprocs':23,
                   'maxdevices':33,             'maxqtime':3600,
                   'maxsubs':11,                'QoS':'long',
-                  'testingdir':'/path',        'submit_flags':'--foo=bar',
                 } )
 
         popts = { 'processors_per_node':'5',   'devices_per_node':'7',

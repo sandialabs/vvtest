@@ -33,10 +33,10 @@ class ListWriter:
     The writer is engaged with command line option --save-results and the
     directory to save results is determined by
 
-        1) --save-results=<path>       : 
-        2) vvtest_plugin.py
-               def results_directory() : 
-        3) TESTING_DIRECTORY           : 
+        1) --save-results=<path>       : a command line path takes precedence
+        2) VVTEST_RESULTS_DIR          : environment variable
+        3) vvtest_plugin.py
+               def results_directory() : a project plugin function
 
     The filename contains the vvtest run start date (or --results-date value)
     and may be appended with optional tag given with --results-tag <string>.

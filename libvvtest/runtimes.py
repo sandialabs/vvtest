@@ -62,8 +62,10 @@ class RuntimesLookup:
 def find_runtime_for_test( testkey, fcache ):
     """
     Find the most recent test with a valid runtime.  A more sophisticated
-    algorithm could be performed, if needed, such as accepting a timeout
-    runtime only if a timeout occurs two times in a row.
+    algorithm could be performed, such as
+
+        - accept a timeout runtime only if a timeout occurs two times in a row
+        - take the max runtime over some period of time (7 days?)
     """
     for i in range(len(fcache)):
         tmap = get_results_file_map( fcache, i )

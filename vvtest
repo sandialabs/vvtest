@@ -92,12 +92,12 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     construct_platform( rtdata, opts, optD )
     compute_testing_directory( rtdata, opts, optD )
     construct_permission_setter( rtdata, opts )
+    import_plugin_module( rtdata )
     rtdata.tlist = testlist.TestList()
     construct_results_writers( rtdata, opts, optD )
     construct_testcase_factory( rtdata )
     construct_testcase_creator( rtdata, opts, optD )
     construct_test_scanner( rtdata, scandirs, opts )
-    import_plugin_module( rtdata )
     construct_test_selector( rtdata )
     construct_test_time_handler( rtdata, opts )
     construct_test_list_manager( rtdata )
@@ -412,13 +412,7 @@ def construct_test_time_handler( rtdata, opts ):
 
     maxtmo = get_max_timeout( opts.max_timeout )
 
-    # magic:
-    #   - construct lookup cache with rdtata.rtinfo
-    #   - lookup cache scans for files in testing directory
-    #   - write function in listwriter.py to down select results files
-    #   - lookup cache holds possibly multiple results files
-    #   - maybe the function methods of RuntimesLookup do not have to change (?)
-    tcache = construct_runtime_lookup_cache( rtdata.rtinfo, opts, rtdata.plat )
+    tcache = construct_runtime_lookup_cache( rtdata.rtinfo, opts, rtdata.plugin )
 
     hnd = timehandler.TimeHandler( rtdata.plugin, tmo, mult, maxtmo, tcache )
 
@@ -447,13 +441,11 @@ def get_total_timeout( value ):
     return totaltime
 
 
-def construct_runtime_lookup_cache( rtinfo, opts, platobj ):
+def construct_runtime_lookup_cache( rtinfo, opts, plugin ):
     ""
     from libvvtest.runtimes import RuntimesLookup
 
-    # tdir = plat.testingDirectory()  # magic: need this still ??
-
-    resultsdir = get_testing_directory( opts, platobj )
+    resultsdir = get_test_results_directory( opts, plugin )
 
     cache = RuntimesLookup( rtinfo, resultsdir )
 
@@ -611,12 +603,14 @@ def construct_testlist_writer( rtdata, opts, optD ):
     ""
     import libvvtest.listwriter as listwriter
 
-    platobj = rtdata.plat
     test_dir = rtdata.testdir
     perms = rtdata.perms
     rtinfo = rtdata.rtinfo
 
-    todir = get_testing_directory( opts, platobj )
+    todir = get_test_results_directory( opts, rtdata.plugin )
+
+    if not todir:
+        raise FatalError( 'failed to determine --save-results directory' )
 
     wlistobj = listwriter.ListWriter( rtdata.tlist, rtdata.loc, rtdata.perms )
 
@@ -627,17 +621,28 @@ def construct_testlist_writer( rtdata, opts, optD ):
     return wlistobj
 
 
-def get_testing_directory( opts, platobj ):
+def get_test_results_directory( opts, plugin ):
     ""
-    if type( opts.save_results ) == type(''):
-        tdir = opts.save_results
-    else:
-        tdir = platobj.testingDirectory()
+    tdir = None
+
+    if opts.save_results:
+        if type( opts.save_results ) == str:
+            tdir = opts.save_results
 
     if not tdir:
-        raise FatalError( 'failed to determine --save-results directory' )
+        if 'VVTEST_RESULTS_DIR' in os.environ:
+            tdir = os.environ['VVTEST_RESULTS_DIR']
+        elif 'TESTING_DIRECTORY' in os.environ:
+            # this environ variable is deprecated; remove in Oct 2024
+            tdir = os.environ['TESTING_DIRECTORY']
 
-    return normpath( abspath( tdir ) )
+    if not tdir:
+        tdir = plugin.callResultsDir()
+
+    if tdir:
+        tdir = normpath( abspath( tdir ) )
+
+    return tdir
 
 
 #############################################################################

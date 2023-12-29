@@ -81,7 +81,8 @@ class vvtestTestCase( unittest.TestCase ):
 
         # force the results files to be written locally for testing;
         # it is used in vvtest when handling the --save-results option
-        os.environ['TESTING_DIRECTORY'] = os.getcwd()
+        os.environ['VVTEST_RESULTS_DIR'] = os.getcwd()
+        os.environ['TESTING_DIRECTORY'] = os.getcwd()  # deprecated; remove Oct 2024
 
         self.savePATH = os.environ.get( 'PATH', None )
 

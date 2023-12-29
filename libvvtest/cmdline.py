@@ -243,15 +243,16 @@ def create_parser( argvlist, vvtest_version ):
         help='Sort test listings.  Letters include n=name, '
              'x=execution name, t=runtime, d=execution date, '
              's=status, r=reverse the order.' )
-    helpstr = ( 'Optionally --save-results=<directory>.  Save test results '
-                'to the TESTING_DIRECTORY or the given directory.' )
     if an_argument_startswith( '--save-results=', argvlist ):
-        grp.add_argument( '--save-results', action='store',
-                          metavar='DIRECTORY', help=helpstr )
+        grp.add_argument( '--save-results', action='store', metavar='DIRECTORY',
+            help='Optionally just --save-results.  Save test results '
+                 'to the given directory when vvtest completes.' )
     else:
-        grp.add_argument( '--save-results', action='store_true', help=helpstr )
-    grp.add_argument( '--results-tag',
-        help='Add an arbitrary tag to the --save-results output file.' )
+        grp.add_argument( '--save-results', action='store_true',
+            help='Optionally --save-results=<directory>.  Save test results '
+                 'to the VVTEST_RESULTS_DIR or a given directory.' )
+    grp.add_argument( '--results-tag', metavar='TAG',
+        help='Add an arbitrary string to the --save-results output filename.' )
     grp.add_argument( '--results-date', metavar='DATE',
         help='Specify the testing date, used as a marker or file name in some '
              'output formats. Can be seconds since epoch or a date string.' )

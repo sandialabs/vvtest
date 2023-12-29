@@ -264,7 +264,13 @@ class pathid_tests( vtu.vvtestTestCase ):
 class save_results_output( vtu.vvtestTestCase ):
 
     def test_methods_for_specifying_the_save_results_directory(self):
-        ""
+        """
+        precedence order:
+
+            1) command line --save-results option
+            2) environment variable VVTEST_RESULTS_DIR
+            3) user plugin file using function results_directory(platname,options)
+        """
         os.mkdir( 'plugout' )
         os.mkdir( 'envout' )
         os.mkdir( 'cmdout' )
@@ -274,15 +280,17 @@ class save_results_output( vtu.vvtestTestCase ):
             pass
             """ )
 
-        util.writefile( "adir/idplatform.py", """
-            def load_specifications( specs, platname, cplrname, options ):
-                specs['testingdir'] = '"""+abspath('plugout')+"""'
+        util.writefile( "adir/vvtest_user_plugin.py", """
+            def results_directory( platname, options ):
+                return '"""+abspath('plugout')+"""'
             """ )
 
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=2, npass=2 )
 
-        with util.set_environ( TESTING_DIRECTORY=None ):
+        with util.set_environ( VVTEST_RESULTS_DIR=None,
+                               TESTING_DIRECTORY=None,  # deprecated; remove Oct 2024
+                             ):
 
             vrun = vtu.runvvtest( '-i --save-results', raise_on_error=False )
             assert vrun.x != 0
@@ -292,7 +300,7 @@ class save_results_output( vtu.vvtestTestCase ):
             assert len( glob.glob( 'plugout/vvtresults.*' ) ) == 1
 
             assert len( glob.glob( 'envout/*' ) ) == 0
-            os.environ['TESTING_DIRECTORY'] = abspath('envout')
+            os.environ['VVTEST_RESULTS_DIR'] = abspath('envout')
             vrun = vtu.runvvtest( '-i --save-results --config '+abspath('adir') )
             assert len( glob.glob( 'envout/vvtresults.*' ) ) == 1
 

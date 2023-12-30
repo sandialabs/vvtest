@@ -13,8 +13,7 @@ from . import testspec
 from .paramset import ParameterSet
 from .testspec import TestSpec
 
-version = 35
-
+version = 36
 
 class TestListWriter:
 
@@ -22,15 +21,16 @@ class TestListWriter:
         ""
         self.filename = filename
 
-    def start(self, **file_attrs):
+    def start(self, starttime=None, **file_attrs):
         ""
-        datestamp = repr( [ time.ctime(), time.time() ] )
+        if starttime is None:
+            starttime = time.time()
 
-        remove_attrs_with_None_for_a_value( file_attrs )
+        mark = repr( [ time.ctime(starttime), starttime] )
 
         with open( self.filename, 'w' ) as fp:
             fp.write( '#VVT: Version = '+str(version)+'\n' )
-            fp.write( '#VVT: Start = '+datestamp+'\n' )
+            fp.write( '#VVT: Start = '+mark+'\n' )
             fp.write( '#VVT: Attrs = '+repr( file_attrs )+'\n\n' )
 
     def addIncludeFile(self, include_filename):
@@ -48,12 +48,15 @@ class TestListWriter:
         with open( self.filename, 'a' ) as fp:
             fp.write( test_to_string( tcase, extended ) + '\n' )
 
-    def finish(self):
+    def finish(self, finishepoch=None, finishcode=None):
         ""
-        datestamp = repr( [ time.ctime(), time.time() ] )
+        if finishepoch is None:
+            finishepoch = time.time()
+
+        mark = repr( [ time.ctime(finishepoch), finishepoch, finishcode ] )
 
         with open( self.filename, 'a' ) as fp:
-            fp.write( '\n#VVT: Finish = '+datestamp+'\n' )
+            fp.write( '\n#VVT: Finish = '+mark+'\n' )
 
 
 class TestListReader:
@@ -66,7 +69,7 @@ class TestListReader:
         self.vers = None
         self.start = None
         self.attrs = {}
-        self.finish = None
+        self.finish = [None,None]  # finish epoch time and int return code
 
         self.incl = set()
         self.tests = {}
@@ -87,7 +90,12 @@ class TestListReader:
                     if val in self.incl:
                         self.incl.remove( val )
                 elif key == 'Finish':
-                    self.finish = eval( val )[1]
+                    L = eval( val )
+                    if len(L) == 2:
+                        # for backward compatibility; remove after Oct 2024
+                        self.finish = [ L[1], None ]
+                    else:
+                        self.finish = [ L[1], L[2] ]
                 else:
                     tcase = string_to_test( val, self.fact )
                     self.tests[ tcase.getSpec().getID() ] = tcase
@@ -95,7 +103,7 @@ class TestListReader:
             except Exception:
                 pass
 
-        assert self.vers in [32, 33, 34, 35], \
+        assert self.vers in [32, 33, 34, 35, 36], \
             'corrupt test list file or older format: '+str(self.filename)
 
         for incl_file in self.incl:
@@ -111,7 +119,11 @@ class TestListReader:
 
     def getFinishDate(self):
         ""
-        return self.finish
+        return self.finish[0]
+
+    def getFinishCode(self):
+        ""
+        return self.finish[1]
 
     def getAttr(self, name, *default):
         ""
@@ -182,19 +194,12 @@ def file_is_marked_finished( filename ):
 
     try:
         tlr = TestListReader( None, filename )
-        if tlr.scanForFinishDate() != None:
+        if tlr.scanForFinishDate() is not None:
             finished = True
     except Exception:
         pass
 
     return finished
-
-
-def remove_attrs_with_None_for_a_value( attrdict ):
-    ""
-    for k,v in list( attrdict.items() ):
-        if v == None:
-            attrdict.pop( k )
 
 
 def test_to_string( tcase, extended=False ):

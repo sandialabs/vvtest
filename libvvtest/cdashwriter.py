@@ -9,6 +9,7 @@ import time
 from os.path import join as pjoin
 from os.path import basename
 import stat
+import platform
 
 from . import logger
 from . import outpututils
@@ -16,8 +17,9 @@ from . import outpututils
 
 class CDashWriter:
 
-    def __init__(self, permsetter, formatter, submitter):
+    def __init__(self, testlist, permsetter, formatter, submitter):
         ""
+        self.tlist = testlist
         self.permsetter = permsetter
         self.fmtr = formatter
         self.subm = submitter
@@ -43,22 +45,22 @@ class CDashWriter:
 
         return err
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
-        self._create_and_fill_formatter( atestlist )
+        self._create_and_fill_formatter()
         self._write_data( self.fmtr )
 
-    def info(self, atestlist):
+    def info(self):
         ""
-        self._create_and_fill_formatter( atestlist )
+        self._create_and_fill_formatter()
         self._write_data( self.fmtr )
 
-    def _create_and_fill_formatter(self, atestlist):
+    def _create_and_fill_formatter(self):
         ""
         logger.info('\nComposing CDash submission data...')
 
-        set_global_data( self.fmtr, self.dspecs, self.rtinfo )
-        set_test_list( self.fmtr, self.dspecs, atestlist, self.rtinfo['rundir'] )
+        set_global_data( self.fmtr, self.dspecs, self.rtinfo, self.tlist )
+        set_test_list( self.fmtr, self.dspecs, self.tlist, self.rtinfo['rundir'] )
 
     def _write_data(self, fmtr):
         ""
@@ -252,13 +254,14 @@ class DestinationSpecs:
         self.method = None
 
 
-def set_global_data( fmtr, dspecs, rtinfo ):
+def set_global_data( fmtr, dspecs, rtinfo, tlist ):
     ""
+    t0 = tlist.getResultsDate()
     if dspecs.date:
         bdate = dspecs.date
-        tstart = rtinfo.get( 'startepoch', bdate )
+        tstart = bdate if t0 is None else t0
     else:
-        bdate = rtinfo.get( 'startepoch', time.time() )
+        bdate = time.time() if t0 is None else t0
         tstart = bdate
 
     if dspecs.group:
@@ -269,7 +272,7 @@ def set_global_data( fmtr, dspecs, rtinfo ):
     if dspecs.site:
         site = dspecs.site
     else:
-        site = rtinfo.get( 'hostname', None )
+        site = platform.uname()[1]
 
     if dspecs.name:
         bname = dspecs.name
@@ -284,15 +287,15 @@ def set_global_data( fmtr, dspecs, rtinfo ):
                      site_name=site,
                      build_name=bname )
 
-    fmtr.setTime( tstart, rtinfo.get( 'finishepoch', None ) )
+    fmtr.setTime( tstart, tlist.getFinishDate() )
 
 
-def set_test_list( fmtr, dspecs, atestlist, testdir ):
+def set_test_list( fmtr, dspecs, tlist, testdir ):
     ""
     fspec = dspecs.files
     max_KB = dspecs.filemax
 
-    for tcase in atestlist.getActiveTests():
+    for tcase in tlist.getActiveTests():
 
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
@@ -342,7 +345,7 @@ def get_test_output( testdir, tspec, file_max_KB ):
 
     out = '\n'
     out += 'CURTIME : ' + time.ctime() + '\n'
-    out += 'HOSTNAME: ' + os.uname()[1] + '\n'
+    out += 'HOSTNAME: ' + platform.uname()[1] + '\n'
     out += 'TESTDIR : ' + tdir + '\n'
     out += 'TEST ID : ' + displ + '\n'
 

@@ -5,6 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
+import time
 import shutil
 import glob
 import fnmatch
@@ -57,7 +58,7 @@ class ExecutionHandler:
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
 
-        texec.setTimeout( tstat.getAttr( 'timeout', 0 ) )
+        texec.setExecTimeout( tstat.getAttr( 'timeout', 0 ) )
 
         xdir = tspec.getExecuteDirectory()
         wdir = pjoin( self.loc.getTestingDirectory(), xdir )
@@ -171,9 +172,9 @@ class ExecutionHandler:
         exit_status, timedout = texec.getExitInfo()
 
         if timedout is None:
-            tstat.markDone( exit_status )
+            tstat.markDone( exit_status, time.time() )
         else:
-            tstat.markTimedOut()
+            tstat.markTimedOut( time.time() )
 
         rundir = texec.getRunDirectory()
         self.perms.recurse( rundir )
@@ -211,7 +212,7 @@ class ExecutionHandler:
         rundir = texec.getRunDirectory()
         self.write_script_utils( tcase, rundir, baseline )
 
-        tm = texec.getTimeout()
+        tm = texec.getExecTimeout()
         self.set_timeout_environ_variable( tm )
 
         self.check_run_preclean( tcase, baseline )

@@ -471,7 +471,7 @@ def assert_keywords( vrun, keywordlist ):
 def assert_files( vrun, relative_filenames ):
     ""
     fL = extract_files( vrun.out, os.getcwd() )
-    assert fL == relative_filenames
+    assert fL == relative_filenames, "file list not equal: "+str(fL)+' != '+str(relative_filenames)
 
 
 def ordered_testids( vrun ):

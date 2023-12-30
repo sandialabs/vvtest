@@ -25,10 +25,36 @@ class suite( vtu.vvtestTestCase ):
         vrun = vtu.runvvtest()
         vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
 
-        vrun = vtu.runvvtest( '-i --html=../res.html', chdir=vrun.resultsDir() )
+        vrun = vtu.runvvtest( '-i --html=../tr.htm', chdir=vrun.resultsDir() )
 
-        doc = util.readfile( 'res.html' )
-        assert 'Test Results' in doc
+        doc = util.read_xml_file( 'tr.htm' )
+        lines = get_status_lines_from_html( doc )
+        self.assert_tests_in_html( lines )
+
+    def assert_tests_in_html(self, lines):
+        ""
+        assert len( lines ) == 5
+        linestr = '\n'.join(lines)
+        assert len( util.greplines( 'FailTest', linestr ) ) == 1
+        assert len( util.greplines( 'DiffTest.np=1', linestr ) ) == 1
+        assert len( util.greplines( 'DiffTest.np=2', linestr ) ) == 1
+        assert len( util.greplines( 'subdir/param.hello=mars', linestr ) ) == 1
+        assert len( util.greplines( 'subdir/param.hello=world', linestr ) ) == 1
+
+    def test_producing_an_HTML_results_file_as_part_of_execution(self):
+        ""
+        write_three_test_files()
+
+        for batch in [False,True]:
+
+            vtu.remove_results()
+
+            vrun = vtu.runvvtest( '--html tr.html' )
+            vrun.assertCounts( total=5, npass=2, diff=2, fail=1 )
+
+            doc = util.read_xml_file( 'tr.html' )
+            lines = get_status_lines_from_html( doc )
+            self.assert_tests_in_html( lines )
 
 
 def write_three_test_files():
@@ -52,6 +78,24 @@ def write_three_test_files():
         print ( "fake difference of 29" )
         sys.exit( vvt.diff_exit_status )
         """ )
+
+
+def get_status_lines_from_html( htmldoc ):
+    ""
+    lines = []
+
+    for nd in recurse_status_list_items( htmldoc ):
+        txt = util.get_sub_text_from_xml_node( nd )
+        lines.append( txt )
+
+    return lines
+
+
+def recurse_status_list_items( xmlnode ):
+    ""
+    for nd in util.recursive_find_xml_element( xmlnode, 'li' ):
+        if nd.text and nd.text.strip().startswith( 'Status:' ):
+            yield nd
 
 
 ############################################################################

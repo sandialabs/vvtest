@@ -1,0 +1,505 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST:
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+from os.path import basename, join as pjoin
+import re
+import time
+import glob
+import tempfile
+import shutil
+import json
+
+import vvtestutils as vtu
+import testutils as util
+
+import libvvtest.testcase as testcase
+import libvvtest.pathid as pathid
+from libvvtest.testlist import TestList
+import libvvtest.listwriter as listwriter
+from libvvtest.location import Locator
+import libvvtest.teststatus as teststatus
+
+from testutils import windows
+np = os.path.normpath  # for windows testing, use normpath when comparing paths
+abspath = util.abspath  # this abspath prevents Windows issues
+
+from libvvtest.listwriter import (
+    make_filename,
+    glob_results_files,
+    make_header_info,
+    get_test_info,
+    update_results_files,
+)
+
+vvtroot = pathid.VVTEST_ROOT_FILENAME
+
+
+class unit_tests( vtu.vvtestTestCase ):
+
+    def test_making_the_filename(self):
+        ""
+        # the 'platform' attribute is required
+        self.assertRaises( Exception, make_filename, {}, 'date', None )
+
+        rti = {'platform':'XBox'}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox' )
+
+        rti = {'platform':'XBox', 'compiler':'gcc'}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.gcc' )
+
+        rti = {'platform':'XBox', 'onopts':['dbg']}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.dbg' )
+
+        rti = {'platform':'XBox', 'onopts':['intel','dbg']}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.dbg.intel' )
+
+        rti = {'platform':'XBox', 'onopts':['dbg'], 'compiler':'gcc'}
+        self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.gcc.dbg' )
+
+        # tags are appended with a dash then the tag
+        rti = {'platform':'XBox', 'onopts':['dbg']}
+        self.assertEqual( make_filename( rti, 'date', 'atag' ), 'vvtresults.date.XBox.dbg-atag' )
+
+    def make_test_list(self, start_time, end_time, returncode):
+        ""
+        tl = TestList()
+        tl.setFilename( 'foo' )
+        tl.setResultsDate( start_time )
+        if end_time is not None:
+            tl.initializeResultsFile()
+            # have to write the file in order to get the end time & code set
+            tl.writeFinished( end_time, returncode )
+        return tl
+
+    def test_file_header_creation(self):
+        ""
+        # the start and finish times are obtained from a TestList instance
+
+        tm0 = int( time.time() + 0.5 )
+        tl1 = self.make_test_list( tm0, tm0+10, 0 )
+        tl2 = self.make_test_list( tm0, None, None )
+
+        rti = { 'rundir':'/a/path' }
+        D = make_header_info( rti, tl1, False )
+        assert D['platform'] is None
+        assert D['rundir'] == '/a/path'
+        assert D['starttime'] == tm0 and D['endtime'] == tm0+10 and D['returncode'] == 0
+        assert abs(D['duration']-10) < 1
+
+        rti = {'platform':'XBox', 'onopts':['gcc','dbg'],'rundir':'foobar'}
+        D = make_header_info( rti, tl1, False )
+        assert D['platform'] == 'XBox' and D['onopts'] == 'dbg,gcc'
+        assert D['rundir'] == 'foobar'
+
+        # the finish time can be forced
+        D = make_header_info( {'rundir':'foo'}, tl2, False )
+        assert D['endtime'] is None and D['returncode'] is None
+        D = make_header_info( {'rundir':'foo'}, tl2, True )
+        assert abs(D['endtime']-time.time()) < 1 and D['returncode'] == 0
+
+    def test_result_counts(self):
+        ""
+        for res in [ 'skip', 'notrun', 'running', 'runskip',
+                     'pass', 'fail', 'diff', 'timeout' ]:
+
+            tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+            tl = TestList()
+            tl.addTest( tcase )
+
+            vtu.mark_testcase_with_result( tcase, res, time.time() )
+
+            D = make_header_info( {'rundir':'foo'}, tl, False )
+
+            assert D['num_'+res] == 1, 'num_'+res+' is != 1'
+            total_num = 0
+            for k,v in D.items():
+                if k.startswith('num_'):
+                    total_num += v
+            self.assertEqual( total_num, 1 )
+
+            tD = get_test_info( tcase )
+            self.assertEqual( tD['result'], res )
+
+    def test_result_attributes(self):
+        ""
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        vtu.mark_testcase_with_result( tcase, 'skip' )
+        D = get_test_info( tcase )
+        assert D['skip'] == 'excluded by platform expression'
+        assert 'runtime' not in D and 'startdate' not in D
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        vtu.mark_testcase_with_result( tcase, 'notrun' )
+        D = get_test_info( tcase )
+        assert 'runtime' not in D and 'startdate' not in D
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        vtu.mark_testcase_with_result( tcase, 'running', t0 )
+        D = get_test_info( tcase )
+        assert abs(D['startdate']-t0) < 1 and 'runtime' not in D
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        vtu.mark_testcase_with_result( tcase, 'pass', t0, t0+10 )
+        D = get_test_info( tcase )
+        assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-10) < 1
+
+        tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
+        t0 = time.time()
+        vtu.mark_testcase_with_result( tcase, 'runskip', t0, t0+5 )
+        D = get_test_info( tcase )
+        assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-5) < 1
+
+    def test_writing_testlist_results_file(self):
+        ""
+        util.writefile( 'adir/sdir/atest.vvt', 'pass\n' )
+        util.writefile( pjoin('adir',vvtroot), 'ROOTPATH=adir\n' )
+
+        tlist = vtu.scan_to_make_TestList( 'adir' )
+        lw = make_list_writer( tlist, 'odir' )
+        lw.writeList()
+
+        fL = util.grepfiles( 'atest.vvt', 'odir/vvtresults.*' )
+        assert len(fL) >= 1
+
+
+class update_results( vtu.vvtestTestCase ):
+    """
+    In the algorith, should 'now' be "snapped" to something like the
+    end of the day ??
+
+    Currently for testing, just subtract 60 minutes and use 24 hour increments
+    (the 60 causes 2*24 hours to be older than 2 days, for example)
+    """
+
+    def test_older_files_get_removed(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':'XBox'}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        write_empty_results_file( rti, now-1*h24, 'res' )
+        write_empty_results_file( rti, now-0*h24, 'res' )
+
+        fL0 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL0), 3 )
+
+        update_results_files( time.time(), 'res', '2', rti, None )
+
+        fL1 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL1), 2 )
+        self.assertEqual( sorted(fL1), sorted(fL0)[1:] )
+
+    def test_older_file_remove_keeps_some_number_of_files(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':'XBox'}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        write_empty_results_file( rti, now-1*h24, 'res' )
+
+        fL0 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL0), 2 )
+
+        # this won't delete any files because at least 2 files have to remain
+        update_results_files( time.time(), 'res', '2', rti, None )
+
+        fL1 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL1), 2 )
+        self.assertEqual( sorted(fL1), sorted(fL0) )
+
+    def test_filename_matches_complete_options(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti1 = {'rundir':'d1','platform':'XBox','onopts':['dbg']}
+        rti2 = {'rundir':'d1','platform':'XBox','onopts':['dbg','gcc']}
+
+        write_empty_results_file( rti1, now-2*h24, 'res' )
+        write_empty_results_file( rti1, now-1*h24, 'res' )
+        write_empty_results_file( rti1, now-0*h24, 'res' )
+        write_empty_results_file( rti2, now-2*h24, 'res' )
+        write_empty_results_file( rti2, now-1*h24, 'res' )
+        write_empty_results_file( rti2, now-0*h24, 'res' )
+
+        fL0 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL0), 6 )
+
+        update_results_files( time.time(), 'res', '2', rti1, None )
+
+        fL1 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL1), 5 )
+        self.assertEqual( sorted(fL1), sorted(fL0)[1:] )
+
+    def test_older_files_with_different_platform_or_options_are_not_deleted(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti1 = {'rundir':'d1','platform':'XBox'}
+        rti2 = {'rundir':'d1','platform':'PS4'}
+        rti3 = {'rundir':'d1','platform':'XBox','onopts':['dbg']}
+
+        write_empty_results_file( rti1, now-2*h24, 'res' )
+        write_empty_results_file( rti1, now-1*h24, 'res' )
+        write_empty_results_file( rti1, now-0*h24, 'res' )
+        write_empty_results_file( rti2, now-2*h24, 'res' )
+        write_empty_results_file( rti2, now-1*h24, 'res' )
+        write_empty_results_file( rti2, now-0*h24, 'res' )
+        write_empty_results_file( rti3, now-2*h24, 'res' )
+        write_empty_results_file( rti3, now-1*h24, 'res' )
+        write_empty_results_file( rti3, now-0*h24, 'res' )
+
+        dbg_fL0 = glob.glob( 'res/vvtresults.*.dbg' )
+        ps4_fL0 = glob.glob( 'res/vvtresults.*.PS4*' )
+        xbx_fL0 = glob.glob( 'res/vvtresults.*.XBox' )
+        self.assertEqual( len(dbg_fL0), 3 )
+        self.assertEqual( len(ps4_fL0), 3 )
+        self.assertEqual( len(xbx_fL0), 3 )
+
+        update_results_files( time.time(), 'res', '2', rti1, None )
+
+        dbg_fL1 = glob.glob( 'res/vvtresults.*.dbg' )
+        ps4_fL1 = glob.glob( 'res/vvtresults.*.PS4*' )
+        xbx_fL1 = glob.glob( 'res/vvtresults.*.XBox' )
+        self.assertEqual( len(dbg_fL1), 3 )
+        self.assertEqual( len(ps4_fL1), 3 )
+        self.assertEqual( sorted(xbx_fL1), sorted(xbx_fL0)[1:] )
+
+        # add this one back
+        write_empty_results_file( rti1, now-2*h24, 'res' )
+
+        update_results_files( time.time(), 'res', '2', rti3, None )
+
+        dbg_fL2 = glob.glob( 'res/vvtresults.*.dbg' )
+        ps4_fL2 = glob.glob( 'res/vvtresults.*.PS4*' )
+        xbx_fL2 = glob.glob( 'res/vvtresults.*.XBox' )
+        self.assertEqual( sorted(dbg_fL2), sorted(dbg_fL0)[1:] )
+        self.assertEqual( len(ps4_fL2), 3 )
+        self.assertEqual( len(xbx_fL2), 3 )
+
+    def test_results_files_tags_are_respected(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':'XBox','onopts':['dbg']}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        write_empty_results_file( rti, now-1*h24, 'res' )
+        write_empty_results_file( rti, now-0*h24, 'res' )
+        write_empty_results_file( rti, now-2*h24, 'res', 'mytag' )
+        write_empty_results_file( rti, now-1*h24, 'res', 'mytag' )
+        write_empty_results_file( rti, now-0*h24, 'res', 'mytag' )
+
+        dbg_fL0 = glob.glob( 'res/vvtresults.*.dbg' )
+        tag_fL0 = glob.glob( 'res/vvtresults.*-mytag' )
+        self.assertEqual( len(dbg_fL0), 3 )
+        self.assertEqual( len(tag_fL0), 3 )
+
+        update_results_files( time.time(), 'res', '2', rti, None )
+
+        dbg_fL1 = glob.glob( 'res/vvtresults.*.dbg' )
+        tag_fL1 = glob.glob( 'res/vvtresults.*-mytag' )
+        self.assertEqual( sorted(dbg_fL1), sorted(dbg_fL0)[1:] )
+        self.assertEqual( len(tag_fL1), 3 )
+
+        # add this one back
+        write_empty_results_file( rti, now-2*h24, 'res' )
+
+        update_results_files( time.time(), 'res', '2', rti, 'mytag' )
+
+        dbg_fL2 = glob.glob( 'res/vvtresults.*.dbg' )
+        tag_fL2 = glob.glob( 'res/vvtresults.*-mytag' )
+        self.assertEqual( len(dbg_fL2), 3 )
+        self.assertEqual( sorted(tag_fL2), sorted(tag_fL0)[1:] )
+
+
+class integration_tests( vtu.vvtestTestCase ):
+
+    def test_saving_results_when_pathid_root_cannot_be_determined(self):
+        ""
+        # use /tmp dir to avoid case where .git repository is in current dir path
+        tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
+        try:
+            util.writefile( tmpd+"/one/cat.vvt", "pass\n" )
+            util.writefile( tmpd+"/one/dog.vvt", "pass\n" )
+            util.writefile( tmpd+"/two/circle.vvt", "pass\n" )
+
+            vrun = vtu.runvvtest( abspath(tmpd), '--save-results' )
+            vrun.assertCounts( total=3, npass=3 )
+
+            resultsfname = util.globfile('vvtresults.*')
+            _,testinfo = vtu.read_results_file( resultsfname )
+            self.assertEqual( len(testinfo), 3 )
+            for testD in testinfo:
+                self.assertTrue( testD['pathid'] is None )
+
+        finally:
+            shutil.rmtree( tmpd )
+
+    def test_timings_are_saved_in_results_file(self):
+        ""
+        util.writefile( "tests/one/cat.vvt", """
+            import time
+            time.sleep(1)
+            """ )
+        util.writefile( "tests/one/dog.vvt", """
+            import time
+            time.sleep(2)
+            """ )
+        util.writefile( "tests/two/circle.vvt", """
+            import time
+            time.sleep(3)
+            """ )
+
+        for batch in [False,True]:
+
+            if batch and windows:
+                continue  # fake batch doesn't work on Windows
+
+            vtu.remove_results()
+
+            # this also tests that the results directory will be created if necessary
+            resdir = 'batch' if batch else 'direct'
+            vrun = vtu.runvvtest( '--save-results='+resdir+' tests', batch=batch )
+            vrun.assertCounts( total=3, npass=3 )
+
+            fn = util.globfile( resdir+'/vvtresults.*' )
+            fileinfo,testinfo = vtu.read_results_file( fn )
+
+            assert fileinfo['duration'] >= 3
+
+            self.assertEqual( len(testinfo), 3 )
+            self.assertEqual( list( testinfo[0]['testid'] ), [np('one/cat.vvt'), 'cat'] )
+            assert testinfo[0]['runtime'] >= 1
+            self.assertEqual( list( testinfo[1]['testid'] ), [np('one/dog.vvt'), 'dog'] )
+            assert testinfo[1]['runtime'] >= 2
+            self.assertEqual( list( testinfo[2]['testid'] ), [np('two/circle.vvt'), 'circle'] )
+            assert testinfo[2]['runtime'] >= 3
+
+    def test_save_results_on_parameterize_analyze_tests(self):
+        ""
+        util.writefile( "seat.vvt", """
+            #VVT: parameterize : direction = front rear
+            #VVT: parameterize : side = left right
+            #VVT: analyze: --anything
+            """ )
+
+        vrun = vtu.runvvtest( '--save-results' )
+        vrun.assertCounts( total=5, npass=5 )
+
+        _,tL = vtu.read_results_file( util.globfile('vvtresults.*') )
+
+        self.assertEqual( len(tL), 5 )
+        self.assertEqual( list( tL[0]['testid'] ), ['seat.vvt', 'seat'] )
+        self.assertEqual( list( tL[1]['testid'] ), ['seat.vvt', 'seat', 'direction=front', 'side=left'] )
+        self.assertEqual( list( tL[2]['testid'] ), ['seat.vvt', 'seat', 'direction=front', 'side=right'] )
+        self.assertEqual( list( tL[3]['testid'] ), ['seat.vvt', 'seat', 'direction=rear', 'side=left'] )
+        self.assertEqual( list( tL[4]['testid'] ), ['seat.vvt', 'seat', 'direction=rear', 'side=right'] )
+
+    def test_a_subsequent_save_results_will_replicate_attributes(self):
+        ""
+        util.writefile( "cat.vvt", '' )
+        util.writefile( 'sub/junk.txt', '' )
+
+        vrun = vtu.runvvtest( '--save-results' )
+        vrun.assertCounts( total=1, npass=1 )
+
+        fn1 = util.globfile('vvtresults.*')
+        f1info,_ = vtu.read_results_file( fn1 )
+        time.sleep(1)
+
+        vtu.runvvtest( '-i --save-results=sub' )
+        fn2 = util.globfile('sub/vvtresults.*')
+        f2info,_ = vtu.read_results_file( fn2 )
+
+        self.assertEqual( fn1, basename(fn2) )
+        self.assertEqual( sorted(f1info.keys()), sorted(f2info.keys()) )
+        self.assertEqual( f1info, f2info )
+
+    def test_nothing_to_run_produces_a_complete_results_file(self):
+        ""
+        util.writefile( 'sub/foo.txt', '' )
+        util.writefile( 'tests/junk.txt', '' )
+
+        vrun = vtu.runvvtest( '--save-results' )
+        vrun.assertCounts( total=0 )
+
+        fn1 = util.globfile('vvtresults.*')
+        finfo,_ = vtu.read_results_file( fn1 )
+        assert finfo['starttime'] > 0 and finfo['endtime'] > 0
+        assert finfo['returncode'] == 0
+
+        # running this currently does not replicate the start & finish dates
+        # because a testlist results file is never written to contain them
+        vrun = vtu.runvvtest( '-i --save-results=sub' )
+
+    def test_vvtest_command_line_to_update_results_files(self):
+        ""
+        util.writefile( 'tests/cat.vvt', 'pass\n' )
+        util.writefile( 'tests/.git/config', '' )
+
+        platname = vtu.core_platform_name()
+
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':platname,'onopts':['dbg']}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        old_fn = util.globfile('res/vvtresults.*')
+        write_empty_results_file( rti, now-1*h24, 'res' )
+
+        vrun = vtu.runvvtest( '-o dbg --save-results=res --results-update=2 tests' )
+        vrun.assertCounts( total=1, npass=1 )
+
+        fnL = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fnL), 2 )
+        assert old_fn not in fnL
+
+
+def make_list_writer( tlist, destdir ):
+    ""
+    perm = vtu.make_fake_PermissionSetter()
+    lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+    rtinfo = { 'rundir':abspath('tdir'), 'platform':'Xbox' }
+    lw.initialize( rtinfo, destdir )
+
+    return lw
+
+
+def write_empty_results_file( rtinfo, rundate, destdir, ftag=None ):
+    ""
+    perm = vtu.make_fake_PermissionSetter()
+    tlist = TestList()
+    lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+    lw.initialize( rtinfo, destdir, datestamp=rundate, name_tag=ftag )
+    lw.postrun()
+
+
+############################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

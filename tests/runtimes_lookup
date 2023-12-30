@@ -1,0 +1,271 @@
+#!/usr/bin/env python
+
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC
+# (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S.
+# Government retains certain rights in this software.
+
+#RUNTEST:
+
+import sys
+sys.dont_write_bytecode = True
+sys.excepthook = sys.__excepthook__
+import os
+from os.path import basename
+import time
+import glob
+
+import vvtestutils as vtu
+import testutils as util
+
+from libvvtest.testlist import TestList
+import libvvtest.listwriter as listwriter
+from libvvtest.location import Locator
+from libvvtest.runtimes import (
+    find_results_files,
+    check_results_directory,
+    RuntimesLookup,
+    read_results_file_into_map,
+    get_results_file_map,
+    make_test_key,
+    find_runtime_for_test,
+)
+
+
+class unit_tests( vtu.vvtestTestCase ):
+
+    def test_finding_results_files(self):
+        ""
+        tm = 1703781390.786018  # Thu Dec 28 09:36:30 2023
+
+        rti1 = {'rundir':'d1','platform':'XBox'}
+        rti2 = {'rundir':'d2','platform':'PS4'}
+        tm0 = tm-90
+        tm1 = tm-60
+        tm2 = tm-30
+        tm3 = tm
+
+        def assert_file_list( filenames, *expected ):
+            self.assertEqual( len(filenames), len(expected) )
+            fL = [ basename(fn) for fn in filenames ]
+            self.assertEqual( fL, list(expected) )
+
+        fL = find_results_files( rti1, 'res' )
+        assert_file_list( fL )
+
+        write_empty_results_file( rti1, tm1, 'res' )
+        fL = find_results_files( rti1, 'res' )
+        assert_file_list( fL, 'vvtresults.2023_12_28_09h_35m_30s.XBox' )
+
+        write_empty_results_file( rti2, tm1, 'res' )
+        fL = find_results_files( rti1, 'res' )
+        assert_file_list( fL, 'vvtresults.2023_12_28_09h_35m_30s.XBox' )
+        fL = find_results_files( rti2, 'res' )
+        assert_file_list( fL, 'vvtresults.2023_12_28_09h_35m_30s.PS4' )
+
+        write_empty_results_file( rti1, tm2, 'res' )
+        fL = find_results_files( rti1, 'res' )
+        assert_file_list( fL, 'vvtresults.2023_12_28_09h_36m_00s.XBox',
+                              'vvtresults.2023_12_28_09h_35m_30s.XBox' )
+
+        write_empty_results_file( rti1, tm3, 'res' )
+        fL = find_results_files( rti1, 'res', maxfiles=2 )
+        assert_file_list( fL, 'vvtresults.2023_12_28_09h_36m_30s.XBox',
+                              'vvtresults.2023_12_28_09h_36m_00s.XBox' )
+
+        # check that the file system time stamp is not being used
+        write_empty_results_file( rti1, tm0, 'res' )
+        fL = find_results_files( rti1, 'res', maxfiles=3 )
+        assert_file_list( fL, 'vvtresults.2023_12_28_09h_36m_30s.XBox',
+                              'vvtresults.2023_12_28_09h_36m_00s.XBox',
+                              'vvtresults.2023_12_28_09h_35m_30s.XBox' )
+
+    def test_do_not_fail_when_finding_results_files(self):
+        ""
+        assert not check_results_directory( '/foo/bar/baz' )
+
+        # this is bad input for the function, but should not cause an exception
+        find_results_files( {}, 'foobar' )
+
+    def test_make_test_key_from_pathid_and_testid(self):
+        ""
+        tL = vtu.make_test_cases( 'atest.vvt', """
+            #VVT: parameterize : np = 1 4
+            #VVT: analyze : --analyze
+            """ )
+
+        pathid = 'path/atest.vvt'
+
+        tk = make_test_key( pathid, tL[0].getSpec().getID() )
+        self.assertEqual( tk, ('path/atest.vvt', 'atest') )
+
+        tk = make_test_key( pathid, tL[1].getSpec().getID() )
+        self.assertEqual( tk, ('path/atest.vvt', 'atest', 'np=1') )
+
+        tk = make_test_key( pathid, tL[2].getSpec().getID() )
+        self.assertEqual( tk, ('path/atest.vvt', 'atest', 'np=4') )
+
+    def test_reading_results_file_into_test_map(self):
+        ""
+        util.writefile( 'tests/atest.vvt', 'pass\n' )
+        util.writefile( 'tests/btest.vvt', 'pass\n' )
+        util.writefile( 'tests/ctest.vvt', 'pass\n' )
+        util.writefile( 'tests/dtest.vvt', 'pass\n' )
+        util.writefile( 'tests/etest.vvt', 'pass\n' )
+        util.writefile( 'tests/ftest.vvt', 'pass\n' )
+        util.writefile( 'tests/.git/config', '' )  # for pathid
+
+        tm = 1703781390.786018  # Thu Dec 28 09:36:30 2023
+        tL,lw = make_listwriter( tm, 'tests', 'res' )
+        vtu.mark_testcase_with_result( tL[0], 'notrun' )
+        vtu.mark_testcase_with_result( tL[1], 'running', tm+1 )
+        vtu.mark_testcase_with_result( tL[2], 'pass', tm+2, tm+12 )
+        vtu.mark_testcase_with_result( tL[3], 'diff', tm+3, tm+15 )
+        vtu.mark_testcase_with_result( tL[4], 'fail', tm+4, tm+20 )
+        vtu.mark_testcase_with_result( tL[5], 'timeout', tm+5, tm+25 )
+
+        lw.postrun()
+        fn = util.globfile( 'res/vvtresults.*' )
+
+        # only tests that 'pass', 'diff', or 'timeout' are added to the map
+        tmap = {}
+        read_results_file_into_map( fn, tmap )
+
+        self.assertEqual( len(tmap), 3 )
+        tL = [ v for k,v in sorted( list( tmap.items() ) ) ]
+        assert tL[0]['result'] == 'pass' and abs(tL[0]['runtime']-10) < 1
+        assert tL[1]['result'] == 'diff' and abs(tL[1]['runtime']-12) < 1
+        assert tL[2]['result'] == 'timeout' and abs(tL[2]['runtime']-20) < 1
+
+        filecache = [ [fn,None] ]  # file cache is a list of pairs
+        tmap2 = get_results_file_map( filecache, 0 )
+        self.assertEqual( tmap, tmap2 )
+
+    def test_finding_a_test_runtime(self):
+        ""
+        util.writefile( 'tests/atest.vvt', 'pass\n' )
+        util.writefile( 'tests/btest.vvt', 'pass\n' )
+        util.writefile( 'tests/.git/config', '' )  # for pathid
+
+        tspec_a = vtu.parse_single_test_file( 'tests/atest.vvt' )
+        tspec_b = vtu.parse_single_test_file( 'tests/btest.vvt' )
+
+        tm0 = 1703781390.786018  # Thu Dec 28 09:36:30 2023
+        tL,lw = make_listwriter( tm0, 'tests', 'res' )
+        vtu.mark_testcase_with_result( tL[0], 'diff', tm0+2, tm0+12 )
+        vtu.mark_testcase_with_result( tL[1], 'fail', tm0+5, tm0+25 )
+        lw.postrun()
+
+        # btest fails so the runtime is not used
+        cache = RuntimesLookup( {'platform':'XBox'}, 'res' ) ; cache.load()
+        rt,res = cache.getRunTime( tspec_a )
+        assert abs(rt-10) < 1 and res == 'diff'
+        rt,res = cache.getRunTime( tspec_b )
+        assert rt is None and res is None
+
+        tm1 = tm0+3600
+        tL,lw = make_listwriter( tm1, 'tests', 'res' )
+        vtu.mark_testcase_with_result( tL[0], 'pass', tm1+2, tm1+32 )
+        vtu.mark_testcase_with_result( tL[1], 'pass', tm1+5, tm1+20 )
+        lw.postrun()
+
+        # now both pass; atest gets a new runtime value
+        cache = RuntimesLookup( {'platform':'XBox'}, 'res' ) ; cache.load()
+        rt,res = cache.getRunTime( tspec_a )
+        assert abs(rt-30) < 1 and res == 'pass'
+        rt,res = cache.getRunTime( tspec_b )
+        assert abs(rt-15) < 1 and res == 'pass'
+
+        tm2 = tm1+3600
+        tL,lw = make_listwriter( tm2, 'tests', 'res' )
+        vtu.mark_testcase_with_result( tL[0], 'notrun' )
+        vtu.mark_testcase_with_result( tL[1], 'skip' )
+        lw.postrun()
+
+        # neither are run in the latest, so the values come from previous
+        cache = RuntimesLookup( {'platform':'XBox'}, 'res' ) ; cache.load()
+        rt,res = cache.getRunTime( tspec_a )
+        assert abs(rt-30) < 1 and res == 'pass'
+        rt,res = cache.getRunTime( tspec_b )
+        assert abs(rt-15) < 1 and res == 'pass'
+
+        tm3 = tm2+3600
+        tL,lw = make_listwriter( tm3, 'tests', 'res' )
+        vtu.mark_testcase_with_result( tL[0], 'timeout', tm3+2, tm3+25 )
+        vtu.mark_testcase_with_result( tL[1], 'running', tm3+4 )
+        lw.postrun()
+
+        # a timeout value will be used; running tests are ignored
+        cache = RuntimesLookup( {'platform':'XBox'}, 'res' ) ; cache.load()
+        rt,res = cache.getRunTime( tspec_a )
+        assert abs(rt-23) < 1 and res == 'timeout'
+        rt,res = cache.getRunTime( tspec_b )
+        assert abs(rt-15) < 1 and res == 'pass'
+
+
+class integration_tests( vtu.vvtestTestCase ):
+
+    def test_create_and_use_a_runtimes_file(self):
+        ""
+        util.writefile( "tests/dir1/one.vvt", """
+            import time
+            time.sleep(1)
+            """)
+        util.writefile( "tests/dir1/two.vvt", """
+            import time
+            time.sleep(2)
+            """)
+        util.writefile( "tests/dir2/three.vvt", """
+            import time
+            time.sleep(3)
+            """)
+        util.writefile( "tests/.git/config", "" )  # for results 'pathid'
+
+        platname = vtu.core_platform_name()
+        tdir = os.path.abspath( 'tests' )
+
+        vrun = vtu.runvvtest( '--save-results', tdir )
+        vrun.assertCounts( total=3, npass=3 )
+
+        cache = RuntimesLookup( {'platform':platname}, '.' )
+        cache.load()
+
+        for vfile,secs in [('dir1/one.vvt',1),('dir1/two.vvt',2),('dir2/three.vvt',3)]:
+            tL = vtu.creator().fromFile( vfile, tdir )
+            tm,tv = cache.getRunTime( tL[0] )
+            assert tm is not None and tm >= secs
+
+
+########################################################################
+
+def write_empty_results_file( rtinfo, rundate, destdir ):
+    ""
+    perm = vtu.make_fake_PermissionSetter()
+    tlist = TestList()
+    lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+    lw.initialize( rtinfo, destdir, datestamp=rundate )
+    lw.postrun()
+
+
+def get_sorted_testcase( tlist ):
+    ""
+    tL = [ (t.getSpec().getID(),t) for t in tlist.getTests() ]
+    tL.sort()
+    return [ b for a,b in tL ]
+
+
+def make_listwriter( time0, srcdir, destdir ):
+    ""
+    tlist = vtu.scan_to_make_TestList( srcdir )
+    tlist.setResultsDate( time0 )
+    tL = get_sorted_testcase( tlist )
+
+    rtinfo = {'rundir':'tdir','platform':'XBox'}
+    perm = vtu.make_fake_PermissionSetter()
+    lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+    lw.initialize( rtinfo, destdir, datestamp=time0 )
+
+    return tL,lw
+
+########################################################################
+
+util.run_test_cases( sys.argv, sys.modules[__name__] )

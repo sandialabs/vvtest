@@ -101,9 +101,9 @@ def file_read_with_limit( filename, max_KB ):
     return buf
 
 
-def make_date_stamp( testdate, optrdate, timefmt="%Y_%m_%d" ):
+def make_date_stamp( testdate, optrdate, timefmt="%Y_%m_%d_%Hh_%Mm_%Ss" ):
     ""
-    if optrdate != None:
+    if optrdate is not None:
         if type( optrdate ) == type(''):
             datestr = optrdate
         else:
@@ -208,3 +208,36 @@ def capture_traceback( excinfo ):
                         traceback.extract_stack()[:-2] +
                         traceback.extract_tb( xtb ) ) ) + ''.join( xsL )
     return xs,tb
+
+
+def get_test_result_string( tstat ):
+    """
+    Given a TestStatus instance, returns one of
+
+        skip    : static skip; can call tstat.getReasonForSkipTest()
+        notrun  : was scheduled to run but did not
+        runskip : ran but returned with skip exit status, can call tstat.getReasonForSkipTest()
+        pass    : ran and passed
+        diff    : ran and diff'ed
+        fail    : ran and returned a non-zero exit status
+        timeout : ran but timeout expired and was killed
+        running : ran and is still running or was still running when vvtest stopped
+    """
+    if tstat.isNotrun():  # True for static skips, False for runtime skips
+        if tstat.skipTest():
+            return 'skip'
+        else:
+            return 'notrun'
+    elif tstat.isDone():  # True for runtime skips
+        if tstat.skipTest():
+            return 'runskip'
+        else:
+            res = tstat.getResultStatus()
+            if res in ['pass','diff','fail','timeout']:
+                return res
+            else:
+                raise Exception( 'unhandled result string: '+repr(res) )
+    elif tstat.isNotDone():
+        return 'running'
+    else:
+        raise Exception( 'unhandled state' )  # should never happen

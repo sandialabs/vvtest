@@ -10,6 +10,7 @@ import os
 import sys
 import zlib
 import io
+import time
 
 try:
     from shlex import quote
@@ -26,8 +27,9 @@ class JsonWriter:
 
     """
 
-    def __init__(self, permsetter):
+    def __init__(self, testlist, permsetter):
         """"""
+        self.tlist = testlist
         self.permsetter = permsetter
 
     def initialize(self, rtinfo, output_filename, datestamp):
@@ -35,15 +37,15 @@ class JsonWriter:
         self.rtinfo = rtinfo
         self.filename = os.path.normpath(os.path.abspath(output_filename))
 
-    def postrun(self, atestlist):
+    def postrun(self):
         """"""
-        self.writeFile(atestlist)
+        self.writeFile()
 
-    def info(self, atestlist):
+    def info(self):
         """"""
-        self.writeFile(atestlist)
+        self.writeFile()
 
-    def writeFile(self, atestlist):
+    def writeFile(self):
         """
         This collects information from the given test list (a python list of
         TestExec objects), then writes a file in json format
@@ -51,17 +53,19 @@ class JsonWriter:
         data = {}
         top = dict( self.rtinfo )
         top["vvplatform"] = top.pop( "platform", None )
-        top.pop( "hostname", None )
-        top.pop( "python", None )
         top["command"] = " ".join(quote(_) for _ in top.pop("cmdline", []))
-        top["starttime"] = top.pop("startepoch", -1)
-        top["endtime"] = top.pop("finishepoch", -1)
-        top["enddate"] = top.pop("finishdate", None)
+        tm = self.tlist.getResultsDate()
+        top["starttime"] = -1 if tm is None else tm
+        top["startdate"] = None if tm is None else time.ctime(tm)
+        tm = self.tlist.getFinishDate()
+        top["endtime"] = -1 if tm is None else tm
+        top["enddate"] = None if tm is None else time.ctime(tm)
         if top["starttime"] > 0 and top["endtime"] > 0:
             top["duration"] = top["endtime"] - top["starttime"]
         else:
-            top["duration"] = -1
-        top["returncode"] = top.pop("returncode",-1)
+            top["duration"] = -1.0
+        x = self.tlist.getFinishCode()
+        top["returncode"] = -1 if x is None else x
         data.update(top)
 
         data["onopts"] = ' '.join( self.rtinfo["onopts"] )
@@ -86,7 +90,7 @@ class JsonWriter:
 
         data["environment"] = os.environ.copy()
 
-        testcases = atestlist.getActiveTests()
+        testcases = self.tlist.getActiveTests()
         print("Writing {0}, tests to {1}".format(len(testcases), self.filename))
         counts = self.count_results(testcases)
         data["tests"] = {

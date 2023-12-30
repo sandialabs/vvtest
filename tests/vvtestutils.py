@@ -14,6 +14,7 @@ import subprocess
 import unittest
 import shutil
 import platform
+import json
 try:
     from shlex import quote
 except Exception:
@@ -50,6 +51,7 @@ from libvvtest.wordexpr import WordExpression
 from libvvtest.depend import connect_dependency
 from libvvtest.tcfactory import TestCaseFactory
 from libvvtest.location import Locator
+import libvvtest.listwriter as listwriter
 
 
 ##########################################################################
@@ -79,7 +81,8 @@ class vvtestTestCase( unittest.TestCase ):
 
         # force the results files to be written locally for testing;
         # it is used in vvtest when handling the --save-results option
-        os.environ['TESTING_DIRECTORY'] = os.getcwd()
+        os.environ['VVTEST_RESULTS_DIR'] = os.getcwd()
+        os.environ['TESTING_DIRECTORY'] = os.getcwd()  # deprecated; remove Oct 2024
 
         self.savePATH = os.environ.get( 'PATH', None )
 
@@ -769,6 +772,13 @@ def make_test_case( filepath, content ):
     return tL[0]
 
 
+def make_test_cases( filepath, content ):
+    ""
+    util.writefile( filepath, content )
+    tL = create_tests_from_file( filepath )
+    return tL
+
+
 def make_fake_TestSpec( name='atest', keywords=['key1','key2'], idflags=None ):
     ""
     if idflags is not None:
@@ -793,48 +803,66 @@ def make_fake_TestCase( result=None, runtime=None, name='atest',
 
     tstat.resetResults()
 
-    if result:
-        tm = time.time()
-        if result == 'skip':
-            tstat.markSkipByPlatform()
-        elif result == 'skippass':
-            tstat.markStarted( tm )
-            tstat.markDone( 0 )
-            tstat.markSkipByPlatform()
-        elif result == 'skipfail':
-            tstat.markStarted( tm )
-            tstat.markDone( 1 )
-            tstat.markSkipByPlatform()
-        elif result == 'runskip':
-            tstat.markStarted( tm )
-            tstat.markDone( teststatus.SKIP_EXIT_STATUS )
-        elif result == 'timeout':
-            tstat.markStarted( tm )
-            tstat.markTimedOut()
-        elif result == 'pass':
-            tstat.markStarted( tm )
-            tstat.markDone( 0 )
-        elif result == 'diff':
-            tstat.markStarted( tm )
-            tstat.markDone( teststatus.DIFF_EXIT_STATUS )
-        elif result == 'notdone':
-            tstat.markStarted( tm )
-        elif result == 'notrun':
-            pass
-        elif result == 'running':
-            tstat.markStarted( tm )
-        else:
-            assert result == 'fail', '*** error (value='+str(result)+')'
-            tstat.markStarted( tm )
-            tstat.markDone( 1 )
-
-    if runtime != None:
-        tstat.setRuntime( runtime )
-
-    if timeout != None:
+    if timeout is not None:
         tspec.setTimeout( timeout )
 
+    if result:
+        t0 = time.time()
+        t1 = None if runtime is None else t0+runtime
+
+        if result == 'skippass':
+            # previous results are read in then the test is marked skip
+            tstat.markStarted( t0 )
+            tstat.markDone( 0, t1 )
+            tstat.markSkipByPlatform()
+        elif result == 'skipfail':
+            # previous results are read in then the test is marked skip
+            tstat.markStarted( t0 )
+            tstat.markDone( 1, t1 )
+            tstat.markSkipByPlatform()
+        elif result == 'notdone':
+            # 'notdone' and 'running' are synonymous
+            mark_testcase_with_result( tcase, 'running', t0, t1 )
+        else:
+            mark_testcase_with_result( tcase, result, t0, t1 )
+    else:
+        assert runtime is None
+
     return tcase
+
+
+def mark_testcase_with_result( tcase, result_type,
+                               start_time=None, end_time=None ):
+    ""
+    if result_type == 'skip':
+        tcase.getStat().markSkipByPlatform()
+    elif result_type == 'notrun':
+        tcase.getStat().resetResults()
+    elif result_type == 'running':
+        tcase.getStat().resetResults()
+        tcase.getStat().markStarted( start_time )
+    elif result_type == 'runskip':
+        tcase.getStat().resetResults()
+        tcase.getStat().markStarted( start_time )
+        tcase.getStat().markDone( teststatus.SKIP_EXIT_STATUS, end_time )
+    elif result_type == 'pass':
+        tcase.getStat().resetResults()
+        tcase.getStat().markStarted( start_time )
+        tcase.getStat().markDone( 0, end_time )
+    elif result_type == 'fail':
+        tcase.getStat().resetResults()
+        tcase.getStat().markStarted( start_time )
+        tcase.getStat().markDone( 5, end_time )
+    elif result_type == 'diff':
+        tcase.getStat().resetResults()
+        tcase.getStat().markStarted( start_time )
+        tcase.getStat().markDone( teststatus.DIFF_EXIT_STATUS, end_time )
+    elif result_type == 'timeout':
+        tcase.getStat().resetResults()
+        tcase.getStat().markStarted( start_time )
+        tcase.getStat().markTimedOut( end_time )
+    else:
+        raise Exception( 'unhandled result type: '+str(result_type) )
 
 
 def make_TestCase_with_a_dependency( test_result, result_expr=None,
@@ -1032,3 +1060,16 @@ def make_fake_PermissionSetter():
         def recurse(self, path): pass
 
     return DummyPermissionSetter()
+
+
+def read_results_file( fname ):
+    ""
+    finfo,tinfo = listwriter.read_results_file( fname )
+
+    tL = []
+    for tD in tinfo:
+        tL.append( (tD['testid'],tD) )
+
+    tL.sort()
+
+    return finfo, [ T[1] for T in tL ]

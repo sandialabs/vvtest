@@ -254,19 +254,6 @@ class Platform:
         if self.devicepool != None and job_info.devices != None:
             self.devicepool.put( job_info.devices )
 
-    # ----------------------------------------------------------------
-
-    def testingDirectory(self):
-        """
-        """
-        if 'TESTING_DIRECTORY' in os.environ:
-            return os.environ['TESTING_DIRECTORY']
-
-        elif 'testingdir' in self.attrs:
-            return self.attrs['testingdir']
-
-        return None
-
 
 def determine_processor_cores( num_procs, max_procs, plugin_max, use_probe=True ):
     ""

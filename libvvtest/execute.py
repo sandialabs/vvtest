@@ -95,7 +95,7 @@ class BatchRunner( TestListRunner ):
 
                 uthook.check( self.batch.numInProgress(), self.batch.numPastQueue() )
 
-                self.results_writer.midrun( self.tlist )
+                self.results_writer.midrun()
 
                 self.info.printProgress( len(doneL) )
 
@@ -106,12 +106,12 @@ class BatchRunner( TestListRunner ):
             jobstats, nrL = self.batch.flush()
 
         finally:
+            finish_time = time.time()
             self.batch.shutdown()
+            rtn = encode_integer_warning( self.tlist )
+            self.tlist.writeFinished( finish_time, rtn )
 
         self.info.printBatchRemainders( jobstats, nrL )
-
-        rtn = encode_integer_warning( self.tlist )
-        self.rtinfo['returncode'] = rtn
 
         return rtn
 
@@ -168,7 +168,7 @@ class DirectRunner( TestListRunner ):
 
                 uthook.check( self.xlist.numRunning(), self.xlist.numDone() )
 
-                self.results_writer.midrun( self.tlist )
+                self.results_writer.midrun()
 
                 self.info.printProgress( len(doneL) )
 
@@ -178,12 +178,11 @@ class DirectRunner( TestListRunner ):
             nrL = self.xlist.popRemaining()  # these tests cannot be run
 
         finally:
-            self.tlist.writeFinished()
+            finish_time = time.time()
+            rtn = encode_integer_warning( self.tlist )
+            self.tlist.writeFinished( finish_time, rtn )
 
         self.info.printRemainders( nrL )
-
-        rtn = encode_integer_warning( self.tlist )
-        self.rtinfo['returncode'] = rtn
 
         return rtn
 

@@ -38,8 +38,6 @@ platform_attrs = [
             "maximum concurrent submissions given to the batch queue" ],
     [ 'QoS', str,
             '"Quality of Service" e.g. "normal", "long", etc.' ],
-    [ 'testingdir', str,
-            "(under development)" ],
     [ 'submit_flags', str, 'extra_flags',
             "arbitrary command line options passed to the batch submit command" ],
 ]

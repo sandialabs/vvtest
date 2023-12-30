@@ -11,6 +11,7 @@ sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
 import time
+import glob
 
 import vvtestutils as vtu
 import testutils as util
@@ -43,24 +44,18 @@ class runtimes_and_tsum( vtu.vvtestTestCase ):
             import os, sys, time
             time.sleep(2)
             """ )
-        time.sleep(1)
+        util.writefile( 'tests/.git/config', '' )  # for results pathid
 
         for batch in [False,True]:
 
             vtu.remove_results()
 
-            if os.path.exists( 'timings' ):
-                os.remove( 'timings' )
+            for fn in glob.glob( 'vvtresults.*' ):
+                util.fault_tolerant_remove( fn )
 
-            vrun = vtu.runvvtest( 'tests', batch=batch )
+            vrun = vtu.runvvtest( '--save-results tests', batch=batch )
             vrun.assertCounts( total=6, npass=6 )
             tdir = vrun.resultsDir()
-
-            # create a timings file
-            util.runcmd( vtu.resultspy + ' save', chdir='tests' )
-            vtu.runvvtest( '-i --save-results', chdir=tdir )
-            resultsfname = util.globfile('results.*')
-            util.runcmd( vtu.resultspy + ' merge -x '+resultsfname )
 
             vtu.remove_results()
 

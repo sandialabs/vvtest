@@ -138,7 +138,6 @@ class execute_tests( vtu.vvtestTestCase ):
             print ( "Exiting with diff status" )
             sys.exit( vvt.diff_exit_status )
             """)
-        time.sleep(1)
 
         vtu.runvvtest().assertCounts( total=3, npass=1, diff=1, fail=1 )
 

@@ -13,9 +13,9 @@ from . import outpututils
 
 class ConsoleWriter:
 
-    def __init__(self):
+    def __init__(self, testlist):
         ""
-        pass
+        self.tlist = testlist
 
     def initialize(self, rtinfo, verbose=0, sortspec=None, maxnonpass=32):
         ""
@@ -24,33 +24,33 @@ class ConsoleWriter:
         self.sortspec = sortspec
         self.maxnonpass = maxnonpass
 
-    def prerun(self, atestlist, verbosity):
+    def prerun(self, verbosity):
         ""
         level = get_prerun_list_level( verbosity, self.verbose )
 
-        self._write_test_list_results( atestlist, level )
-        self._write_summary( atestlist, 'Test list:' )
+        self._write_test_list_results( level )
+        self._write_summary( 'Test list:' )
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
-        if atestlist.numActive() > 0:
+        if self.tlist.numActive() > 0:
             level = 1 + self.verbose
-            self._write_test_list_results( atestlist, level )
-            self._write_summary( atestlist, 'Summary:' )
+            self._write_test_list_results( level )
+            self._write_summary( 'Summary:' )
 
-        logger.info( make_finish_info_string( self.rtinfo ) )
+        logger.info( make_finish_info_string( self.rtinfo, self.tlist ) )
 
-    def info(self, atestlist):
+    def info(self):
         ""
         level = 1 + self.verbose
-        self._write_test_list_results( atestlist, level )
-        self._write_summary( atestlist, 'Summary:' )
+        self._write_test_list_results( level )
+        self._write_summary( 'Summary:' )
 
-    def timings(self, atestlist):
+    def timings(self):
         ""
         cwd = os.getcwd()
 
-        tosum,tL = collect_timing_list( atestlist, self.rtinfo['rundir'], cwd )
+        tosum,tL = collect_timing_list( self.tlist, self.rtinfo['rundir'], cwd )
 
         fmt = '%8s %8s %s'
         logger.info( fmt % ('TIMEOUT','RUNTIME','TEST') )
@@ -59,11 +59,11 @@ class ConsoleWriter:
 
         logger.info( 'TIMEOUT SUM =', outpututils.colon_separated_time(tosum) )
 
-    def _write_summary(self, atestlist, label):
+    def _write_summary(self, label):
         ""
         logger.info( label )
 
-        tcaseL = atestlist.getTests()
+        tcaseL = self.tlist.getTests()
         parts = outpututils.partition_tests_by_result( tcaseL )
 
         n = len( parts['pass'] ) + \
@@ -119,7 +119,7 @@ class ConsoleWriter:
             else:
                 self.iwrite( label+':', n  )
 
-    def _write_test_list_results(self, atestlist, level):
+    def _write_test_list_results(self, level):
         """
             level = 0 : no list
                     1 : only non-pass and with truncate
@@ -129,9 +129,9 @@ class ConsoleWriter:
         cwd = os.getcwd()
 
         if level <= 2:
-            tcaseL = atestlist.getActiveTests( self.sortspec )
+            tcaseL = self.tlist.getActiveTests( self.sortspec )
         else:
-            tcaseL = atestlist.getTests()
+            tcaseL = self.tlist.getTests()
 
         if len( tcaseL ) > 0:
             logger.info( "==================================================" )
@@ -197,17 +197,16 @@ class ConsoleWriter:
         logger.info( astr )
 
 
-def make_finish_info_string( rtinfo ):
+def make_finish_info_string( rtinfo, tlist ):
     ""
     s = '\n'
 
-    fin = rtinfo.get( 'finishepoch', None )
-    if fin != None:
-        fdate = time.ctime( fin )
-        s += 'Finish date: '+fdate
+    fin = tlist.getFinishDate()
+    if fin is not None:
+        s += 'Finish date: '+time.ctime( fin )
 
-        start = rtinfo.get( 'startepoch', None )
-        if start != None:
+        start = tlist.getResultsDate()
+        if start is not None:
             dt = fin - start
             elapsed = outpututils.pretty_time( dt )
             s += ' (elapsed time '+elapsed+')'

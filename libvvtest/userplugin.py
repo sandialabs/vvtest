@@ -26,6 +26,21 @@ class UserPluginBridge:
         # each exception string
         self.exc_uniq = set()
 
+    def callResultsDir(self):
+        ""
+        resdir = None
+
+        if self.results is not None:
+            platname = self.rtconfig.getPlatformName()
+            options = self.rtconfig.getOptionList()
+            try:
+                resdir = self.results( platname, options )
+            except Exception:
+                xs,tb = outpututils.capture_traceback( sys.exc_info() )
+                sys.stdout.write( '\n' + tb + '\n' )
+
+        return resdir
+
     def callPrologue(self, command_line):
         ""
         if self.prolog is not None:
@@ -147,6 +162,10 @@ class UserPluginBridge:
         self.runtime = None
         if self.plugin and hasattr( self.plugin, 'test_runtime' ):
             self.runtime = self.plugin.test_runtime
+
+        self.results = None
+        if self.plugin and hasattr( self.plugin, 'results_directory' ):
+            self.results = self.plugin.results_directory
 
     def _check_print_exc(self, xs, tb):
         ""

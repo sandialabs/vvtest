@@ -7,6 +7,7 @@
 import os, sys
 import time
 from os.path import join as pjoin
+import platform
 
 from . import logger
 from . import outpututils
@@ -17,8 +18,9 @@ from . import gitresults
 
 class GitLabWriter:
 
-    def __init__(self, permsetter):
+    def __init__(self, testlist, permsetter):
         ""
+        self.tlist = testlist
         self.permsetter = permsetter
 
     def initialize(self, rtinfo,
@@ -44,63 +46,63 @@ class GitLabWriter:
         self.onopts = onopts
         self.nametag = name_tag
 
-    def prerun(self, atestlist, verbosity):
+    def prerun(self, verbosity):
         ""
         if self.outurl:
-            self._dispatch_submission( atestlist, logger.info )
+            self._dispatch_submission( logger.info )
             self.tlast = time.time()
 
-    def midrun(self, atestlist):
+    def midrun(self):
         ""
         if self.outurl and time.time()-self.tlast > self.period:
-            self._dispatch_submission( atestlist, logger.xinfo )
+            self._dispatch_submission( logger.xinfo )
             self.tlast = time.time()
 
-    def postrun(self, atestlist):
+    def postrun(self):
         ""
         if self.outurl:
-            self._dispatch_submission( atestlist, logger.info )
+            self._dispatch_submission( logger.info )
         else:
-            self._write_files( atestlist, logger.info )
+            self._write_files( logger.info )
 
-    def info(self, atestlist):
+    def info(self):
         ""
         if self.outurl:
-            self._dispatch_submission( atestlist, logger.info )
+            self._dispatch_submission( logger.info )
         else:
-            self._write_files( atestlist, logger.info )
+            self._write_files( logger.info )
 
-    def _write_files(self, atestlist, logfunc):
+    def _write_files(self, logfunc):
         ""
         if not os.path.isdir( self.outdir ):
             os.mkdir( self.outdir )
 
         try:
-            self._convert_files( self.outdir, atestlist, logfunc )
+            self._convert_files( self.outdir, logfunc )
         finally:
             self.permsetter.recurse( self.outdir )
 
-    def _convert_files(self, destdir, atestlist, logfunc):
+    def _convert_files(self, destdir, logfunc):
         ""
-        tcaseL = atestlist.getActiveTests( self.sortspec )
+        tcaseL = self.tlist.getActiveTests( self.sortspec )
 
         logfunc( "Writing", len(tcaseL),
                  "tests in GitLab format to", destdir )
 
         conv = GitLabMarkDownConverter( self.rtinfo['rundir'], destdir )
-        conv.saveResults( tcaseL, self.rtinfo )
+        conv.saveResults( tcaseL, self.rtinfo, self.tlist )
 
-    def _dispatch_submission(self, atestlist, logfunc):
+    def _dispatch_submission(self, logfunc):
         ""
         try:
-            start,sfx,msg = make_submit_info( self.rtinfo, self.onopts, self.nametag )
-            epoch = self._submission_epoch( start )
+            sfx,msg = make_submit_info( self.rtinfo, self.onopts, self.nametag )
+            epoch = self._submission_epoch( self.tlist.getResultsDate() )
 
             gr = gitresults.GitResults( self.outurl, self.rtinfo['rundir'] )
             try:
                 rdir = gr.createBranchLocation( directory_suffix=sfx,
                                                 epochdate=epoch )
-                self._convert_files( rdir, atestlist, logfunc )
+                self._convert_files( rdir, logfunc )
                 gr.pushResults( msg )
             finally:
                 gr.cleanup()
@@ -113,16 +115,16 @@ class GitLabWriter:
         ""
         if self.datestamp:
             epoch = self.datestamp
-        else:
+        elif start is not None:
             epoch = start
+        else:
+            epoch = time.time()
 
         return epoch
 
 
 def make_submit_info( rtinfo, onopts, nametag ):
     ""
-    start = rtinfo.get( 'startepoch' )
-
     sfxL = []
 
     plat = rtinfo.get( 'platform', None )
@@ -138,7 +140,7 @@ def make_submit_info( rtinfo, onopts, nametag ):
 
     msg = 'vvtest results auto commit '+time.ctime()
 
-    return start,sfx,msg
+    return sfx,msg
 
 
 def is_gitlab_url( destination ):
@@ -173,7 +175,7 @@ class GitLabMarkDownConverter:
 
         self.selector = GitLabFileSelector()
 
-    def saveResults(self, tcaseL, rtinfo):
+    def saveResults(self, tcaseL, rtinfo, tlist):
         ""
         parts = outpututils.partition_tests_by_result( tcaseL )
 
@@ -181,7 +183,7 @@ class GitLabMarkDownConverter:
 
         with open( fname, 'w' ) as fp:
 
-            write_run_attributes( fp, rtinfo )
+            write_run_attributes( fp, rtinfo, tlist )
 
             for result in [ 'fail', 'diff', 'timeout',
                             'pass', 'notrun', 'notdone' ]:
@@ -225,9 +227,12 @@ class GitLabMarkDownConverter:
                     '```\n' )
 
 
-def write_run_attributes( fp, rtinfo ):
+def write_run_attributes( fp, rtinfo, tlist ):
     ""
-    nvL = list( rtinfo.items() )
+    D = dict( rtinfo )
+    D['hostname'] = platform.uname()[1]
+    D['python'] = sys.executable
+    nvL = list( D.items() )
     nvL.sort()
     for name,value in nvL:
         fp.write( '* '+name+' = '+str(value)+'\n' )
@@ -235,8 +240,15 @@ def write_run_attributes( fp, rtinfo ):
     tm = time.time()
     fp.write( '* currentepoch = '+str(tm)+'\n' )
 
-    t0 = rtinfo.get( 'startepoch', None )
-    t1 = rtinfo.get( 'finishepoch', None )
+    t0 = tlist.getResultsDate()
+    if t0:
+        fp.write( '* startepoch = '+str(t0)+'\n' )
+        fp.write( '* startdate = '+time.ctime(t0)+'\n' )
+    t1 = tlist.getFinishDate()
+    if t1:
+        fp.write( '* finishepoch = '+str(t1)+'\n' )
+        fp.write( '* finishdate = '+time.ctime(t1)+'\n' )
+    fp.write( '* returncode = '+str(tlist.getFinishCode())+'\n' )
     if t0 and t1:
         fp.write( '* elapsed = '+outpututils.pretty_time( t1-t0 )+'\n' )
 

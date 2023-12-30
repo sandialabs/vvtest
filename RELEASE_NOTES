@@ -1,17 +1,22 @@
 
 Improvements:
 
+    - Add new option, --results-update=<SPECS>, that can be used with
+      --save-results for removing old test results files.  Currently, SPECS
+      must be a number indicating the number of days to retain test results
+      files.
+
     - Two new command line options were added:
 
         -z : Excludes tests that are not the analyze test of a
              parameterize/analyze test group
-        -Z : Excludes tests that are the analyze test of a parameterize/analyze
-             test group
+        -Z : Excludes tests that are the analyze test of a
+             parameterize/analyze test group
 
     - Three new flags were added to the vvtest_util.py file for each test:
 
         is_baseline : True when rebaselining (when the -B or -b flag is given)
-        is_analyze  : True if this test is analyze test of an analyze/parameterize
+        is_analyze  : True if this test is analyze test of a parameterize/analyze
         is_analysis_only : True if the -a / --analyze command line flag is given
 
       The 'is_analysis_only' variable supersedes (and deprecates) the
@@ -24,10 +29,11 @@ Fixes:
 
 Changes:
 
-    - The old test results analysis and HTML output capability has been
+    - The old test results analysis and HTML summary capability has been
       removed, including the entry points reports.py and results.py.  However,
-      the capability to store test results files and usethem to compute runtimes
-      has been retained and made easier to use.
+      the capability to store test results files and use them to compute
+      runtimes has been retained and made easier to use.  See wiki page on
+      Saving and Using Test Runtimes.
 
     - When the -a or --analyze option is given on the vvtest command line, the
       --execute-analysis-sections option is placed on the test script command

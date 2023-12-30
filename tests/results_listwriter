@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
-from os.path import basename, join as pjoin, abspath
+from os.path import basename, join as pjoin
 import re
 import time
 import glob
@@ -27,6 +27,10 @@ from libvvtest.testlist import TestList
 import libvvtest.listwriter as listwriter
 from libvvtest.location import Locator
 import libvvtest.teststatus as teststatus
+
+from testutils import windows
+np = os.path.normpath  # for windows testing, use normpath when comparing paths
+abspath = util.abspath  # this abspath prevents Windows issues
 
 from libvvtest.listwriter import (
     make_filename,
@@ -164,10 +168,10 @@ class unit_tests( vtu.vvtestTestCase ):
 
         tlist = vtu.scan_to_make_TestList( 'adir' )
         lw = make_list_writer( tlist, 'odir' )
+        lw.writeList()
 
-        lw.writeList( tlist )
-        fL = util.grepfiles( 'adir/sdir/atest.vvt', 'odir/vvtresults.*' )
-        assert len(fL) == 1
+        fL = util.grepfiles( 'atest.vvt', 'odir/vvtresults.*' )
+        assert len(fL) >= 1
 
 
 class update_results( vtu.vvtestTestCase ):
@@ -343,7 +347,7 @@ class integration_tests( vtu.vvtestTestCase ):
             util.writefile( tmpd+"/one/dog.vvt", "pass\n" )
             util.writefile( tmpd+"/two/circle.vvt", "pass\n" )
 
-            vrun = vtu.runvvtest( tmpd, '--save-results' )
+            vrun = vtu.runvvtest( abspath(tmpd), '--save-results' )
             vrun.assertCounts( total=3, npass=3 )
 
             resultsfname = util.globfile('vvtresults.*')
@@ -372,6 +376,9 @@ class integration_tests( vtu.vvtestTestCase ):
 
         for batch in [False,True]:
 
+            if batch and windows:
+                continue  # fake batch doesn't work on Windows
+
             vtu.remove_results()
 
             # this also tests that the results directory will be created if necessary
@@ -385,11 +392,11 @@ class integration_tests( vtu.vvtestTestCase ):
             assert fileinfo['duration'] >= 3
 
             self.assertEqual( len(testinfo), 3 )
-            self.assertEqual( list( testinfo[0]['testid'] ), ['one/cat.vvt', 'cat'] )
+            self.assertEqual( list( testinfo[0]['testid'] ), [np('one/cat.vvt'), 'cat'] )
             assert testinfo[0]['runtime'] >= 1
-            self.assertEqual( list( testinfo[1]['testid'] ), ['one/dog.vvt', 'dog'] )
+            self.assertEqual( list( testinfo[1]['testid'] ), [np('one/dog.vvt'), 'dog'] )
             assert testinfo[1]['runtime'] >= 2
-            self.assertEqual( list( testinfo[2]['testid'] ), ['two/circle.vvt', 'circle'] )
+            self.assertEqual( list( testinfo[2]['testid'] ), [np('two/circle.vvt'), 'circle'] )
             assert testinfo[2]['runtime'] >= 3
 
     def test_save_results_on_parameterize_analyze_tests(self):

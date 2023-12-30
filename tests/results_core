@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
-from os.path import abspath, join as pjoin
+from os.path import join as pjoin
 import time
 from os.path import getsize as getfsize
 import glob
@@ -35,7 +35,8 @@ from libvvtest.location import Locator
 from libvvtest.teststatus import TestStatus, DIFF_EXIT_STATUS, SKIP_EXIT_STATUS
 
 from testutils import windows
-np = os.path.normpath  # for windows testing, use normpath to compare paths
+np = os.path.normpath  # for windows testing, use normpath when comparing paths
+abspath = util.abspath  # this abspath prevents Windows issues
 
 vvtroot = pathid.VVTEST_ROOT_FILENAME
 

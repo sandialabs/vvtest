@@ -8,7 +8,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.excepthook = sys.__excepthook__
 import os
-from os.path import abspath, normpath, basename, dirname
+from os.path import normpath, basename, dirname
 from os.path import join as pjoin
 import platform
 import re
@@ -181,6 +181,19 @@ def make_working_directory( test_filename ):
 def print3( *args ):
     sys.stdout.write( ' '.join( [ str(x) for x in args ] ) + os.linesep )
     sys.stdout.flush()
+
+
+def abspath(path):
+    """
+    On Windows, the os.path.abspath function adds backslashes, which
+    complicates using the result on the vvtest command line and other
+    situations.  This function does the os.path.abspath then replaces
+    backslashes with forward slashes to avoid any issues in testing.
+    """
+    if windows:
+        return os.path.abspath(path).replace('\\','/')
+    else:
+        return os.path.abspath(path)
 
 
 def writefile( fname, content ):

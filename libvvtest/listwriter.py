@@ -9,6 +9,8 @@ from os.path import dirname, join as pjoin, basename
 import time
 import json
 import platform
+import glob
+import math
 
 try:
     from shlex import quote
@@ -108,28 +110,37 @@ def make_filename( rtinfo, datestr, ftag ):
     Requires 'platform' to be defined in the rtinfo dict and optionally
     'compiler' (a string) and 'onopts' (a list of strings).  The format is
 
-        vvtestresults.<datestr>.<platform>.<compiler>.<options>.<ftag>
+        vvtestresults.<datestr>.<platform>.<compiler>.<options>-<ftag>
 
     but compiler, options, and ftag may not be included.  If given, the
     onopts are alphabetically ordered.
     """
     L = [ 'vvtresults', datestr, rtinfo['platform'] ]
     L.extend( make_option_list(rtinfo) )
+    fn = '.'.join(L)
 
     if ftag:
-        L.append( ftag )
+        fn += '-'+ftag
 
-    return '.'.join( L )
+    return fn
 
 
-def make_filename_glob_pattern( rtinfo ):
+def glob_results_files( resultsdir, rtinfo ):
     """
-    Returns a shell-style glob pattern matching vvtresults filenames with
-    any date and ftag.
+    Returns a list of all vvtresults files in 'resultsdir' directory matching
+    the given 'rtinfo' platform and options with any date or ftag.
     """
-    L = [ 'vvtresults', '*', rtinfo['platform'] ]
-    L.extend( make_option_list(rtinfo) )
-    return '.'.join(L)+'*'
+    pat = '.'.join( [rtinfo['platform'],]+make_option_list(rtinfo) )
+
+    fnL = []
+    for bn in os.listdir(resultsdir):
+        L1 = bn.split('.',2)
+        if len(L1) == 3 and L1[0] == 'vvtresults':
+            L2 = L1[2].split('-',1)
+            if L2[0] == pat:
+                fnL.append( pjoin(resultsdir,bn) )
+
+    return fnL
 
 
 def make_option_list( rti ):
@@ -244,3 +255,66 @@ def read_results_file( fname ):
                     testinfo.append( D )
 
     return fileinfo,testinfo
+
+
+def update_results_files( reftime, resultsdir, specs, rtinfo, ftag ):
+    """
+    The 'reftime' should be time.time() when vvtest started running.
+
+    Currently, 'specs' can only be a number, which is the number of days of
+    files to keep.  The specifications could be extended as demand requires.
+    """
+    try:
+        v = float( specs.strip() )
+        assert not v < 0.0, 'SPECS num days cannot be negative'
+        numdays = int( v*1000000.0 + 0.5 ) / 1000000.0
+        minfiles = int(math.ceil(numdays))
+
+        datestr = outpututils.make_date_stamp( reftime-numdays*24*60*60, None )
+        cutoff_fn = make_filename( rtinfo, datestr, ftag )
+
+        fnL = list_candidate_files( resultsdir, rtinfo, ftag )
+
+        idx = find_cutoff_index( fnL, cutoff_fn )
+        if idx < minfiles:
+            # keep at least this many files, no matter how old
+            idx = minfiles
+
+        delete_files( fnL[idx:] )
+
+    except Exception:
+        xs,tb = outpututils.capture_traceback( sys.exc_info() )
+        logger.warn( '\n'+tb+'\n\n*** error updating results directory: ' + \
+                     repr(resultsdir) )
+
+
+def list_candidate_files( resultsdir, rtinfo, ftag ):
+    ""
+    fnL = []
+    for fn in glob_results_files( resultsdir, rtinfo ):
+        if ftag:
+            if fn.endswith('-'+ftag):
+                fnL.append(fn)
+        else:
+            if '-' not in fn.split('.',2)[2].split( rtinfo['platform'], 1 )[1]:
+                fnL.append(fn)
+
+    fnL.sort()
+    fnL.reverse()  # most recent first
+    return fnL
+
+
+def find_cutoff_index( fnL, cutoff_fn ):
+    ""
+    for i,fn in enumerate(fnL):
+        bn = basename(fn)
+        if cutoff_fn > bn:
+            return i
+    return len(fnL)
+
+
+def delete_files( filenames ):
+    ""
+    for fn in filenames:
+        logger.info( 'Deleting file '+repr(fn) )
+        os.remove(fn)

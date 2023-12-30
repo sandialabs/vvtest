@@ -250,12 +250,16 @@ def create_parser( argvlist, vvtest_version ):
     else:
         grp.add_argument( '--save-results', action='store_true',
             help='Optionally --save-results=<directory>.  Save test results '
-                 'to the VVTEST_RESULTS_DIR or a given directory.' )
+                 'to a given directory, to the VVTEST_RESULTS_DIR environment '
+                 'variable or to the directory specified by the user plugin file.' )
     grp.add_argument( '--results-tag', metavar='TAG',
         help='Add an arbitrary string to the --save-results output filename.' )
     grp.add_argument( '--results-date', metavar='DATE',
-        help='Specify the testing date, used as a marker or file name in some '
+        help='Specify the testing date.  Used as a marker or file name in some '
              'output formats. Can be seconds since epoch or a date string.' )
+    grp.add_argument( '--results-update', metavar='SPECS',
+        help='Accompanies the --save-results option. Causes results files to be '
+             'deleted older than SPECS days.' )
     grp.add_argument( '--junit', metavar='FILENAME',
         help='Writes a test summary file in the JUnit XML format.' )
     grp.add_argument( '--json', metavar='FILENAME',

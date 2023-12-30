@@ -45,6 +45,7 @@ class RuntimeData:
         self.curdir  = curdir   # current working directory at vvtest startup
         self.exepath = exepath  # path to vvtest (without following soft link)
         self.cmdargv = argv     # vvtest command line (just sys.argv)
+        self.curdate = time.time()
 
         self.loc            = None   # Locator object
         self.userconfig     = None   # list of user config directories
@@ -72,7 +73,6 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     import libvvtest.cmdline as cmdline
 
     curdir = os.getcwd()
-    start_epoch = time.time()
 
     rtdata = RuntimeData( argv, curdir, exepath )
 
@@ -87,7 +87,7 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     construct_runtime_config( rtdata, opts, optD )
     process_cache_file( rtdata, opts, optD )
     create_configuration( rtdata.rtconfig, opts, optD, vvtestdir, configdirs )
-    construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch )
+    construct_runtime_info( rtdata, opts, optD, vvtestdir )
 
     construct_platform( rtdata, opts, optD )
     compute_testing_directory( rtdata, opts, optD )
@@ -143,6 +143,9 @@ def run_vvtest( rtdata, opts, optD ):
             exitstat = restart_tests( opts, optD, rtdata )
         else:
             exitstat = run_tests( opts, optD, rtdata )
+
+    if opts.results_update:
+        update_results_output( opts, optD, rtdata )
 
     if opts.encode_exit_status:
         return exitstat
@@ -245,7 +248,7 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
         rtconfig.setAttr( 'testargs', argL )
 
 
-def construct_runtime_info( rtdata, opts, optD, vvtestdir, start_epoch ):
+def construct_runtime_info( rtdata, opts, optD, vvtestdir ):
     ""
     rtdata.rtinfo = {
         'cmdline'    : rtdata.cmdargv,
@@ -793,7 +796,7 @@ def run_tests( opts, optD, rtdata ):
     rtdata.scanner.completeTestParsing( tlist )
     rtdata.timehandler.setTimeouts( tlist.getTests() )
 
-    tlist.setResultsDate()
+    tlist.setResultsDate( rtdata.curdate )
 
     xstat = run_test_exec_list( opts, optD, rtdata )
 
@@ -824,7 +827,7 @@ def restart_tests( opts, optD, rtdata ):
         rtdata.selector.applyRuntimeFilters( tlist )
         rtdata.scanner.completeTestParsing( tlist )
         rtdata.timehandler.setTimeouts( tlist.getTests() )
-        tlist.setResultsDate()
+        tlist.setResultsDate( rtdata.curdate )
     else:
         rtdata.tlm.readTestList()
         rtdata.tlm.addBatchFileLinksToTests( batchid )
@@ -1259,6 +1262,20 @@ def vvtest_command_line_for_batch( opts, optD, vvtestpath, rtconfig, userconfig 
         cmd += ' --test-args='+quote(arg)
 
     return cmd
+
+
+def update_results_output( opts, optD, rtdata ):
+    ""
+    if opts.save_results:
+        import libvvtest.listwriter as listwriter
+        resdir = get_test_results_directory( opts, rtdata.plugin )
+        if resdir:
+            logger.info( 'Running results directory update...' )
+            listwriter.update_results_files(
+                rtdata.curdate, resdir, opts.results_update,
+                rtdata.rtinfo, opts.results_tag )
+        else:
+            logger.warn( 'could not determine results directory for update' )
 
 
 ###########################################################################

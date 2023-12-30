@@ -139,8 +139,7 @@ def find_results_files( rtinfo, resultsdir, maxfiles=7 ):
     fnL = []
 
     try:
-        fpat = listwriter.make_filename_glob_pattern( rtinfo )
-        fnL = glob.glob( pjoin( resultsdir, fpat ) )
+        fnL = listwriter.glob_results_files( resultsdir, rtinfo )
         fnL.sort()
         fnL.reverse()
         fnL = fnL[:maxfiles]

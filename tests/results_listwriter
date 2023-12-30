@@ -30,9 +30,10 @@ import libvvtest.teststatus as teststatus
 
 from libvvtest.listwriter import (
     make_filename,
-    make_filename_glob_pattern,
+    glob_results_files,
     make_header_info,
     get_test_info,
+    update_results_files,
 )
 
 vvtroot = pathid.VVTEST_ROOT_FILENAME
@@ -50,23 +51,19 @@ class unit_tests( vtu.vvtestTestCase ):
 
         rti = {'platform':'XBox', 'compiler':'gcc'}
         self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.gcc' )
-        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.gcc*' )
 
         rti = {'platform':'XBox', 'onopts':['dbg']}
         self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.dbg' )
-        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.dbg*' )
 
         rti = {'platform':'XBox', 'onopts':['intel','dbg']}
         self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.dbg.intel' )
-        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.dbg.intel*' )
 
         rti = {'platform':'XBox', 'onopts':['dbg'], 'compiler':'gcc'}
         self.assertEqual( make_filename( rti, 'date', None ), 'vvtresults.date.XBox.gcc.dbg' )
-        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.gcc.dbg*' )
 
+        # tags are appended with a dash then the tag
         rti = {'platform':'XBox', 'onopts':['dbg']}
-        self.assertEqual( make_filename( rti, 'date', 'atag' ), 'vvtresults.date.XBox.dbg.atag' )
-        self.assertEqual( make_filename_glob_pattern( rti ), 'vvtresults.*.XBox.dbg*' )
+        self.assertEqual( make_filename( rti, 'date', 'atag' ), 'vvtresults.date.XBox.dbg-atag' )
 
     def make_test_list(self, start_time, end_time, returncode):
         ""
@@ -171,6 +168,168 @@ class unit_tests( vtu.vvtestTestCase ):
         lw.writeList( tlist )
         fL = util.grepfiles( 'adir/sdir/atest.vvt', 'odir/vvtresults.*' )
         assert len(fL) == 1
+
+
+class update_results( vtu.vvtestTestCase ):
+    """
+    In the algorith, should 'now' be "snapped" to something like the
+    end of the day ??
+
+    Currently for testing, just subtract 60 minutes and use 24 hour increments
+    (the 60 causes 2*24 hours to be older than 2 days, for example)
+    """
+
+    def test_older_files_get_removed(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':'XBox'}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        write_empty_results_file( rti, now-1*h24, 'res' )
+        write_empty_results_file( rti, now-0*h24, 'res' )
+
+        fL0 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL0), 3 )
+
+        update_results_files( time.time(), 'res', '2', rti, None )
+
+        fL1 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL1), 2 )
+        self.assertEqual( sorted(fL1), sorted(fL0)[1:] )
+
+    def test_older_file_remove_keeps_some_number_of_files(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':'XBox'}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        write_empty_results_file( rti, now-1*h24, 'res' )
+
+        fL0 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL0), 2 )
+
+        # this won't delete any files because at least 2 files have to remain
+        update_results_files( time.time(), 'res', '2', rti, None )
+
+        fL1 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL1), 2 )
+        self.assertEqual( sorted(fL1), sorted(fL0) )
+
+    def test_filename_matches_complete_options(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti1 = {'rundir':'d1','platform':'XBox','onopts':['dbg']}
+        rti2 = {'rundir':'d1','platform':'XBox','onopts':['dbg','gcc']}
+
+        write_empty_results_file( rti1, now-2*h24, 'res' )
+        write_empty_results_file( rti1, now-1*h24, 'res' )
+        write_empty_results_file( rti1, now-0*h24, 'res' )
+        write_empty_results_file( rti2, now-2*h24, 'res' )
+        write_empty_results_file( rti2, now-1*h24, 'res' )
+        write_empty_results_file( rti2, now-0*h24, 'res' )
+
+        fL0 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL0), 6 )
+
+        update_results_files( time.time(), 'res', '2', rti1, None )
+
+        fL1 = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fL1), 5 )
+        self.assertEqual( sorted(fL1), sorted(fL0)[1:] )
+
+    def test_older_files_with_different_platform_or_options_are_not_deleted(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti1 = {'rundir':'d1','platform':'XBox'}
+        rti2 = {'rundir':'d1','platform':'PS4'}
+        rti3 = {'rundir':'d1','platform':'XBox','onopts':['dbg']}
+
+        write_empty_results_file( rti1, now-2*h24, 'res' )
+        write_empty_results_file( rti1, now-1*h24, 'res' )
+        write_empty_results_file( rti1, now-0*h24, 'res' )
+        write_empty_results_file( rti2, now-2*h24, 'res' )
+        write_empty_results_file( rti2, now-1*h24, 'res' )
+        write_empty_results_file( rti2, now-0*h24, 'res' )
+        write_empty_results_file( rti3, now-2*h24, 'res' )
+        write_empty_results_file( rti3, now-1*h24, 'res' )
+        write_empty_results_file( rti3, now-0*h24, 'res' )
+
+        dbg_fL0 = glob.glob( 'res/vvtresults.*.dbg' )
+        ps4_fL0 = glob.glob( 'res/vvtresults.*.PS4*' )
+        xbx_fL0 = glob.glob( 'res/vvtresults.*.XBox' )
+        self.assertEqual( len(dbg_fL0), 3 )
+        self.assertEqual( len(ps4_fL0), 3 )
+        self.assertEqual( len(xbx_fL0), 3 )
+
+        update_results_files( time.time(), 'res', '2', rti1, None )
+
+        dbg_fL1 = glob.glob( 'res/vvtresults.*.dbg' )
+        ps4_fL1 = glob.glob( 'res/vvtresults.*.PS4*' )
+        xbx_fL1 = glob.glob( 'res/vvtresults.*.XBox' )
+        self.assertEqual( len(dbg_fL1), 3 )
+        self.assertEqual( len(ps4_fL1), 3 )
+        self.assertEqual( sorted(xbx_fL1), sorted(xbx_fL0)[1:] )
+
+        # add this one back
+        write_empty_results_file( rti1, now-2*h24, 'res' )
+
+        update_results_files( time.time(), 'res', '2', rti3, None )
+
+        dbg_fL2 = glob.glob( 'res/vvtresults.*.dbg' )
+        ps4_fL2 = glob.glob( 'res/vvtresults.*.PS4*' )
+        xbx_fL2 = glob.glob( 'res/vvtresults.*.XBox' )
+        self.assertEqual( sorted(dbg_fL2), sorted(dbg_fL0)[1:] )
+        self.assertEqual( len(ps4_fL2), 3 )
+        self.assertEqual( len(xbx_fL2), 3 )
+
+    def test_results_files_tags_are_respected(self):
+        ""
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':'XBox','onopts':['dbg']}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        write_empty_results_file( rti, now-1*h24, 'res' )
+        write_empty_results_file( rti, now-0*h24, 'res' )
+        write_empty_results_file( rti, now-2*h24, 'res', 'mytag' )
+        write_empty_results_file( rti, now-1*h24, 'res', 'mytag' )
+        write_empty_results_file( rti, now-0*h24, 'res', 'mytag' )
+
+        dbg_fL0 = glob.glob( 'res/vvtresults.*.dbg' )
+        tag_fL0 = glob.glob( 'res/vvtresults.*-mytag' )
+        self.assertEqual( len(dbg_fL0), 3 )
+        self.assertEqual( len(tag_fL0), 3 )
+
+        update_results_files( time.time(), 'res', '2', rti, None )
+
+        dbg_fL1 = glob.glob( 'res/vvtresults.*.dbg' )
+        tag_fL1 = glob.glob( 'res/vvtresults.*-mytag' )
+        self.assertEqual( sorted(dbg_fL1), sorted(dbg_fL0)[1:] )
+        self.assertEqual( len(tag_fL1), 3 )
+
+        # add this one back
+        write_empty_results_file( rti, now-2*h24, 'res' )
+
+        update_results_files( time.time(), 'res', '2', rti, 'mytag' )
+
+        dbg_fL2 = glob.glob( 'res/vvtresults.*.dbg' )
+        tag_fL2 = glob.glob( 'res/vvtresults.*-mytag' )
+        self.assertEqual( len(dbg_fL2), 3 )
+        self.assertEqual( sorted(tag_fL2), sorted(tag_fL0)[1:] )
 
 
 class integration_tests( vtu.vvtestTestCase ):
@@ -290,6 +449,30 @@ class integration_tests( vtu.vvtestTestCase ):
         # because a testlist results file is never written to contain them
         vrun = vtu.runvvtest( '-i --save-results=sub' )
 
+    def test_vvtest_command_line_to_update_results_files(self):
+        ""
+        util.writefile( 'tests/cat.vvt', 'pass\n' )
+        util.writefile( 'tests/.git/config', '' )
+
+        platname = vtu.core_platform_name()
+
+        now = time.time() - 60*60
+        h24 = 24*60*60
+        resdir = 'res'
+
+        rti = {'rundir':'d1','platform':platname,'onopts':['dbg']}
+
+        write_empty_results_file( rti, now-2*h24, 'res' )
+        old_fn = util.globfile('res/vvtresults.*')
+        write_empty_results_file( rti, now-1*h24, 'res' )
+
+        vrun = vtu.runvvtest( '-o dbg --save-results=res --results-update=2 tests' )
+        vrun.assertCounts( total=1, npass=1 )
+
+        fnL = glob.glob( 'res/vvtresults.*' )
+        self.assertEqual( len(fnL), 2 )
+        assert old_fn not in fnL
+
 
 def make_list_writer( tlist, destdir ):
     ""
@@ -299,6 +482,15 @@ def make_list_writer( tlist, destdir ):
     lw.initialize( rtinfo, destdir )
 
     return lw
+
+
+def write_empty_results_file( rtinfo, rundate, destdir, ftag=None ):
+    ""
+    perm = vtu.make_fake_PermissionSetter()
+    tlist = TestList()
+    lw = listwriter.ListWriter( tlist, Locator(os.getcwd()), perm )
+    lw.initialize( rtinfo, destdir, datestamp=rundate, name_tag=ftag )
+    lw.postrun()
 
 
 ############################################################################

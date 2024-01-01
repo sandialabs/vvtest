@@ -9,7 +9,7 @@ from os.path import dirname, join as pjoin, basename
 
 
 # the test root marker filename
-VVTEST_ROOT_FILENAME = '.vvtest.root'
+VVTEST_ROOT_FILENAME = '.vvtest.txt'
 
 
 class TestPathIdentification:

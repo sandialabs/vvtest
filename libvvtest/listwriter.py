@@ -22,10 +22,6 @@ from . import outpututils
 from . import pathid
 
 
-# the test root marker filename
-VVTEST_ROOT_FILENAME = '.vvtest.root'
-
-
 class ListWriter:
     """
     Writes test results to a file format consisting of a file header followed
@@ -87,6 +83,7 @@ class ListWriter:
             self.permsetter.apply(todir)
 
         tofile = os.path.join( todir, fname )
+        pidr = pathid.TestPathIdentification()
 
         try:
             logger.info( "Writing test results to", tofile )
@@ -98,7 +95,7 @@ class ListWriter:
                 tests = list( self.tlist.getTestMap().items() )
                 tests.sort()
                 for tid,tcase in tests:
-                    testdict = get_test_info( tcase )
+                    testdict = get_test_info( pidr, tcase )
                     fp.write( json.dumps(testdict)+'\n' )
 
         finally:
@@ -204,17 +201,18 @@ def make_header_info( rti, tlist, finished ):
     return hdr
 
 
-def get_test_info( tcase ):
+def get_test_info( pidr, tcase ):
     ""
-    pidr = pathid.TestPathIdentification()
-
     spec = tcase.getSpec()
     stat = tcase.getStat()
 
     res = outpututils.get_test_result_string( stat )
 
-    D = { 'testid':spec.getID(),
-          'pathid': pidr.get_path_id( spec.getFilename() ),
+    pathid = pidr.get_path_id( spec.getFilename() )
+    testid = list( spec.getID() )
+    testid[0] = pathid if pathid else spec.getFilepath()
+
+    D = { 'testid': tuple(testid),
           'result': res, }
 
     if 'TDD' in spec.getKeywords():

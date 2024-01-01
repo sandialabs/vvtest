@@ -101,12 +101,11 @@ def read_results_file_into_map( filename, tmap ):
     finfo,tinfo = listwriter.read_results_file( filename )
 
     for tD in tinfo:
-        testkey = make_test_key( tD['pathid'], tD['testid'] )
-        if testkey:
-            res = tD.get('result',None)
-            if res == 'pass' or res == 'diff' or res == 'timeout':
-                if tD.get('runtime',None) is not None:
-                    tmap[ testkey ] = tD
+        testkey = tuple( tD['testid'] )
+        res = tD.get('result',None)
+        if res == 'pass' or res == 'diff' or res == 'timeout':
+            if tD.get('runtime',None) is not None:
+                tmap[ testkey ] = tD
 
 
 def make_test_key( pathid, testid ):

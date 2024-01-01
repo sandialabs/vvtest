@@ -29,6 +29,11 @@ Fixes:
 
 Changes:
 
+    - The `-o` and `-O` command line options were not allowed when the current
+      workin directory is inside a TestResults directory.  Now they are as long
+      as they are the same as the values that created the TestResults directory
+      in the first place.
+
     - The old test results analysis and HTML summary capability has been
       removed, including the entry points reports.py and results.py.  However,
       the capability to store test results files and use them to compute

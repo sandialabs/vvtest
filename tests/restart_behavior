@@ -254,6 +254,37 @@ class restart_tests( vtu.vvtestTestCase ):
         assert vrun.getTestIds() == ['both','ps']
         assert vrun.greplogs( 'wrong platform: XBox', 'ps' )
 
+    def test_using_options_in_restart_mode(self):
+        ""
+        util.writefile( 'atest.vvt', """
+            #VVT: enable (options=not dbg)
+            import vvtest_util as vvt
+            print ( "OPTS="+repr(vvt.OPTIONS) )
+            """ )
+
+        vrun = vtu.runvvtest( '-o foo' )
+        vrun.assertCounts( total=1, npass=1 )
+        tdir = vrun.resultsDir()
+        opts = eval( vrun.greplogs('OPTS=','atest')[0].split('OPTS=',1)[1] )
+        self.assertEqual( opts, ['foo'] )
+
+        # cannot change -o options within a TestResults directory
+        vrun = vtu.runvvtest( '-R -o dbg', chdir=tdir, raise_on_error=False )
+        assert vrun.x != 0
+        assert 'vvtest error' in vrun.out
+
+        # if the -o options are the same, then no problem
+        vrun = vtu.runvvtest( '-R -o foo', chdir=tdir )
+        vrun.assertCounts( total=1, npass=1 )
+        opts = eval( vrun.greplogs('OPTS=','atest')[0].split('OPTS=',1)[1] )
+        self.assertEqual( opts, ['foo'] )
+
+        # or if no -o options are given, then no problem
+        vrun = vtu.runvvtest( '-R', chdir=tdir )
+        vrun.assertCounts( total=1, npass=1 )
+        opts = eval( vrun.greplogs('OPTS=','atest')[0].split('OPTS=',1)[1] )
+        self.assertEqual( opts, ['foo'] )
+
 
 ########################################################################
 

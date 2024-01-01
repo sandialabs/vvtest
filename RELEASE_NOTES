@@ -1,6 +1,11 @@
 
 Improvements:
 
+    - Many user plugin functions take a dictionary representing a given test.
+      This dictionary now contains an entry called 'testid' whose value is
+      the same as the one used to identify tests from saved test results files.
+      Which means it can disambiguate tests from multiple test repositories.
+
     - Add new option, --results-update=<SPECS>, that can be used with
       --save-results for removing old test results files.  Currently, SPECS
       must be a number indicating the number of days to retain test results

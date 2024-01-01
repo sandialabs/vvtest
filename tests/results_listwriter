@@ -176,7 +176,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
 class update_results( vtu.vvtestTestCase ):
     """
-    In the algorith, should 'now' be "snapped" to something like the
+    In the cleanup algorithm, should 'now' be "snapped" to something like the
     end of the day ??
 
     Currently for testing, just subtract 60 minutes and use 24 hour increments
@@ -353,8 +353,8 @@ class integration_tests( vtu.vvtestTestCase ):
             resultsfname = util.globfile('vvtresults.*')
             _,testinfo = vtu.read_results_file( resultsfname )
             self.assertEqual( len(testinfo), 3 )
-            # the first element of the testid is the test filename relative
-            # to the scan root if pathid is not able to be determined
+            # if pathid is not able to be determined, then the first element of
+            # the testid is the test filename relative to the scan root 
             self.assertEqual( np(testinfo[0]['testid'][0]), np('one/cat.vvt') )
             self.assertEqual( np(testinfo[1]['testid'][0]), np('one/dog.vvt') )
             self.assertEqual( np(testinfo[2]['testid'][0]), np('two/circle.vvt') )

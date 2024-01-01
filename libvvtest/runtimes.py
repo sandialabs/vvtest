@@ -51,9 +51,8 @@ class RuntimesLookup:
         rt = res = None
 
         if self.filecache:
-            pathid = self.pathcache.get_path_id( testspec.getFilename() )
-            if pathid:
-                tkey = make_test_key( pathid, testspec.getID() )
+            tkey = self.pathcache.get_testid( testspec.getFilename(), testspec.getID() )
+            if tkey is not None:
                 rt,res = find_runtime_for_test( tkey, self.filecache )
 
         return rt,res
@@ -95,8 +94,8 @@ def get_results_file_map( fcache, index ):
 
 def read_results_file_into_map( filename, tmap ):
     """
-    Reads the results file and adds each test that pass, diff, or timeout
-    into the given map, where the key is obtained from make_test_key().
+    Reads the results file and adds each test that pass, diff, or timeout into
+    the given map, where the keys are testid as determined in listwriter.
     """
     finfo,tinfo = listwriter.read_results_file( filename )
 
@@ -106,16 +105,6 @@ def read_results_file_into_map( filename, tmap ):
         if res == 'pass' or res == 'diff' or res == 'timeout':
             if tD.get('runtime',None) is not None:
                 tmap[ testkey ] = tD
-
-
-def make_test_key( pathid, testid ):
-    ""
-    if pathid:
-        L = [ pathid ]
-        L.extend( testid[1:] )
-        return tuple(L)
-
-    return None
 
 
 def check_results_directory( resultsdir ):

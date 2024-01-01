@@ -205,15 +205,15 @@ def get_test_info( pidr, tcase ):
     ""
     spec = tcase.getSpec()
     stat = tcase.getStat()
+    D = {}
 
-    res = outpututils.get_test_result_string( stat )
+    testid = pidr.get_testid( spec.getFilename(), spec.getID() )
+    if testid is None:
+        testid = spec.getID()
 
-    pathid = pidr.get_path_id( spec.getFilename() )
-    testid = list( spec.getID() )
-    testid[0] = pathid if pathid else spec.getFilepath()
+    D['testid'] = tuple(testid)
 
-    D = { 'testid': tuple(testid),
-          'result': res, }
+    D['result'] = outpututils.get_test_result_string( stat )
 
     if 'TDD' in spec.getKeywords():
         D['TDD'] = True

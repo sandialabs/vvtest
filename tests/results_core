@@ -175,9 +175,9 @@ class pathid_tests( vtu.vvtestTestCase ):
             subd = pjoin(tmpd,'sub1','sub2')
             fn = pjoin(subd,'foo.vvt')
             util.writefile( fn, '' )
-            self.assertTrue( idr.get_path_id(fn) is None )
+            self.assertTrue( idr.get_pathid(fn) is None )
             with util.change_directory( subd ):
-                self.assertTrue( idr.get_path_id('foo.vvt') is None )
+                self.assertTrue( idr.get_pathid('foo.vvt') is None )
         finally:
             shutil.rmtree( tmpd )
 
@@ -193,9 +193,9 @@ class pathid_tests( vtu.vvtestTestCase ):
                 os.symlink( '../top2/here', tmpd+'/top1/seeya' )
 
                 fn = tmpd+'/top1/seeya/bar.vvt'
-                self.assertEqual( idr.get_path_id(fn), 'here/bar.vvt' )
+                self.assertEqual( idr.get_pathid(fn), 'here/bar.vvt' )
                 with util.change_directory( tmpd+'/top1' ):
-                    self.assertEqual( idr.get_path_id('seeya/bar.vvt'), 'here/bar.vvt' )
+                    self.assertEqual( idr.get_pathid('seeya/bar.vvt'), 'here/bar.vvt' )
             finally:
                 shutil.rmtree( tmpd )
 
@@ -205,12 +205,12 @@ class pathid_tests( vtu.vvtestTestCase ):
         util.writefile( 'top/'+vvtroot, '' )
         util.writefile( 'top/foo.vvt', '' )
         util.writefile( 'top/sub/bar.vvt', '' )
-        self.assertEqual( idr.get_path_id( 'top/foo.vvt' ), 'foo.vvt' )
-        self.assertEqual( idr.get_path_id( 'top/sub/bar.vvt' ), np('sub/bar.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/foo.vvt' ), 'foo.vvt' )
+        self.assertEqual( idr.get_pathid( 'top/sub/bar.vvt' ), np('sub/bar.vvt') )
         with util.change_directory( 'top' ):
-            self.assertEqual( idr.get_path_id( 'sub/bar.vvt' ), np('sub/bar.vvt') )
+            self.assertEqual( idr.get_pathid( 'sub/bar.vvt' ), np('sub/bar.vvt') )
         with util.change_directory( 'top/sub' ):
-            self.assertEqual( idr.get_path_id( 'bar.vvt' ), np('sub/bar.vvt') )
+            self.assertEqual( idr.get_pathid( 'bar.vvt' ), np('sub/bar.vvt') )
 
         for val in [ 'ROOTPATH=cool',
                      '  ROOTPATH = cool',
@@ -222,8 +222,8 @@ class pathid_tests( vtu.vvtestTestCase ):
             util.writefile( 'top/'+vvtroot, val )
             util.writefile( 'top/foo.vvt', '' )
             util.writefile( 'top/sub/bar.vvt', '' )
-            self.assertEqual( idr.get_path_id( 'top/foo.vvt' ), np('cool/foo.vvt') )
-            self.assertEqual( idr.get_path_id( 'top/sub/bar.vvt' ), np('cool/sub/bar.vvt') )
+            self.assertEqual( idr.get_pathid( 'top/foo.vvt' ), np('cool/foo.vvt') )
+            self.assertEqual( idr.get_pathid( 'top/sub/bar.vvt' ), np('cool/sub/bar.vvt') )
 
         util.fault_tolerant_remove( 'top' )
 
@@ -233,10 +233,10 @@ class pathid_tests( vtu.vvtestTestCase ):
         util.writefile( 'top/sub/foo.vvt', '' )
         util.writefile( 'top/sub/two/tri/bar.vvt', '' )
         util.writefile( 'top/sub/two/'+vvtroot, 'ROOTPATH=cool/sub/two' )
-        self.assertEqual( idr.get_path_id( 'top/sub/foo.vvt' ), np('cool/sub/foo.vvt') )
-        self.assertEqual( idr.get_path_id( 'top/sub/two/tri/bar.vvt' ), np('cool/sub/two/tri/bar.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/foo.vvt' ), np('cool/sub/foo.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/two/tri/bar.vvt' ), np('cool/sub/two/tri/bar.vvt') )
         with util.change_directory( 'top/sub/two/tri' ):
-            self.assertEqual( idr.get_path_id( 'bar.vvt' ), np('cool/sub/two/tri/bar.vvt') )
+            self.assertEqual( idr.get_pathid( 'bar.vvt' ), np('cool/sub/two/tri/bar.vvt') )
 
     def test_path_identification_by_vvtest_root_file_and_git(self):
         ""
@@ -245,7 +245,7 @@ class pathid_tests( vtu.vvtestTestCase ):
         util.writefile( 'top/'+vvtroot, 'ROOTPATH=cool' )
         util.writefile( 'top/sub/.git/config', '' )
         util.writefile( 'top/sub/two/foo.vvt', '' )
-        self.assertEqual( idr.get_path_id( 'top/sub/two/foo.vvt' ), np('cool/sub/two/foo.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/two/foo.vvt' ), np('cool/sub/two/foo.vvt') )
 
     def test_path_identification_caches_by_directory(self):
         ""
@@ -254,12 +254,34 @@ class pathid_tests( vtu.vvtestTestCase ):
         util.writefile( 'top/sub/foo.vvt', '' )
         util.writefile( 'top/sub/two/bar.vvt', '' )
         util.writefile( 'top/sub/two/baz.vvt', '' )
-        self.assertEqual( idr.get_path_id( 'top/sub/foo.vvt' ), np('sub/foo.vvt') )
-        self.assertEqual( idr.get_path_id( 'top/sub/two/bar.vvt' ), np('sub/two/bar.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/foo.vvt' ), np('sub/foo.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/two/bar.vvt' ), np('sub/two/bar.vvt') )
         # second time
-        self.assertEqual( idr.get_path_id( 'top/sub/foo.vvt' ), np('sub/foo.vvt') )
-        self.assertEqual( idr.get_path_id( 'top/sub/two/bar.vvt' ), np('sub/two/bar.vvt') )
-        self.assertEqual( idr.get_path_id( 'top/sub/two/baz.vvt' ), np('sub/two/baz.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/foo.vvt' ), np('sub/foo.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/two/bar.vvt' ), np('sub/two/bar.vvt') )
+        self.assertEqual( idr.get_pathid( 'top/sub/two/baz.vvt' ), np('sub/two/baz.vvt') )
+
+    def test_the_testid_is_made_from_the_pathid(self):
+        ""
+        idr = pathid.TestPathIdentification()
+        util.writefile( 'top/'+vvtroot, 'ROOTPATH=bar\n' )
+        util.writefile( 'top/sub/foo.vvt', 'pass\n' )
+
+        tspec = vtu.parse_single_test_file( 'top/sub/foo.vvt' )
+        tid = idr.get_testid( 'top/sub/foo.vvt', tspec.getID() )
+        self.assertEqual( (np(tid[0]),tid[1]), ('bar/sub/foo.vvt','foo') )
+
+        # when the file is not in a repo, None should be returned
+        idr = pathid.TestPathIdentification()
+        tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
+        try:
+            with util.change_directory( tmpd ):
+                fn = 'sub/foo.vvt'
+                util.writefile( fn, 'pass\n' )
+                tspec = vtu.parse_single_test_file( fn )
+                self.assertTrue( idr.get_testid(fn,tspec.getID() ) is None )
+        finally:
+            shutil.rmtree( tmpd )
 
 
 class save_results_output( vtu.vvtestTestCase ):

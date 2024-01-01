@@ -86,10 +86,10 @@ def construct_vvtest( argv, vvtestdir, exepath ):
     insert_configdirs_into_sys_path( configdirs )
     construct_runtime_config( rtdata, opts, optD )
     process_cache_file( rtdata, opts, optD )
-    create_configuration( rtdata.rtconfig, opts, optD, vvtestdir, configdirs )
+    construct_platform( rtdata, opts, optD )
+    create_configuration( rtdata, opts, optD, vvtestdir, configdirs )
     construct_runtime_info( rtdata, opts, optD, vvtestdir )
 
-    construct_platform( rtdata, opts, optD )
     compute_testing_directory( rtdata, opts, optD )
     construct_permission_setter( rtdata, opts )
     import_plugin_module( rtdata )
@@ -192,6 +192,10 @@ def construct_runtime_config( rtdata, opts, optD ):
     rtconfig.setRuntimeRange( opts.tmin, opts.tmax )
     rtconfig.setRuntimeSum( opts.tsum )
 
+    # save these even though they will be overwritten later; it allows the
+    # command line options to be stored and survive the cache overwrites
+    rtconfig.setOptionList( optD['onopts'] )
+
     rtdata.rtconfig = rtconfig
 
 
@@ -209,10 +213,6 @@ def process_cache_file( rtdata, opts, optD ):
 
 def check_options_not_allowed_for_restart( opts, optD ):
     ""
-    if optD['onopts'] or optD['offopts'] or opts.dash_g:
-        raise FatalError( 'the -g, -o, and -O options are not allowed '
-                          'in a TestResults directory')
-
     if optD['param_dict']:
         raise FatalError( 'cannot use -S in a TestResults directory' )
 
@@ -220,8 +220,34 @@ def check_options_not_allowed_for_restart( opts, optD ):
         raise FatalError( 'cannot use -g in a TestResults directory' )
 
 
-def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
+def construct_platform( rtdata, opts, optD ):
     ""
+    from libvvtest.makeplatform import create_Platform_instance
+
+    mode = 'direct'
+    if opts.batch:
+        mode = 'batch'
+    elif opts.batch_id is not None:
+        mode = 'batchjob'
+
+    plat = create_Platform_instance(
+                opts.plat, mode,
+                optD['platopt_dict'],  # --platopt
+                opts.dash_n,
+                opts.dash_N,
+                opts.devices,
+                opts.max_devices,
+                optD['onopts'],        # -o
+                optD['offopts'] )      # -O
+
+    rtdata.plat = plat
+
+
+def create_configuration( rtdata, opts, optD, vvtestdir, configdirs ):
+    ""
+    rtconfig = rtdata.rtconfig
+    plat = rtdata.plat
+
     rtconfig.setAttr( 'vvtestdir', vvtestdir )
 
     if optD['onopts']:
@@ -247,6 +273,40 @@ def create_configuration( rtconfig, opts, optD, vvtestdir, configdirs ):
             argL.extend( shlex.split( args ) )
         rtconfig.setAttr( 'testargs', argL )
 
+    rtdata.rtconfig.setPlatformName( plat.getName() )
+
+    rtdata.rtconfig.setPlatformExpression( optD['platform_expr'], plat.getName() )
+    if opts.dash_A:
+        rtdata.rtconfig.applyPlatformExpression( False )
+
+    opL = optD['onopts']
+    if plat.getCompiler():
+        opL.append( plat.getCompiler() )
+
+    check_restart_options( rtdata, opL )  # must go before the next line
+
+    rtdata.rtconfig.setOptionList( opL )
+
+    rtdata.rtconfig.setMaxSize( plat.getMaxSize() )
+
+
+def check_restart_options( rtdata, opL ):
+    """
+    The command line options are stored in rtconfig. In restart mode and
+    where command line options are specified, make sure they are the same ones
+    that were used originally in the TestResults directory.  The original
+    options are passed in the 'opL' list.
+    """
+    if rtdata.isrestart and len(rtdata.rtconfig.getOptionList()) > 0:
+        oldL = list( rtdata.rtconfig.getOptionList() )
+        if rtdata.plat.getCompiler():
+            oldL.append( rtdata.plat.getCompiler() )
+        oldL = list( set( oldL ) )
+        newL = list( set( opL ) )
+        if newL != oldL:
+            raise FatalError( 'cannot specify different -o options within a '
+                              'TestResults directory: '+str(newL)+' != '+str(oldL) )
+
 
 def construct_runtime_info( rtdata, opts, optD, vvtestdir ):
     ""
@@ -259,44 +319,8 @@ def construct_runtime_info( rtdata, opts, optD, vvtestdir ):
         'testargs'   : rtdata.rtconfig.getAttr( 'testargs', [] ),
     }
 
-
-def construct_platform( rtdata, opts, optD ):
-    ""
-    from libvvtest.makeplatform import create_Platform_instance
-
-    mode = 'direct'
-    if opts.batch:
-        mode = 'batch'
-    elif opts.batch_id is not None:
-        mode = 'batchjob'
-
-    plat = create_Platform_instance(
-                opts.plat, mode,
-                optD['platopt_dict'],  # --platopt
-                opts.dash_n,
-                opts.dash_N,
-                opts.devices,
-                opts.max_devices,
-                optD['onopts'],        # -o
-                optD['offopts'] )      # -O
-
-    rtdata.rtconfig.setPlatformName( plat.getName() )
-
-    rtdata.rtconfig.setPlatformExpression( optD['platform_expr'], plat.getName() )
-    if opts.dash_A:
-        rtdata.rtconfig.applyPlatformExpression( False )
-
-    opL = optD['onopts']
-    if plat.getCompiler():
-        opL.append( plat.getCompiler() )
-    rtdata.rtconfig.setOptionList( opL )
-
-    rtdata.rtconfig.setMaxSize( plat.getMaxSize() )
-
-    rtdata.rtinfo['platform'] = plat.getName()
-    rtdata.rtinfo['compiler'] = plat.getCompiler()
-
-    rtdata.plat = plat
+    rtdata.rtinfo['platform'] = rtdata.plat.getName()
+    rtdata.rtinfo['compiler'] = rtdata.plat.getCompiler()
 
 
 def compute_testing_directory( rtdata, opts, optD ):

@@ -19,6 +19,8 @@ import libvvtest.testcreator as testcreator
 import libvvtest.timehandler as timehandler
 from libvvtest.runtimes import RuntimesLookup
 
+abspath = util.abspath  # this abspath prevents Windows issues
+
 
 class plugin_tests( vtu.vvtestTestCase ):
 
@@ -46,6 +48,28 @@ class plugin_tests( vtu.vvtestTestCase ):
         tcase = vtu.create_tests_from_file( 'btest.vvt' )[0]
         tm = plug.testRuntime( tcase )
         self.assertEqual( tm, None )
+
+    def test_the_specs_dict_representing_each_test(self):
+        ""
+        util.writefile( 'tests/atest.vvt', """
+            #VVT: keywords = foo bar
+            """ )
+        util.writefile( 'tests/.vvtest.txt', 'ROOTPATH=top\n' )
+
+        plug = vtu.make_user_plugin( """
+            def test_runtime( specs ):
+                ""
+                import os, json
+                with open( '"""+abspath('specs.jsn')+"""', 'wt' ) as fp:
+                    fp.write( json.dumps( specs ) + os.linesep )
+            """ )
+
+        tcase = vtu.create_tests_from_file( 'atest.vvt', scanroot='tests' )[0]
+        plug.testRuntime( tcase )
+        specs = util.read_json_file( 'specs.jsn' )
+        self.assertEqual( sorted(specs['keywords']), ['bar','foo'] )
+        self.assertEqual( specs['name'], 'atest' )
+        self.assertEqual( specs['testid'], ['top/atest.vvt','atest'] )
 
 
 class handler_tests( vtu.vvtestTestCase ):

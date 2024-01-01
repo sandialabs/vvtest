@@ -10,6 +10,7 @@ from os.path import join as pjoin
 from . import outpututils
 from .pathutil import change_directory
 from . import importutil
+from . import pathid
 
 
 class UserPluginBridge:
@@ -26,20 +27,7 @@ class UserPluginBridge:
         # each exception string
         self.exc_uniq = set()
 
-    def callResultsDir(self):
-        ""
-        resdir = None
-
-        if self.results is not None:
-            platname = self.rtconfig.getPlatformName()
-            options = self.rtconfig.getOptionList()
-            try:
-                resdir = self.results( platname, options )
-            except Exception:
-                xs,tb = outpututils.capture_traceback( sys.exc_info() )
-                sys.stdout.write( '\n' + tb + '\n' )
-
-        return resdir
+        self.idcache = pathid.TestPathIdentification()
 
     def callPrologue(self, command_line):
         ""
@@ -50,12 +38,28 @@ class UserPluginBridge:
                 xs,tb = outpututils.capture_traceback( sys.exc_info() )
                 sys.stdout.write( '\n' + tb + '\n' )
 
+    def callResultsDir(self):
+        ""
+        resdir = None
+
+        if self.resultsdir is not None:
+            platname = self.rtconfig.getPlatformName()
+            options = self.rtconfig.getOptionList()
+            try:
+                resdir = self.resultsdir( platname, options )
+            except Exception:
+                xs,tb = outpututils.capture_traceback( sys.exc_info() )
+                sys.stdout.write( '\n' + tb + '\n' )
+
+        return resdir
+
     def callEpilogue(self, rundir, tcaselist):
         ""
         if self.epilog is not None and os.path.isdir(rundir):
             testD = convert_test_list_to_info_dict( self.rtconfig,
                                                     rundir,
-                                                    tcaselist )
+                                                    tcaselist,
+                                                    self.idcache )
             try:
                 with change_directory( rundir ):
                     self.epilog( testD )
@@ -69,7 +73,7 @@ class UserPluginBridge:
         """
         rtn = None
         if self.validate is not None:
-            specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
+            specs = make_test_to_user_interface_dict( self.rtconfig, tcase, self.idcache )
             try:
                 rtn = self.validate( specs )
             except Exception:
@@ -99,7 +103,7 @@ class UserPluginBridge:
         prog = None
 
         if self.preload is not None:
-            specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
+            specs = make_test_to_user_interface_dict( self.rtconfig, tcase, self.idcache )
             try:
                 label = tcase.getSpec().getPreloadLabel()
                 if label:
@@ -125,7 +129,7 @@ class UserPluginBridge:
         rtn = None
 
         if func is not None:
-            specs = make_test_to_user_interface_dict( self.rtconfig, tcase )
+            specs = make_test_to_user_interface_dict( self.rtconfig, tcase, self.idcache )
             try:
                 rtn = func( specs )
                 if rtn is not None:
@@ -163,9 +167,9 @@ class UserPluginBridge:
         if self.plugin and hasattr( self.plugin, 'test_runtime' ):
             self.runtime = self.plugin.test_runtime
 
-        self.results = None
+        self.resultsdir = None
         if self.plugin and hasattr( self.plugin, 'results_directory' ):
-            self.results = self.plugin.results_directory
+            self.resultsdir = self.plugin.results_directory
 
     def _check_print_exc(self, xs, tb):
         ""
@@ -174,13 +178,13 @@ class UserPluginBridge:
             self.exc_uniq.add( xs )
 
 
-def convert_test_list_to_info_dict( rtconfig, rundir, tcaselist ):
+def convert_test_list_to_info_dict( rtconfig, rundir, tcaselist, idcache ):
     ""
     testD = {}
 
     for tcase in tcaselist:
 
-        infoD = make_test_to_user_interface_dict( rtconfig, tcase )
+        infoD = make_test_to_user_interface_dict( rtconfig, tcase, idcache )
 
         tspec = tcase.getSpec()
         tstat = tcase.getStat()
@@ -204,16 +208,21 @@ def convert_test_list_to_info_dict( rtconfig, rundir, tcaselist ):
     return testD
 
 
-def make_test_to_user_interface_dict( rtconfig, tcase ):
+def make_test_to_user_interface_dict( rtconfig, tcase, idcache ):
     ""
     tspec = tcase.getSpec()
+    testid = idcache.get_testid( tspec.getFilename(), tspec.getID() )
 
-    specs = { 'name'       : tspec.getName(),
-              'keywords'   : tspec.getKeywords( include_implicit=False ),
-              'parameters' : tspec.getParameters(),
-              'timeout'    : tspec.getTimeout(),
-              'platform'   : rtconfig.getPlatformName(),
-              'options'    : rtconfig.getOptionList() }
+    specs = {
+        'name'       : tspec.getName(),
+        'keywords'   : tspec.getKeywords( include_implicit=False ),
+        'parameters' : tspec.getParameters(),
+        'timeout'    : tspec.getTimeout(),
+        'platform'   : rtconfig.getPlatformName(),
+        'options'    : rtconfig.getOptionList(),
+        'testid'     : testid,
+    }
+
     return specs
 
 

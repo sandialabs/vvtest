@@ -727,15 +727,21 @@ def creator( idflags={}, platname=None, opts=[] ):
     return testcreator.TestCreator( idflags, platname, opts )
 
 
-def create_tests_from_file( filename, platname=core_platform_name(),
-                                      optionlist=[] ):
+def create_tests_from_file( filename,
+                            platname=core_platform_name(),
+                            optionlist=[],
+                            scanroot=None ):
     ""
     tc = creator( {}, platname, optionlist )
 
     assert not os.path.isabs( filename )
     assert not os.path.normpath(filename).startswith('..')
 
-    dname,fname = os.path.split( filename )
+    if scanroot:
+        dname = scanroot
+        fname = filename
+    else:
+        dname,fname = os.path.split( filename )
 
     tL = []
     for tspec in tc.fromFile( fname, dname ):
@@ -1030,7 +1036,7 @@ def make_user_plugin( content=None, platname=None, options=None ):
     sys.path.insert( 0, os.path.abspath(subdir) )
     try:
         mod,err = import_user_plugin( plugname )
-        assert not err
+        assert not err, err
         plug = UserPluginBridge( rtconfig, mod )
     finally:
         sys.path.pop( 0 )

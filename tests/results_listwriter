@@ -126,39 +126,39 @@ class unit_tests( vtu.vvtestTestCase ):
                     total_num += v
             self.assertEqual( total_num, 1 )
 
-            tD = get_test_info( tcase )
+            tD = get_test_info( pathid.TestPathIdentification(), tcase )
             self.assertEqual( tD['result'], res )
 
     def test_result_attributes(self):
         ""
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         vtu.mark_testcase_with_result( tcase, 'skip' )
-        D = get_test_info( tcase )
+        D = get_test_info( pathid.TestPathIdentification(), tcase )
         assert D['skip'] == 'excluded by platform expression'
         assert 'runtime' not in D and 'startdate' not in D
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
         vtu.mark_testcase_with_result( tcase, 'notrun' )
-        D = get_test_info( tcase )
+        D = get_test_info( pathid.TestPathIdentification(), tcase )
         assert 'runtime' not in D and 'startdate' not in D
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
         vtu.mark_testcase_with_result( tcase, 'running', t0 )
-        D = get_test_info( tcase )
+        D = get_test_info( pathid.TestPathIdentification(), tcase )
         assert abs(D['startdate']-t0) < 1 and 'runtime' not in D
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
         vtu.mark_testcase_with_result( tcase, 'pass', t0, t0+10 )
-        D = get_test_info( tcase )
+        D = get_test_info( pathid.TestPathIdentification(), tcase )
         assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-10) < 1
 
         tcase = vtu.make_test_case( 'atest.vvt', 'pass\n' )
         t0 = time.time()
         vtu.mark_testcase_with_result( tcase, 'runskip', t0, t0+5 )
-        D = get_test_info( tcase )
+        D = get_test_info( pathid.TestPathIdentification(), tcase )
         assert abs(D['startdate']-t0) < 1 and abs(D['runtime']-5) < 1
 
     def test_writing_testlist_results_file(self):
@@ -176,7 +176,7 @@ class unit_tests( vtu.vvtestTestCase ):
 
 class update_results( vtu.vvtestTestCase ):
     """
-    In the algorith, should 'now' be "snapped" to something like the
+    In the cleanup algorithm, should 'now' be "snapped" to something like the
     end of the day ??
 
     Currently for testing, just subtract 60 minutes and use 24 hour increments
@@ -340,21 +340,24 @@ class integration_tests( vtu.vvtestTestCase ):
 
     def test_saving_results_when_pathid_root_cannot_be_determined(self):
         ""
-        # use /tmp dir to avoid case where .git repository is in current dir path
+        # use /tmp dir to avoid case where current dir is inside a .git repository somehow
         tmpd = tempfile.mkdtemp('','vvt_tmpdir_')
         try:
-            util.writefile( tmpd+"/one/cat.vvt", "pass\n" )
-            util.writefile( tmpd+"/one/dog.vvt", "pass\n" )
-            util.writefile( tmpd+"/two/circle.vvt", "pass\n" )
+            util.writefile( tmpd+"/tests/one/cat.vvt", "pass\n" )
+            util.writefile( tmpd+"/tests/one/dog.vvt", "pass\n" )
+            util.writefile( tmpd+"/tests/two/circle.vvt", "pass\n" )
 
-            vrun = vtu.runvvtest( abspath(tmpd), '--save-results' )
+            vrun = vtu.runvvtest( '--save-results', abspath(tmpd+'/tests'),  )
             vrun.assertCounts( total=3, npass=3 )
 
             resultsfname = util.globfile('vvtresults.*')
             _,testinfo = vtu.read_results_file( resultsfname )
             self.assertEqual( len(testinfo), 3 )
-            for testD in testinfo:
-                self.assertTrue( testD['pathid'] is None )
+            # if pathid is not able to be determined, then the first element of
+            # the testid is the test filename relative to the scan root 
+            self.assertEqual( np(testinfo[0]['testid'][0]), np('one/cat.vvt') )
+            self.assertEqual( np(testinfo[1]['testid'][0]), np('one/dog.vvt') )
+            self.assertEqual( np(testinfo[2]['testid'][0]), np('two/circle.vvt') )
 
         finally:
             shutil.rmtree( tmpd )

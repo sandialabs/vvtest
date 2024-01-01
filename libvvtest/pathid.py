@@ -9,7 +9,7 @@ from os.path import dirname, join as pjoin, basename
 
 
 # the test root marker filename
-VVTEST_ROOT_FILENAME = '.vvtest.root'
+VVTEST_ROOT_FILENAME = '.vvtest.txt'
 
 
 class TestPathIdentification:
@@ -23,7 +23,23 @@ class TestPathIdentification:
         ""
         self.cache = {}
 
-    def get_path_id(self, test_src_filename):
+    def get_testid(self, test_src_filename, testspec_id):
+        """
+        Creates a test ID comprised of a TestSpec ID with the filepath
+        replaced with the pathid.  Returns None if the pathid could not be
+        determined.
+        """
+        testid = None
+
+        pathid = self.get_pathid( test_src_filename )
+        if pathid is not None:
+            tid = list( testspec_id )
+            tid[0] = pathid
+            testid = tuple( tid )
+
+        return testid
+
+    def get_pathid(self, test_src_filename):
         """
         """
         cache_d,bname = os.path.split( test_src_filename )

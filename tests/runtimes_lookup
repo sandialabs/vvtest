@@ -26,7 +26,6 @@ from libvvtest.runtimes import (
     RuntimesLookup,
     read_results_file_into_map,
     get_results_file_map,
-    make_test_key,
     find_runtime_for_test,
 )
 
@@ -85,24 +84,6 @@ class unit_tests( vtu.vvtestTestCase ):
 
         # this is bad input for the function, but should not cause an exception
         find_results_files( {}, 'foobar' )
-
-    def test_make_test_key_from_pathid_and_testid(self):
-        ""
-        tL = vtu.make_test_cases( 'atest.vvt', """
-            #VVT: parameterize : np = 1 4
-            #VVT: analyze : --analyze
-            """ )
-
-        pathid = 'path/atest.vvt'
-
-        tk = make_test_key( pathid, tL[0].getSpec().getID() )
-        self.assertEqual( tk, ('path/atest.vvt', 'atest') )
-
-        tk = make_test_key( pathid, tL[1].getSpec().getID() )
-        self.assertEqual( tk, ('path/atest.vvt', 'atest', 'np=1') )
-
-        tk = make_test_key( pathid, tL[2].getSpec().getID() )
-        self.assertEqual( tk, ('path/atest.vvt', 'atest', 'np=4') )
 
     def test_reading_results_file_into_test_map(self):
         ""

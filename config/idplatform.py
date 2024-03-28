@@ -30,6 +30,9 @@ def get_platform():
     pbshost = os.environ.get('PBS_O_HOST','')
     lsfhost = os.environ.get('LSB_SUB_HOST','')
 
+    if shell_match( [nodename], ['ro-rfe*','xr-fe*'] ):
+        return 'ATS3'
+
     if base_match( [nodename,lsfhost], ['vortex','rzansel','sierra'] ):
         return 'ATS2'
 
@@ -137,6 +140,10 @@ def load_specifications( specs, platname, cplrname, options ):
         specs['batchsys'] = 'lsf'
         specs['ppn'] = 44
         specs['dpn'] = 4
+
+    elif platname == 'ATS3':
+        specs['batchsys'] = 'slurm'
+        specs['ppn'] = 112
 
 
 #######################################################################

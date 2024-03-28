@@ -195,6 +195,12 @@ class config_tests( vtu.vvtestTestCase ):
             self.assertEqual( specs['ppn'], 44 )
             self.assertEqual( specs['dpn'], 4 )
 
+            specs = PlatformSpecs( attrtab )
+            idmod.load_specifications( specs, 'ATS3', None, {} )
+            self.assertTrue( specs.is_modified() )
+            self.assertEqual( specs['batchsys'], 'slurm' )
+            self.assertEqual( specs['ppn'], 112 )
+
         finally:
             sys.path.pop(0)
 

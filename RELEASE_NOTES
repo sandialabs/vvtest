@@ -30,7 +30,11 @@ Improvements:
 
 Fixes:
 
-    - 
+    - Fix potential issue with test parameter generation via a "generator".
+      When test dependencies are specified by the generator script, it was
+      possible that a dependency would not get added due to Python dict
+      ordering.  This issue was found by a GitHub vvtest user and fixed
+      using their suggestion.
 
 Changes:
 

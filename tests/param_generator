@@ -405,6 +405,9 @@ class suite( vtu.vvtestTestCase ):
         dmap = creat( 'atest', [{'A':'a','B':2}], ['btest*'], 0 )
         self.assertEqual( dmap, {('atest', ('A', 'a'), ('B', '2')): 'btest*'} )
 
+        dmap = creat( 'atest', [{'B':2,'A':'a'}], ['btest*'], 0 )
+        self.assertEqual( dmap, {('atest', ('A', 'a'), ('B', '2')): 'btest*'} )
+
         dmap = creat( 'atest', [{'A':'a'},{'B':2}], [None,{'C':{}}], 0 )
         self.assertEqual( dmap, {('atest', ('B', '2')): {'C': {}}} )
 

@@ -5,6 +5,7 @@
 # Government retains certain rights in this software.
 
 import os, sys
+from os.path import basename
 
 from .helpers import format_shell_flags, runcmd
 
@@ -25,19 +26,18 @@ class BatchFLUX:
         if qtime%60 > 0:
             m += 1
 
-        hdr = [ '# FLUX: --time-limit=' + str(m),
-                '# FLUX: --nodes=' + str(nnodes),
-                '# FLUX: --output=' + outfile,
-                '# FLUX: --error=' + outfile ]
+        hdr = [ '#FLUX: --time-limit=' + str(m),
+                '#FLUX: --nodes=' + str(nnodes),
+                '#FLUX: --output=' + outfile,
+                '#FLUX: --error=' + outfile ]
 
         if 'queue' in self.attrs:
-            hdr.append( '# FLUX: --queue='+self.attrs['queue'] )
+            hdr.append( '#FLUX: --queue='+self.attrs['queue'] )
         if 'account' in self.attrs:
-            # TODO: what is the option for providing an account ??
-            pass  # hdr.append( '# FLUX: --account='+self.attrs['account'] )
+            hdr.append( '#FLUX: --setattr=system.bank='+self.attrs['account'])
         if self.xflags:
             # place on one line so a specification like "-L gpfs" will work
-            hdr.append( '# FLUX: {0}'.format( ' '.join( self.xflags ) ) )
+            hdr.append( '#FLUX: {0}'.format( ' '.join( self.xflags ) ) )
 
         return hdr
 
@@ -48,7 +48,8 @@ class BatchFLUX:
         where jobid is None if an error occurred or the jobid could
         not be parsed from stdout.
         """
-        x,cmd,out = runcmd( ['flux', 'batch', fname] )
+        jobname = basename(fname)
+        x,cmd,out = runcmd( ['flux', 'batch', '--job-name', jobname, fname] )
 
         # output should simply contain the jobid
         jobid = None
@@ -92,4 +93,3 @@ class BatchFLUX:
     def cancel(self, jobid):
         ""
         x,cmd,out = runcmd( ['flux', 'cancel', str(jobid)], echo=True )
-

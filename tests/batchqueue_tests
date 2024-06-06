@@ -527,7 +527,7 @@ def write_mock_flux_scripts( fake_submit_exception=False ):
             """
             if sys.argv[1] == 'batch':
                 jobscript = sys.argv[-1]
-                ofile = get_header_option_value( jobscript, '# FLUX: --output=' )
+                ofile = get_header_option_value( jobscript, '#FLUX: --output=' )
                 run_in_background( jobscript, ofile )
                 print( 'asdf2' )
             elif sys.argv[1] == 'jobs':

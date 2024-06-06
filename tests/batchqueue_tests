@@ -60,7 +60,7 @@ class function_tests( vtu.vvtestTestCase ):
 
     def test_queue_type_construction(self):
         ""
-        for qtype in ['subprocs','craypbs','pbs','slurm','moab','lsf','flux']:
+        for qtype in ['subprocs','craypbs','pbs','slurm','moab','lsf']:
             bq = BatchQueueInterface( (12,None), {'batchsys':qtype} )
             assert bq.getNodeSize() == (12,None)
 
@@ -512,98 +512,6 @@ class moab_tests( vtu.vvtestTestCase ):
         assert '--fake-flag' in util.readfile( 'bin/msub.out' )
 
 
-########## flux.py
-
-def write_mock_flux_scripts( fake_submit_exception=False ):
-    ""
-    write_mock_helpers()
-
-    if fake_submit_exception:
-        write_mock_script( 'bin/flux', '', """
-            raise Exception( 'fake submit exception' )
-            """ )
-    else:
-        write_mock_script( 'bin/flux', '',
-            """
-            if sys.argv[1] == 'batch':
-                jobscript = sys.argv[-1]
-                ofile = get_header_option_value( jobscript, '# FLUX: --output=' )
-                run_in_background( jobscript, ofile )
-                print( 'asdf2' )
-            elif sys.argv[1] == 'jobs':
-                print( dedent('''
-                    asdf1 DEPEND
-                    asdf2 SCHED
-                    asdf3 RUN
-                    asdf4 CLEANUP
-                    asdf5 INACTIVE
-                    ''' ) )
-            elif sys.argv[1] == 'cancel':
-                pass
-            """ )
-
-
-class flux_tests( vtu.vvtestTestCase ):
-
-    def setUp(self):
-        ""
-        vtu.vvtestTestCase.setUp(self)
-        write_mock_flux_scripts()
-        os.environ['PATH'] = prepended_PATH( 'bin' )
-
-    def test_implementation_functions(self):
-        ""
-        obj = construct_batch_system( { 'batchsys':'flux',
-                                        'ppn':16,
-                                        'submit_flags': '--fake-flag=value' } )
-
-        hdrL = obj.header( (3,8,0), 123, abspath('out.txt') )
-        util.writefile( 'batchscript', '\n'.join( hdrL )+'\n' )
-
-        assert len( util.greplines( 'FLUX: *--nodes=3', hdrL ) ) == 1
-        assert len( util.greplines( 'FLUX: *--fake-flag=value', hdrL ) ) == 1
-
-        jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
-        self.assertEqual( jobid, 'asdf2' )
-
-        jobs,cmd,out = obj.query( [ 'asdf2', 'asdf3' ] )
-        self.assertEqual( jobs, {'asdf2':'pending', 'asdf3':'running'} )
-
-        obj.cancel( 'asdf3' )
-        cmdL = eval( util.readfile( 'bin/flux.out' ).strip() )
-        self.assertEqual( cmdL[2], 'asdf3' )
-
-    def test_submit_error(self):
-        ""
-        util.write_py_script( 'bin/flux', """
-            raise Exception( 'fake exception' )
-            """ )
-
-        obj = construct_batch_system( { 'batchsys':'flux'} )
-        jobid,cmd,out = obj.submit( 'foo', 'bar' )
-        # print ( out )
-        assert jobid is None
-        assert 'batch' in cmd
-        assert 'fake exception' in out
-
-    def test_batch_queue_interface(self):
-        ""
-        util.writefile( 'atest.vvt', """
-            import vvtest_util as vvt
-            """ )
-
-        vrun = vtu.runvvtest( '--total-timeout=5 --platopt batchsys=flux',
-                              '--platopt ppn=4 --platopt submit_flags=--fake-flag',
-                              '--platopt PT=foobar',
-                              batch=True )
-        vrun.assertCounts( total=1, npass=1 )
-        assert not vrun.grepLines('*** Batch submission failed')
-        assert not vrun.grepLines('total timeout expired')
-        fn = util.globfile( 'TestResults*/batchset*/qbat.0' )
-        assert '# FLUX: --fake-flag' in util.readfile(fn)
-
-
-
 ########################################################################
 
 def write_mock_helpers():
@@ -636,8 +544,7 @@ def write_mock_helpers():
 def write_mock_script( filename, print_this, execute_this=None ):
     ""
     lines = [ 'import os, sys, subprocess',
-              'from mockutils import get_header_option_value, run_in_background',
-              'from textwrap import dedent' ]
+              'from mockutils import get_header_option_value, run_in_background' ]
 
     # a file is always written that contains the script arguments
     lines.extend( [

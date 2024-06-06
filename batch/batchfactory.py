@@ -27,9 +27,6 @@ def construct_batch_system( batchattrs ):
     elif qtype == 'lsf':
         from . import lsf
         batch = lsf.BatchLSF( **batchattrs )
-    elif qtype == 'flux':
-        from . import flux
-        batch = flux.BatchFLUX( **batchattrs )
     else:
         raise Exception( "Unknown batch system name: "+repr(qtype) )
 

@@ -26,7 +26,6 @@ class BatchQueueInterface:
             craypbs  : for Cray machines running PBS (or PBS-like)
             moab     : for Cray machines running Moab (may work in general)
             pbs      : standard PBS system
-            flux     : FLUX system
             subprocs : simulate batch processing with subprocesses
         """
         self.batch = None

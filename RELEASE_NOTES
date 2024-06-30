@@ -1,6 +1,10 @@
 
 Improvements:
 
+    - Add support for the Flux batch system.  Some documentation is here
+      https://flux-framework.readthedocs.io/.  To use, add the option
+      "--platopt batchsys=flux" to the vvtest command line.
+
     - Many user plugin functions take a dictionary representing a given test.
       This dictionary now contains an entry called 'testid' whose value is
       the same as the one used to identify tests from saved test results files.

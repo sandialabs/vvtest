@@ -74,7 +74,7 @@ class BatchFLUX:
         jobs = {}
         err = ''
         for line in out.splitlines():
-            # a line should be something like "ƒM7Zq9AKHno RUN"
+            # a line should be something like "fM7Zq9AKHno RUN"
             line = line.strip()
             if line:
                 L = line.split()

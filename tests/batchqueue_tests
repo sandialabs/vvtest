@@ -529,7 +529,7 @@ def write_mock_flux_scripts( fake_submit_exception=False ):
                 jobscript = sys.argv[-1]
                 ofile = get_header_option_value( jobscript, '#FLUX: --output=' )
                 run_in_background( jobscript, ofile )
-                print( 'asdf2' )
+                print( 'asdf5' )
             elif sys.argv[1] == 'jobs':
                 print( dedent('''
                     asdf1 DEPEND
@@ -564,7 +564,7 @@ class flux_tests( vtu.vvtestTestCase ):
         assert len( util.greplines( 'FLUX: *--fake-flag=value', hdrL ) ) == 1
 
         jobid,cmd,out = obj.submit( 'batchscript', 'out_filename' )
-        self.assertEqual( jobid, 'asdf2' )
+        self.assertEqual( jobid, 'asdf5' )
 
         jobs,cmd,out = obj.query( [ 'asdf2', 'asdf3' ] )
         self.assertEqual( jobs, {'asdf2':'pending', 'asdf3':'running'} )
@@ -600,7 +600,7 @@ class flux_tests( vtu.vvtestTestCase ):
         assert not vrun.grepLines('*** Batch submission failed')
         assert not vrun.grepLines('total timeout expired')
         fn = util.globfile( 'TestResults*/batchset*/qbat.0' )
-        assert '# FLUX: --fake-flag' in util.readfile(fn)
+        assert '#FLUX: --fake-flag' in util.readfile(fn)
 
 
 
